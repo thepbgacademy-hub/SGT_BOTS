@@ -1,0 +1,11 @@
+{
+  "name": "@sgt-bots/shared",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node -e \"process.stdout.write('shared build stub\\n')\"",
+    "format": "node -e \"process.stdout.write('shared format stub\\n')\"",
+    "lint": "node -e \"process.stdout.write('shared lint stub\\n')\"",
+    "test": "vitest run src/testing/workspace-smoke.spec.ts"
+  }
+}

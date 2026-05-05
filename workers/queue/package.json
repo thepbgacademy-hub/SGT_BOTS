@@ -1,0 +1,11 @@
+{
+  "name": "@sgt-bots/queue-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node -e \"process.stdout.write('queue build stub\\n')\"",
+    "format": "node -e \"process.stdout.write('queue format stub\\n')\"",
+    "lint": "node -e \"process.stdout.write('queue lint stub\\n')\"",
+    "test": "node -e \"process.stdout.write('queue test stub\\n')\""
+  }
+}

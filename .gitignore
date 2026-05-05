@@ -43,6 +43,8 @@ tmp/
 artifacts/
 uploads/
 reports/
+test-results/
+playwright-report/
 
 # Local worktrees
 .worktrees/

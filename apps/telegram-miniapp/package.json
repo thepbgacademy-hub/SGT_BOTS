@@ -1,0 +1,11 @@
+{
+  "name": "@sgt-bots/telegram-miniapp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node -e \"process.stdout.write('miniapp build stub\\n')\"",
+    "format": "node -e \"process.stdout.write('miniapp format stub\\n')\"",
+    "lint": "node -e \"process.stdout.write('miniapp lint stub\\n')\"",
+    "test": "node -e \"process.stdout.write('miniapp test stub\\n')\""
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@sgt-bots/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node -e \"process.stdout.write('api build stub\\n')\"",
+    "format": "node -e \"process.stdout.write('api format stub\\n')\"",
+    "lint": "node -e \"process.stdout.write('api lint stub\\n')\"",
+    "test": "node -e \"process.stdout.write('api test stub\\n')\""
+  }
+}

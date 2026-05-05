@@ -7,11 +7,11 @@ Overwrite this file after each meaningful iteration, design revision, or plan up
 ## Current State
 
 - Repository bootstrap docs are in place.
-- Local Git repo is initialized on `main`.
+- Local Git repo is initialized and the docs baseline is committed on `main`.
 - Subagent-driven execution is approved for implementation work.
-- Bootstrap and spec files are still uncommitted locally.
-- No commits have been created yet.
-- No application code has been scaffolded yet.
+- Active implementation branch: `codex/phase-0-foundation`.
+- Active isolated worktree: `E:\REPOS\SGT_BOTS\.worktrees\codex-phase-0-foundation`.
+- Phase 0 scaffold is implemented and verified in this worktree.
 - Build execution rules are now documented in the contribution and QA docs.
 - The phased v1 implementation plan is now written and saved.
 
@@ -33,6 +33,17 @@ Overwrite this file after each meaningful iteration, design revision, or plan up
   - starter bots: `document_wizard`, `kb_concierge`
   - HTML-to-PDF renderer: `playwright`
 - Project-local hidden worktrees under `.worktrees/` are the default isolation strategy for build execution.
+- Local shell execution currently requires `corepack pnpm` because `pnpm` is not directly on `PATH`.
+
+## Latest Completed Phase
+
+- `Phase 0` complete:
+  - workspace root scaffold created
+  - launch defaults contract added
+  - launch defaults seed added
+  - root Vitest smoke test red/green verified
+  - root Playwright lane red/green verified
+  - Phase 0 passed implementation, spec review, and code-quality review
 
 ## Canonical References
 
@@ -49,14 +60,17 @@ Overwrite this file after each meaningful iteration, design revision, or plan up
 
 ## Immediate Next Steps
 
-1. Create the initial local Git commit for the current repository baseline.
-2. Create the isolated Phase 0 worktree and feature branch.
-3. Start Phase 0 and do not advance until its exit metrics pass.
-4. Dispatch Phase 0 work through scoped subagents with review gates.
+1. Commit the completed Phase 0 scaffold on `codex/phase-0-foundation`.
+2. Start Phase 1 and do not advance until its exit metrics pass.
+3. Dispatch Phase 1 onboarding work through scoped subagents with the same review gates.
+4. After the next completed phase, compact continuity again because two build completions will then be recorded.
 
 ## Notes For Next Session
 
 - Use this file first for continuity, then open the design spec and `TASKS.md`.
+- If restarting work, return to this branch and worktree before making changes:
+  - branch: `codex/phase-0-foundation`
+  - path: `E:\REPOS\SGT_BOTS\.worktrees\codex-phase-0-foundation`
 - Start with the implementation plan before coding:
   - `docs/superpowers/plans/2026-05-05-telegram-playground-v1-implementation.md`
 - If a new handoff is created, replace this file instead of creating another handoff file.
