@@ -1,0 +1,48 @@
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+build/
+.next/
+.turbo/
+coverage/
+yarn-error.log
+npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Redis / queues / temp
+tmp/
+.tmp/
+
+# Generated artifacts
+artifacts/
+uploads/
+reports/
+
+# Local worktrees
+.worktrees/
