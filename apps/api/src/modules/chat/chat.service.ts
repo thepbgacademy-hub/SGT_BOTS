@@ -97,7 +97,48 @@ function buildDocumentWizardReply(
   requireToolPermission(manifest, "document_intake");
 
   return {
-    output: `I can turn "${content}" into a structured draft. Upload support lands in Phase 4. For now, paste your notes here.`,
+    output: `I can turn "${content}" into a structured draft. Upload a PDF or paste your notes and I will shape the final report flow for you.`,
+  };
+}
+
+function buildTutorReply(manifest: BotManifest, content: string): RuntimeReply {
+  requireCapability(manifest, "chat");
+
+  return {
+    output: `Let's break "${content}" into a few clear steps, then I can guide you through each one like a coach.`,
+  };
+}
+
+function buildResearcherReply(
+  manifest: BotManifest,
+  content: string,
+): RuntimeReply {
+  requireCapability(manifest, "chat");
+  requireCapability(manifest, "citations");
+  requireCapability(manifest, "rag_query");
+  requireSourceBinding(manifest, "knowledge_base");
+  requireToolPermission(manifest, "knowledge_base_search");
+
+  return {
+    output: `I researched "${content}" and pulled the strongest grounded lead to start your brief.`,
+    citations: [
+      {
+        sourceId: "knowledge_base",
+        title: "Research Briefing Index",
+        url: "https://example.invalid/kb/research-briefing-index",
+      },
+    ],
+  };
+}
+
+function buildGeneralConciergeReply(
+  manifest: BotManifest,
+  content: string,
+): RuntimeReply {
+  requireCapability(manifest, "chat");
+
+  return {
+    output: `I can help triage "${content}" and route you to the right next action inside the playground.`,
   };
 }
 
@@ -175,10 +216,7 @@ export function createChatService(deps?: { now?: () => number }) {
         content: trimmedContent,
         createdAt,
       };
-      const runtimeReply =
-        manifest.id === "kb_concierge"
-          ? buildKnowledgeBaseReply(manifest, trimmedContent)
-          : buildDocumentWizardReply(manifest, trimmedContent);
+      const runtimeReply = buildRuntimeReply(manifest, trimmedContent);
       const assistantMessage: ChatMessage = {
         id: nextMessageId(),
         role: "assistant",
@@ -197,4 +235,26 @@ export function createChatService(deps?: { now?: () => number }) {
       };
     },
   };
+}
+
+function buildRuntimeReply(
+  manifest: BotManifest,
+  trimmedContent: string,
+): RuntimeReply {
+  switch (manifest.id) {
+    case "kb_concierge":
+      return buildKnowledgeBaseReply(manifest, trimmedContent);
+    case "document_wizard":
+      return buildDocumentWizardReply(manifest, trimmedContent);
+    case "tutor":
+      return buildTutorReply(manifest, trimmedContent);
+    case "researcher":
+      return buildResearcherReply(manifest, trimmedContent);
+    case "general_concierge":
+      return buildGeneralConciergeReply(manifest, trimmedContent);
+    default: {
+      const exhaustiveCheck: never = manifest.id;
+      throw new Error(`unsupported bot: ${exhaustiveCheck}`);
+    }
+  }
 }

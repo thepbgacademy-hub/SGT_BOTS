@@ -97,7 +97,7 @@ describe("bot runtime routes", () => {
     expect(sql).toContain("safety_flags jsonb");
   });
 
-  it("returns the authenticated starter bot catalog for an active provider session", async () => {
+  it("returns the authenticated bot catalog for an active provider session", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
 
     const response = await app.inject({
@@ -109,8 +109,8 @@ describe("bot runtime routes", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({
-      bots: [
+    expect(response.json()).toMatchObject({
+      bots: expect.arrayContaining([
         {
           id: "document_wizard",
           name: "Document Wizard",
@@ -139,7 +139,16 @@ describe("bot runtime routes", () => {
           },
           sourceBinding: "knowledge_base",
         },
-      ],
+        expect.objectContaining({
+          id: "tutor",
+        }),
+        expect.objectContaining({
+          id: "researcher",
+        }),
+        expect.objectContaining({
+          id: "general_concierge",
+        }),
+      ]),
     });
   });
 
@@ -212,7 +221,7 @@ describe("bot runtime routes", () => {
     expect(documentResponse.statusCode).toBe(200);
     expect(documentResponse.json()).toMatchObject({
       botId: "document_wizard",
-      output: expect.stringContaining("Upload support lands in Phase 4"),
+      output: expect.stringContaining("Upload a PDF or paste your notes"),
       citations: [],
       conversation: {
         botId: "document_wizard",
@@ -309,13 +318,22 @@ describe("bot runtime routes", () => {
       });
 
       expect(catalogResponse.statusCode).toBe(200);
-      expect(catalogResponse.json()).toEqual({
-        bots: [
+      expect(catalogResponse.json()).toMatchObject({
+        bots: expect.arrayContaining([
           expect.objectContaining({
             id: "kb_concierge",
           }),
-        ],
+        ]),
       });
+      expect(
+        (catalogResponse.json() as { bots: Array<{ id: string }> }).bots,
+      ).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "document_wizard",
+          }),
+        ]),
+      );
       expect(runtimeResponse.statusCode).toBe(404);
       expect(runtimeResponse.json()).toEqual({
         message: "bot not found",

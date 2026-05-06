@@ -1,25 +1,11 @@
 import { useState, type FormEvent } from "react";
+import type { BotCatalogEntry } from "../../../../../packages/shared/src/bots/manifests";
 import type { ArtifactListItem } from "../artifacts/ArtifactList";
 import {
   DocumentWizardForm,
   type DocumentWizardReportFormData,
 } from "../forms/DocumentWizardForm";
 import { UploadPanel } from "../uploads/UploadPanel";
-
-type BotCatalogEntry = {
-  id: "document_wizard" | "kb_concierge";
-  name: string;
-  description: string;
-  capabilities: {
-    chat: boolean;
-    citations: boolean;
-    html_report: boolean;
-    pdf_upload: boolean;
-    rag_query: boolean;
-    structured_form: boolean;
-  };
-  sourceBinding: "none" | "knowledge_base";
-};
 
 type ChatCitation = {
   sourceId: "knowledge_base";
@@ -110,7 +96,7 @@ export function ChatPanel({
         }),
       });
       const payload = (await response.json()) as {
-        botId?: BotCatalogEntry["id"];
+        botId?: string;
         citations?: ChatCitation[];
         message?: string;
         output?: string;

@@ -11,7 +11,7 @@ export async function registerProviderRoutes(app: FastifyInstance) {
         profileRepo: app.profileRepo,
       });
 
-      return await connectProvider(
+      const result = await connectProvider(
         request.body as {
           provider: string;
           apiKey: string;
@@ -24,6 +24,18 @@ export async function registerProviderRoutes(app: FastifyInstance) {
           startSession: (input) => app.sessionService.startSession(input),
         },
       );
+
+      app.analyticsService.track({
+        eventName: "provider_connected",
+        entityId: result.session.id,
+        entityType: "session",
+        metadata: {
+          provider: result.provider,
+          userId: user.id,
+        },
+      });
+
+      return result;
     } catch (error) {
       const message = (error as Error).message;
       const statusCode =

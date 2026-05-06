@@ -9,6 +9,6 @@
     "build": "tsc --project tsconfig.json --noEmit",
     "format": "node -e \"process.stdout.write('queue format stub\\n')\"",
     "lint": "tsc --project tsconfig.json --noEmit",
-    "test": "node -e \"process.stdout.write('queue test stub\\n')\""
+    "test": "vitest run src/jobs/profile-retention-cleanup.job.spec.ts"
   }
 }

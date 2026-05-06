@@ -5,7 +5,12 @@ import {
   type BotToolPermission,
 } from "./capabilities";
 
-export type BotId = "document_wizard" | "kb_concierge";
+export type BotId =
+  | "document_wizard"
+  | "kb_concierge"
+  | "tutor"
+  | "researcher"
+  | "general_concierge";
 
 export type BotManifest = {
   id: BotId;
@@ -51,6 +56,57 @@ export const BOT_MANIFESTS = [
     sourceBinding: "knowledge_base",
     toolPermissions: ["knowledge_base_search"],
     promptVersion: "phase-3-v1",
+    active: true,
+  },
+  {
+    id: "tutor",
+    name: "Tutor",
+    description: "Coach the user through a topic with guided explanations.",
+    capabilities: createBotCapabilities({
+      chat: true,
+      citations: false,
+      html_report: false,
+      pdf_upload: false,
+      rag_query: false,
+      structured_form: false,
+    }),
+    sourceBinding: "none",
+    toolPermissions: [],
+    promptVersion: "phase-5-v1",
+    active: true,
+  },
+  {
+    id: "researcher",
+    name: "Researcher",
+    description: "Pull grounded findings and summarize what matters most.",
+    capabilities: createBotCapabilities({
+      chat: true,
+      citations: true,
+      html_report: false,
+      pdf_upload: false,
+      rag_query: true,
+      structured_form: false,
+    }),
+    sourceBinding: "knowledge_base",
+    toolPermissions: ["knowledge_base_search"],
+    promptVersion: "phase-5-v1",
+    active: true,
+  },
+  {
+    id: "general_concierge",
+    name: "General Concierge",
+    description: "Triage requests and point the user to the right next move.",
+    capabilities: createBotCapabilities({
+      chat: true,
+      citations: false,
+      html_report: false,
+      pdf_upload: false,
+      rag_query: false,
+      structured_form: false,
+    }),
+    sourceBinding: "none",
+    toolPermissions: [],
+    promptVersion: "phase-5-v1",
     active: true,
   },
 ] as const satisfies readonly BotManifest[];

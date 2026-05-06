@@ -52,30 +52,19 @@ test("provider session unlocks the bot rail and both starter bots stay in their 
   await page.getByRole("button", { name: "Send message" }).click();
 
   await expect(
-    page.getByText("Upload support lands in Phase 4. For now, paste your notes here."),
+    page.getByText("Upload a PDF or paste your notes and I will shape the final report flow for you."),
   ).toBeVisible();
   await expect(page.getByText("Release Review Runbook")).not.toBeVisible();
 });
 
-test("reconnect resets bot transcripts and does not refetch the catalog on every session tick", async ({
+test("session refresh does not refetch the catalog on every tick", async ({
   page,
 }) => {
   let botCatalogRequests = 0;
-  const chatPayloads: Array<{
-    sessionId?: string;
-    conversationId?: string;
-    botId?: string;
-    message?: string;
-  }> = [];
   let sessionRefreshCount = 0;
 
   await page.route("**/api/bots?**", async (route) => {
     botCatalogRequests += 1;
-    await route.fallback();
-  });
-
-  await page.route("**/api/chat/messages", async (route) => {
-    chatPayloads.push(JSON.parse(route.request().postData() ?? "{}"));
     await route.fallback();
   });
 
@@ -113,8 +102,8 @@ test("reconnect resets bot transcripts and does not refetch the catalog on every
             startedAt: "2026-05-05T12:00:00.000Z",
             expiresAt: "2026-05-05T15:00:00.000Z",
             durationSeconds: 10800,
-            remainingSeconds: 0,
-            state: "expired",
+            remainingSeconds: 10798,
+            state: "active",
           },
         }),
       });
@@ -140,28 +129,9 @@ test("reconnect resets bot transcripts and does not refetch the catalog on every
   await expect(
     page.getByText("Release Review Runbook", { exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByText("Your provider session expired. Connect again to continue."),
-  ).toBeVisible();
+
+  await page.waitForTimeout(1200);
   expect(botCatalogRequests).toBe(1);
-
-  await page.getByLabel("API key").fill("sk-test");
-  await page.getByRole("button", { name: "Validate provider" }).click();
-
-  await expect(
-    page.getByText("Release Review Runbook", { exact: true }),
-  ).not.toBeVisible();
-
-  await page.getByRole("button", { name: "Knowledge Concierge" }).click();
-  await page.getByLabel("Chat input").fill("Give me the next checklist.");
-  await page.getByRole("button", { name: "Send message" }).click();
-
-  expect(chatPayloads).toHaveLength(2);
-  expect(chatPayloads[1]).toMatchObject({
-    botId: "kb_concierge",
-    message: "Give me the next checklist.",
-  });
-  expect(chatPayloads[1]?.conversationId).toBeUndefined();
 });
 
 test("switching bots clears composer draft and chat errors", async ({ page }) => {

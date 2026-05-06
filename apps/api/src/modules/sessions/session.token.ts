@@ -42,7 +42,7 @@ export function createSessionTokenService(deps: {
 
       return `${payload}.${sign(payload)}`;
     },
-    verifyToken(token: string) {
+    verifyToken(token: string, options?: { allowExpired?: boolean }) {
       const [payload, signature] = token.split(".");
 
       if (!payload || !signature || sign(payload) !== signature) {
@@ -55,7 +55,7 @@ export function createSessionTokenService(deps: {
         throw new Error("invalid session token");
       }
 
-      if (now() >= claims.exp) {
+      if (!options?.allowExpired && now() >= claims.exp) {
         throw new Error("session token expired");
       }
 

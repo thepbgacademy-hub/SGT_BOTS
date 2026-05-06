@@ -37,6 +37,11 @@ export type SessionMetadataRepo = {
     input: Omit<PlaygroundSessionRow, "id">,
   ): Promise<PlaygroundSessionRow>;
   getSessionDetailsById(sessionId: string): Promise<SessionDetailsRow | null>;
+  markReviewPrompted(input: { sessionId: string }): Promise<void>;
+  retireSessionById(input: {
+    retiredAt: string;
+    sessionId: string;
+  }): Promise<void>;
   retireActiveSessionsForUser(input: {
     retiredAt: string;
     userId: string;
@@ -94,6 +99,21 @@ export function createInMemorySessionMetadataRepo(): InMemorySessionMetadataRepo
         providerConnection,
         session,
       };
+    },
+    async markReviewPrompted({ sessionId }) {
+      const session = sessions.find((row) => row.id === sessionId);
+
+      if (session) {
+        session.review_prompted = true;
+      }
+    },
+    async retireSessionById({ retiredAt, sessionId }) {
+      const session = sessions.find((row) => row.id === sessionId);
+
+      if (session && session.status === "active") {
+        session.status = "retired";
+        session.ends_at = retiredAt;
+      }
     },
     async retireActiveSessionsForUser({ retiredAt, userId }) {
       for (const session of sessions) {
@@ -239,6 +259,27 @@ export function createSupabaseSessionMetadataRepo(env: AppEnv): SessionMetadataR
         providerConnection,
         session,
       };
+    },
+    async markReviewPrompted({ sessionId }) {
+      await updateRows({
+        env,
+        payload: {
+          review_prompted: true,
+        },
+        query: `?id=eq.${encodeURIComponent(sessionId)}`,
+        table: "playground_sessions",
+      });
+    },
+    async retireSessionById({ retiredAt, sessionId }) {
+      await updateRows({
+        env,
+        payload: {
+          ends_at: retiredAt,
+          status: "retired",
+        },
+        query: `?id=eq.${encodeURIComponent(sessionId)}&status=eq.active`,
+        table: "playground_sessions",
+      });
     },
     async retireActiveSessionsForUser({ retiredAt, userId }) {
       await updateRows({

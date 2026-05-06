@@ -1,17 +1,4 @@
-type BotCatalogEntry = {
-  id: "document_wizard" | "kb_concierge";
-  name: string;
-  description: string;
-  capabilities: {
-    chat: boolean;
-    citations: boolean;
-    html_report: boolean;
-    pdf_upload: boolean;
-    rag_query: boolean;
-    structured_form: boolean;
-  };
-  sourceBinding: "none" | "knowledge_base";
-};
+import type { BotCatalogEntry } from "../../../../../packages/shared/src/bots/manifests";
 
 type BotRailProps = {
   bots: BotCatalogEntry[];

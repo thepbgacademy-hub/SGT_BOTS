@@ -3,6 +3,8 @@ insert into bot_definitions (
   name,
   category,
   capability_manifest,
+  source_binding,
+  prompt_version,
   active
 )
 values
@@ -11,6 +13,8 @@ values
     'Document Wizard',
     'documents',
     '{"chat":true,"pdf_upload":true,"structured_form":true,"html_report":true}',
+    'none',
+    'phase-3-v1',
     true
   ),
   (
@@ -18,5 +22,34 @@ values
     'KB Concierge',
     'knowledge',
     '{"chat":true,"citations":true,"rag_query":true}',
+    'knowledge_base',
+    'phase-3-v1',
+    true
+  ),
+  (
+    'tutor',
+    'Tutor',
+    'learning',
+    '{"chat":true}',
+    'none',
+    'phase-5-v1',
+    true
+  ),
+  (
+    'researcher',
+    'Researcher',
+    'research',
+    '{"chat":true,"citations":true,"rag_query":true}',
+    'knowledge_base',
+    'phase-5-v1',
+    true
+  ),
+  (
+    'general_concierge',
+    'General Concierge',
+    'general',
+    '{"chat":true}',
+    'none',
+    'phase-5-v1',
     true
   );

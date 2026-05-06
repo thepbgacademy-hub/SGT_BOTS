@@ -27,10 +27,19 @@ export async function registerBotRoutes(app: FastifyInstance) {
         (request.query as { sessionId?: string }).sessionId ?? "",
       );
 
-      await authorizeBotRuntimeRequest({
+      const claims = await authorizeBotRuntimeRequest({
         app,
         request,
         sessionId,
+      });
+
+      app.analyticsService.track({
+        eventName: "bot_catalog_viewed",
+        entityId: sessionId,
+        entityType: "session",
+        metadata: {
+          userId: claims.userId,
+        },
       });
 
       return {

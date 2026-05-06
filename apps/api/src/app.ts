@@ -5,6 +5,7 @@ import {
   type RenderReportJobRunner,
 } from "../../../workers/queue/src";
 import { readEnv, type AppEnv } from "./config/env";
+import { createAnalyticsService } from "./modules/analytics/analytics.service";
 import { registerBotRoutes } from "./modules/bots/bot.route";
 import { createBotService } from "./modules/bots/bot.service";
 import { registerChatRoutes } from "./modules/chat/chat.route";
@@ -19,6 +20,8 @@ import { registerProfileRoutes } from "./modules/profiles/profile.route";
 import { registerProviderRoutes } from "./modules/providers/provider.route";
 import { registerReportRoutes } from "./modules/reports/report.route";
 import { createReportService } from "./modules/reports/report.service";
+import { registerReviewRoutes } from "./modules/reviews/review.route";
+import { createReviewService } from "./modules/reviews/review.service";
 import {
   createSessionService,
   type SessionSnapshot,
@@ -41,6 +44,7 @@ import { createUploadService } from "./modules/uploads/upload.service";
 declare module "fastify" {
   interface FastifyInstance {
     appEnv: AppEnv;
+    analyticsService: ReturnType<typeof createAnalyticsService>;
     profileRepo: ProfileRepo;
     sessionMetadataRepo: SessionMetadataRepo;
     sessionSecretStore: SessionSecretStore;
@@ -50,67 +54,9 @@ declare module "fastify" {
     };
     uploadService: ReturnType<typeof createUploadService>;
     reportService: ReturnType<typeof createReportService>;
-    chatService: {
-      sendMessage(input: {
-        sessionId: string;
-        userId: string;
-        botId: string;
-        conversationId?: string;
-        message: string;
-      }): {
-        botId: "document_wizard" | "kb_concierge";
-        conversation: {
-          id: string;
-          botId: "document_wizard" | "kb_concierge";
-          sessionId: string;
-          userId: string;
-          createdAt: string;
-          state: "active";
-          endedAt: string | null;
-        };
-        citations: {
-          sourceId: "knowledge_base";
-          title: string;
-          url: string;
-        }[];
-        output: string;
-        userMessage: {
-          id: string;
-          role: "user" | "assistant";
-          content: string;
-          createdAt: string;
-        };
-        assistantMessage: {
-          id: string;
-          role: "user" | "assistant";
-          content: string;
-          citations?: {
-            sourceId: "knowledge_base";
-            title: string;
-            url: string;
-          }[];
-          createdAt: string;
-        };
-      };
-    };
-    sessionService: {
-      startSession(input: {
-        userId: string;
-        provider: SessionSnapshot["provider"];
-        apiKey: string;
-      }): Promise<SessionSnapshot>;
-      getSessionForUser(input: {
-        sessionId: string;
-        userId: string;
-      }): Promise<SessionSnapshot>;
-      authorizeRequest(input: {
-        sessionId: string;
-        userId: string;
-        requestStartedAt?: string;
-      }): Promise<{
-        status: "allowed";
-      }>;
-    };
+    chatService: ReturnType<typeof createChatService>;
+    reviewService: ReturnType<typeof createReviewService>;
+    sessionService: ReturnType<typeof createSessionService>;
   }
 }
 
@@ -129,6 +75,7 @@ export async function buildApp(options?: {
   });
   const appEnv = options?.env ?? readEnv();
   app.decorate("appEnv", appEnv);
+  app.decorate("analyticsService", createAnalyticsService({ now: options?.now }));
   app.decorate(
     "profileRepo",
     options?.profileRepo ??
@@ -183,11 +130,21 @@ export async function buildApp(options?: {
     runRenderReportJob: options?.reportQueueJobRunner,
   });
   reportService = createReportService({
+    analyticsService: app.analyticsService,
     now: options?.now,
     uploadService: app.uploadService,
     reportQueue,
   });
   app.decorate("reportService", reportService);
+  app.decorate(
+    "reviewService",
+    createReviewService({
+      analyticsService: app.analyticsService,
+      metadataRepo: app.sessionMetadataRepo,
+      now: options?.now,
+      reviewGroupUrl: appEnv.telegramReviewGroupUrl,
+    }),
+  );
 
   app.get("/health", async () => {
     return { status: "ok" };
@@ -216,5 +173,6 @@ export async function buildApp(options?: {
   await registerBotRoutes(app);
   await registerChatRoutes(app);
   await registerReportRoutes(app);
+  await registerReviewRoutes(app);
   return app;
 }

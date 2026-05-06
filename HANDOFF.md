@@ -4,23 +4,21 @@
 
 - Active branch: `codex/phase-0-foundation`
 - Active worktree: `E:\REPOS\SGT_BOTS\.worktrees\codex-phase-0-foundation`
-- `Phase 0` through `Phase 4` are complete on this branch.
-- The Phase 4 implementation is committed as `4391fcc` (`feat: add uploads forms and report rendering`).
-- Phase 4 adds:
-  - authenticated document-wizard PDF intake with stronger upload validation
-  - structured `Client name` and `Objective` report inputs
-  - queued HTML-to-PDF report rendering through Playwright
-  - in-memory artifact retention and graceful failed-render recovery
-  - shared-shell artifact visibility for the current session
-  - browser coverage for happy-path upload, capability gating, and recoverable report failure
+- `Phase 0` through `Phase 5` are complete in this worktree.
+- Phase 5 adds:
+  - review CTA flow for timeout and early exit
+  - backend analytics events for the core playground funnel
+  - 3-month profile-retention helper coverage
+  - expanded launch catalog entries for `tutor`, `researcher`, and `general_concierge`
+  - stronger continuity around launch seed correctness and worker test coverage
 - Local shell execution still requires `corepack pnpm` because `pnpm` is not directly on `PATH`.
 
 ## Verified Commands
 
-- `corepack pnpm test:e2e`
 - `corepack pnpm test`
 - `corepack pnpm lint`
 - `corepack pnpm build`
+- `corepack pnpm test:e2e`
 
 ## Canonical References
 
@@ -35,6 +33,6 @@
 
 ## Next Steps
 
-1. Start `Phase 5` and do not advance until its exit metrics pass.
-2. Keep the same subagent lane discipline and phase review loop for review CTA, analytics, retention cleanup, and production-readiness checks.
-3. Refresh continuity again after Phase 5 closes, which will be the second completion since the last compact cycle.
+1. Push `codex/phase-0-foundation` to GitHub when the remote is ready.
+2. Review the v1 branch and decide whether the next milestone is deployment hardening, richer bot workflows, or paid-community conversion polish.
+3. If a new session starts, use this handoff plus `TASKS.md` and the two docs above as the only continuity references.

@@ -2,19 +2,21 @@
 
 ## Active
 
-- [ ] **Execute Phase 5** - add review flow, remaining catalog polish, analytics, and retention cleanup
-- [ ] **Run Phase 5 reviews** - complete spec-compliance and code-quality review before phase close
+- [ ] **Push the branch to GitHub** - publish `codex/phase-0-foundation` when the remote is ready
+- [ ] **Choose the post-v1 milestone** - decide between deployment hardening, richer bot workflows, or conversion polish
 
 ## Waiting On
 
-- [ ] **Review launch defaults during Phase 2** - revise providers, starter bots, or renderer only if implementation evidence requires it
+- [ ] **Task dashboard support** - revisit dashboard setup if the expected task-management asset becomes available
 
 ## Someday
 
-- [ ] **Add task dashboard support** - revisit dashboard setup if the expected task-management asset becomes available
+- [ ] **Deployment checklist** - add VPS and Supabase release runbooks before production rollout
 
 ## Done
 
+- [x] ~~Execute Phase 5~~ (2026-05-06)
+- [x] ~~Run Phase 5 reviews~~ (2026-05-06)
 - [x] ~~Commit Phase 4~~ (2026-05-06)
 - [x] ~~Execute Phase 4~~ (2026-05-06)
 - [x] ~~Run Phase 4 reviews~~ (2026-05-06)

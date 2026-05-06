@@ -45,7 +45,7 @@ export async function registerChatRoutes(app: FastifyInstance) {
         sessionId,
       });
 
-      return app.chatService.sendMessage({
+      const result = app.chatService.sendMessage({
         sessionId,
         userId: claims.userId,
         conversationId:
@@ -55,6 +55,19 @@ export async function registerChatRoutes(app: FastifyInstance) {
         botId: String(payload.botId ?? ""),
         message: String(payload.message ?? payload.content ?? ""),
       });
+
+      app.analyticsService.track({
+        eventName: "chat_message_sent",
+        entityId: result.conversation.id,
+        entityType: "session",
+        metadata: {
+          botId: result.botId,
+          sessionId,
+          userId: claims.userId,
+        },
+      });
+
+      return result;
     } catch (error) {
       const message = (error as Error).message;
       return reply.code(replyForChatRuntimeError(message)).send({ message });

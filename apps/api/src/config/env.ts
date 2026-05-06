@@ -5,6 +5,7 @@ export type AppEnv = {
   appPort: number;
   telegramBotUsername: string;
   telegramBotToken: string;
+  telegramReviewGroupUrl: string;
   profileRepoMode: "supabase" | "memory";
   providerValidationMode: "live" | "stub";
   supabaseUrl?: string;
@@ -97,6 +98,10 @@ export function readEnv(env: NodeJS.ProcessEnv = process.env): AppEnv {
       fileEnv.TELEGRAM_BOT_USERNAME ??
       "sgt_playground_bot",
     telegramBotToken: requireEnv("TELEGRAM_BOT_TOKEN", telegramBotToken),
+    telegramReviewGroupUrl:
+      env.TELEGRAM_REVIEW_GROUP_URL ??
+      fileEnv.TELEGRAM_REVIEW_GROUP_URL ??
+      "https://t.me/your_review_group",
     profileRepoMode,
     providerValidationMode,
     supabaseUrl:

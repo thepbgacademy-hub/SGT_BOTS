@@ -17,6 +17,15 @@ export async function registerProfileRoutes(app: FastifyInstance) {
         },
       );
 
+      app.analyticsService.track({
+        eventName: "profile_created",
+        entityId: result.profile.id,
+        entityType: "profile",
+        metadata: {
+          providerConnectionRequired: result.dashboard.providerConnectionRequired,
+        },
+      });
+
       return reply.code(201).send(result);
     } catch (error) {
       const message = (error as Error).message;
