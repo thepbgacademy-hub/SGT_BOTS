@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import {
+  ArtifactList,
+  type ArtifactListItem,
+} from "../artifacts/ArtifactList";
 import { ChatPanel, type ChatMessage } from "../chat/ChatPanel";
 import { BotRail } from "./BotRail";
 import { ProviderConnectPanel } from "../onboarding/ProviderConnectPanel";
@@ -44,6 +48,7 @@ export function DashboardShell({
   const [bots, setBots] = useState<BotCatalogEntry[]>([]);
   const [botError, setBotError] = useState<string | null>(null);
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
+  const [artifacts, setArtifacts] = useState<ArtifactListItem[]>([]);
   const [conversations, setConversations] = useState<
     Record<
       string,
@@ -150,6 +155,7 @@ export function DashboardShell({
   }, [activeSessionId, sessionToken]);
 
   useEffect(() => {
+    setArtifacts([]);
     setConversations({});
     setSelectedBotId(null);
   }, [activeSessionId, sessionToken]);
@@ -179,6 +185,14 @@ export function DashboardShell({
               bot={selectedBot}
               conversationId={selectedConversation?.conversationId}
               messages={selectedConversation?.messages ?? []}
+              onArtifactQueued={(artifact) => {
+                setArtifacts((currentArtifacts) => [
+                  artifact,
+                  ...currentArtifacts.filter(
+                    (currentArtifact) => currentArtifact.id !== artifact.id,
+                  ),
+                ]);
+              }}
               onConversationUpdate={({ conversationId, messages }) => {
                 if (!selectedBot) {
                   return;
@@ -195,6 +209,7 @@ export function DashboardShell({
               sessionId={session.id}
               sessionToken={sessionToken}
             />
+            <ArtifactList artifacts={artifacts} />
           </section>
         </>
       ) : (

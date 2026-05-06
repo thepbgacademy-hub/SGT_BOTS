@@ -1,5 +1,9 @@
 import Fastify from "fastify";
 import type { BotCatalogEntry } from "../../../packages/shared/src/bots/manifests";
+import {
+  createInMemoryReportQueue,
+  type RenderReportJobRunner,
+} from "../../../workers/queue/src";
 import { readEnv, type AppEnv } from "./config/env";
 import { registerBotRoutes } from "./modules/bots/bot.route";
 import { createBotService } from "./modules/bots/bot.service";
@@ -13,6 +17,8 @@ import {
 import { buildLaunchPrefill } from "./modules/profiles/profile.service";
 import { registerProfileRoutes } from "./modules/profiles/profile.route";
 import { registerProviderRoutes } from "./modules/providers/provider.route";
+import { registerReportRoutes } from "./modules/reports/report.route";
+import { createReportService } from "./modules/reports/report.service";
 import {
   createSessionService,
   type SessionSnapshot,
@@ -30,6 +36,7 @@ import { registerSessionRoutes } from "./modules/sessions/session.route";
 import { createSessionTokenService } from "./modules/sessions/session.token";
 import { registerTelegramRoutes } from "./modules/telegram/telegram.route";
 import { validateTelegramInitData } from "./modules/telegram/init-data";
+import { createUploadService } from "./modules/uploads/upload.service";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -41,6 +48,8 @@ declare module "fastify" {
     botService: {
       listCatalog(): BotCatalogEntry[];
     };
+    uploadService: ReturnType<typeof createUploadService>;
+    reportService: ReturnType<typeof createReportService>;
     chatService: {
       sendMessage(input: {
         sessionId: string;
@@ -111,8 +120,13 @@ export async function buildApp(options?: {
   profileRepo?: ProfileRepo;
   sessionMetadataRepo?: SessionMetadataRepo;
   sessionSecretStore?: SessionSecretStore;
+  reportQueueJobRunner?: RenderReportJobRunner;
 }) {
-  const app = Fastify();
+  // JSON uploads include base64-encoded PDFs, so the default ~1 MiB limit is too
+  // small for ordinary documents before our own validation runs.
+  const app = Fastify({
+    bodyLimit: 8 * 1024 * 1024,
+  });
   const appEnv = options?.env ?? readEnv();
   app.decorate("appEnv", appEnv);
   app.decorate(
@@ -150,6 +164,30 @@ export async function buildApp(options?: {
   );
   app.decorate("botService", createBotService());
   app.decorate("chatService", createChatService({ now: options?.now }));
+  app.decorate("uploadService", createUploadService({ now: options?.now }));
+  let reportService!: ReturnType<typeof createReportService>;
+  const reportQueue = createInMemoryReportQueue({
+    onCompleted(result) {
+      reportService.markArtifactRendered({
+        artifactId: result.artifactId,
+        byteSize: result.bytes.byteLength,
+        fileBytes: result.bytes,
+      });
+    },
+    onFailed(input) {
+      reportService.markArtifactFailed({
+        artifactId: input.artifactId,
+        reason: input.message,
+      });
+    },
+    runRenderReportJob: options?.reportQueueJobRunner,
+  });
+  reportService = createReportService({
+    now: options?.now,
+    uploadService: app.uploadService,
+    reportQueue,
+  });
+  app.decorate("reportService", reportService);
 
   app.get("/health", async () => {
     return { status: "ok" };
@@ -177,5 +215,6 @@ export async function buildApp(options?: {
   await registerSessionRoutes(app);
   await registerBotRoutes(app);
   await registerChatRoutes(app);
+  await registerReportRoutes(app);
   return app;
 }

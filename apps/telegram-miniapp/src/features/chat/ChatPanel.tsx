@@ -1,4 +1,10 @@
 import { useState, type FormEvent } from "react";
+import type { ArtifactListItem } from "../artifacts/ArtifactList";
+import {
+  DocumentWizardForm,
+  type DocumentWizardReportFormData,
+} from "../forms/DocumentWizardForm";
+import { UploadPanel } from "../uploads/UploadPanel";
 
 type BotCatalogEntry = {
   id: "document_wizard" | "kb_concierge";
@@ -33,6 +39,7 @@ type ChatPanelProps = {
   bot: BotCatalogEntry | null;
   conversationId?: string;
   messages: ChatMessage[];
+  onArtifactQueued: (artifact: ArtifactListItem) => void;
   onConversationUpdate: (result: {
     conversationId: string;
     messages: ChatMessage[];
@@ -49,13 +56,34 @@ export function ChatPanel({
   bot,
   conversationId,
   messages,
+  onArtifactQueued,
   onConversationUpdate,
   sessionId,
   sessionToken,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [documentError, setDocumentError] = useState<string | null>(null);
+  const [reportStatus, setReportStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submittingReport, setSubmittingReport] = useState(false);
+
+  function clearDocumentStatus() {
+    setDocumentError(null);
+    setReportStatus(null);
+  }
+
+  function handleFileSelect(file: File | null) {
+    clearDocumentStatus();
+    setDocumentFile(file);
+  }
+
+  const supportsDocumentWizardReportFlow = Boolean(
+    bot?.capabilities.pdf_upload &&
+      bot.capabilities.structured_form &&
+      bot.capabilities.html_report,
+  );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,7 +92,7 @@ export function ChatPanel({
       return;
     }
 
-    setError(null);
+    setChatError(null);
     setSubmitting(true);
 
     try {
@@ -98,7 +126,7 @@ export function ChatPanel({
         !payload.userMessage ||
         !payload.output
       ) {
-        setError(payload.message ?? "Unable to send your message.");
+        setChatError(payload.message ?? "Unable to send your message.");
         setSubmitting(false);
         return;
       }
@@ -117,9 +145,93 @@ export function ChatPanel({
       });
       setInput("");
     } catch {
-      setError("Unable to send your message.");
+      setChatError("Unable to send your message.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDocumentWizardSubmit(
+    formData: DocumentWizardReportFormData,
+  ) {
+    if (!bot) {
+      return;
+    }
+
+    if (!documentFile) {
+      setDocumentError("Upload a PDF to continue.");
+      setReportStatus(null);
+      return;
+    }
+
+    const hasPdfMimeType = documentFile.type === "application/pdf";
+    const hasPdfExtension = documentFile.name.toLowerCase().endsWith(".pdf");
+
+    if (!hasPdfMimeType && !hasPdfExtension) {
+      setDocumentError("Upload a PDF to continue.");
+      setReportStatus(null);
+      return;
+    }
+
+    setDocumentError(null);
+    setReportStatus(null);
+    setSubmittingReport(true);
+
+    try {
+      const response = await fetch("/api/reports/document-wizard", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${sessionToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          sessionId,
+          botId: bot.id,
+          filename: documentFile.name,
+          mimeType:
+            documentFile.type || (hasPdfExtension ? "application/pdf" : ""),
+          fileBytesBase64: await encodeFileAsBase64(documentFile),
+          formData,
+        }),
+      });
+      const payload = (await response.json()) as {
+        message?: string;
+        artifactType?: "pdf";
+        artifact?: {
+          id?: string;
+          fileName?: string;
+          status?: "queued" | "ready" | "failed";
+        };
+        upload?: {
+          originalFilename?: string;
+        };
+      };
+
+      if (
+        !response.ok ||
+        payload.artifactType !== "pdf" ||
+        !payload.artifact?.id ||
+        !payload.artifact.fileName ||
+        !payload.artifact.status ||
+        !payload.upload?.originalFilename
+      ) {
+        setDocumentError(payload.message ?? "Unable to queue your report.");
+        return;
+      }
+
+      onArtifactQueued({
+        id: payload.artifact.id,
+        artifactType: payload.artifactType,
+        botName: bot.name,
+        fileName: payload.artifact.fileName,
+        originalFilename: payload.upload.originalFilename,
+        status: payload.artifact.status,
+      });
+      setReportStatus("Report queued");
+    } catch {
+      setDocumentError("Unable to queue your report.");
+    } finally {
+      setSubmittingReport(false);
     }
   }
 
@@ -138,14 +250,21 @@ export function ChatPanel({
         <h2>{bot.name}</h2>
         <p>{bot.description}</p>
       </header>
-      {bot.capabilities.pdf_upload ? (
-        <p>
-          <button disabled type="button">
-            Upload document (coming in Phase 4)
-          </button>
-        </p>
+      {supportsDocumentWizardReportFlow ? (
+        <>
+          <UploadPanel
+            disabled={submittingReport}
+            file={documentFile}
+            onFileSelect={handleFileSelect}
+          />
+          <DocumentWizardForm
+            disabled={submittingReport}
+            onSubmit={handleDocumentWizardSubmit}
+          />
+          {reportStatus ? <p>{reportStatus}</p> : null}
+          {documentError ? <p role="alert">{documentError}</p> : null}
+        </>
       ) : null}
-      {error ? <p role="alert">{error}</p> : null}
       <div>
         {messages.map((message) => (
           <article key={message.id}>
@@ -163,6 +282,7 @@ export function ChatPanel({
           </article>
         ))}
       </div>
+      {chatError ? <p role="alert">{chatError}</p> : null}
       <form onSubmit={handleSubmit}>
         <label>
           Message
@@ -178,4 +298,15 @@ export function ChatPanel({
       </form>
     </section>
   );
+}
+
+async function encodeFileAsBase64(file: File) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  }
+
+  return btoa(binary);
 }

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Document Wizard Report</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17324d;
+        --muted: #5a7188;
+        --line: #d5dee8;
+        --panel: #f5f8fb;
+        --accent: #0b6e99;
+        --accent-soft: #dff2fb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Georgia", "Times New Roman", serif;
+        color: var(--ink);
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+      }
+
+      .page {
+        padding: 32px 36px 40px;
+      }
+
+      .hero {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 28px 30px;
+        background: linear-gradient(135deg, #ffffff 0%, var(--accent-soft) 100%);
+      }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 30px;
+        line-height: 1.1;
+      }
+
+      .lede {
+        margin: 14px 0 0;
+        font-size: 15px;
+        line-height: 1.7;
+        color: var(--muted);
+      }
+
+      .meta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 18px;
+      }
+
+      .pill {
+        border-radius: 999px;
+        padding: 7px 12px;
+        background: rgba(255, 255, 255, 0.85);
+        border: 1px solid rgba(11, 110, 153, 0.18);
+        font-size: 12px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        margin-top: 22px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 20px 22px;
+        background: #ffffff;
+      }
+
+      h2 {
+        margin: 0 0 10px;
+        font-size: 15px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+
+      p {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.8;
+      }
+
+      .summary {
+        margin-top: 18px;
+        border-left: 4px solid var(--accent);
+        padding: 14px 0 14px 18px;
+        background: var(--panel);
+      }
+
+      .footer {
+        margin-top: 26px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">Document Wizard</p>
+        <h1>Report for {{clientName}}</h1>
+        <p class="lede">
+          This intake summary packages the uploaded document context and the stated
+          objective into a review-ready brief for the next workflow step.
+        </p>
+        <div class="meta">
+          <span class="pill">Generated {{generatedDate}}</span>
+          <span class="pill">{{originalFilename}}</span>
+          <span class="pill">{{fileSizeLabel}}</span>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Client</h2>
+          <p>{{clientName}}</p>
+        </article>
+        <article class="card">
+          <h2>Upload</h2>
+          <p>{{originalFilename}}<br />{{mimeType}}<br />{{fileSizeLabel}}</p>
+        </article>
+      </section>
+
+      <section class="card summary">
+        <h2>Objective</h2>
+        <p>{{objective}}</p>
+      </section>
+
+      <p class="footer">
+        Prepared through the Telegram playground runtime using the document wizard
+        HTML-to-PDF report pipeline.
+      </p>
+    </main>
+  </body>
+</html>

@@ -45,7 +45,7 @@ test("provider session unlocks the bot rail and both starter bots stay in their 
 
   await page.getByRole("button", { name: "Document Wizard" }).click();
   await expect(
-    page.getByRole("button", { name: "Upload document (coming in Phase 4)" }),
+    page.getByRole("button", { name: "Upload PDF" }),
   ).toBeVisible();
 
   await page.getByLabel("Chat input").fill("Draft a launch brief for tomorrow.");

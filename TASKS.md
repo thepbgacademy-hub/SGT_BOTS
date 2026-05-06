@@ -2,9 +2,9 @@
 
 ## Active
 
-- [ ] **Commit Phase 3** - record bot runtime, starter bot catalog, and reconnect-safe dashboard behavior
-- [ ] **Execute Phase 4** - add PDF uploads, structured forms, and queued HTML-to-PDF report generation
-- [ ] **Run Phase 4 reviews** - complete spec-compliance and code-quality review before phase close
+- [ ] **Commit Phase 4** - record uploads, structured forms, queued report rendering, and artifact visibility
+- [ ] **Execute Phase 5** - add review flow, remaining catalog polish, analytics, and retention cleanup
+- [ ] **Run Phase 5 reviews** - complete spec-compliance and code-quality review before phase close
 
 ## Waiting On
 
@@ -16,6 +16,9 @@
 
 ## Done
 
+- [x] ~~Execute Phase 4~~ (2026-05-06)
+- [x] ~~Run Phase 4 reviews~~ (2026-05-06)
+- [x] ~~Commit Phase 3~~ (2026-05-05)
 - [x] ~~Execute Phase 3~~ (2026-05-05)
 - [x] ~~Run Phase 3 reviews~~ (2026-05-05)
 - [x] ~~Execute Phase 2~~ (2026-05-05)

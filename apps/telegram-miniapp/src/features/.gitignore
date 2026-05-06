@@ -1,0 +1,4 @@
+!artifacts/
+!artifacts/*.tsx
+!uploads/
+!uploads/*.tsx
