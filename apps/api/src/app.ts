@@ -1,5 +1,10 @@
 import Fastify from "fastify";
+import type { BotCatalogEntry } from "../../../packages/shared/src/bots/manifests";
 import { readEnv, type AppEnv } from "./config/env";
+import { registerBotRoutes } from "./modules/bots/bot.route";
+import { createBotService } from "./modules/bots/bot.service";
+import { registerChatRoutes } from "./modules/chat/chat.route";
+import { createChatService } from "./modules/chat/chat.service";
 import {
   createInMemoryProfileRepo,
   createSupabaseProfileRepo,
@@ -33,6 +38,52 @@ declare module "fastify" {
     sessionMetadataRepo: SessionMetadataRepo;
     sessionSecretStore: SessionSecretStore;
     sessionTokenService: ReturnType<typeof createSessionTokenService>;
+    botService: {
+      listCatalog(): BotCatalogEntry[];
+    };
+    chatService: {
+      sendMessage(input: {
+        sessionId: string;
+        userId: string;
+        botId: string;
+        conversationId?: string;
+        message: string;
+      }): {
+        botId: "document_wizard" | "kb_concierge";
+        conversation: {
+          id: string;
+          botId: "document_wizard" | "kb_concierge";
+          sessionId: string;
+          userId: string;
+          createdAt: string;
+          state: "active";
+          endedAt: string | null;
+        };
+        citations: {
+          sourceId: "knowledge_base";
+          title: string;
+          url: string;
+        }[];
+        output: string;
+        userMessage: {
+          id: string;
+          role: "user" | "assistant";
+          content: string;
+          createdAt: string;
+        };
+        assistantMessage: {
+          id: string;
+          role: "user" | "assistant";
+          content: string;
+          citations?: {
+            sourceId: "knowledge_base";
+            title: string;
+            url: string;
+          }[];
+          createdAt: string;
+        };
+      };
+    };
     sessionService: {
       startSession(input: {
         userId: string;
@@ -97,6 +148,8 @@ export async function buildApp(options?: {
       secret: appEnv.telegramBotToken,
     }),
   );
+  app.decorate("botService", createBotService());
+  app.decorate("chatService", createChatService({ now: options?.now }));
 
   app.get("/health", async () => {
     return { status: "ok" };
@@ -122,5 +175,7 @@ export async function buildApp(options?: {
   await registerProfileRoutes(app);
   await registerProviderRoutes(app);
   await registerSessionRoutes(app);
+  await registerBotRoutes(app);
+  await registerChatRoutes(app);
   return app;
 }

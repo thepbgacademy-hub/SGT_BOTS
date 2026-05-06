@@ -4,19 +4,20 @@
 
 - Active branch: `codex/phase-0-foundation`
 - Active worktree: `E:\REPOS\SGT_BOTS\.worktrees\codex-phase-0-foundation`
-- `Phase 0`, `Phase 1`, and `Phase 2` are complete on this branch.
-- Phase 2 now includes:
-  - session-only provider connection for `openai` and `anthropic`
-  - upstream provider key validation with `stub` and `live` modes
-  - backend-issued 3-hour session token for active playground use
-  - durable provider/session metadata without durable raw API key storage
-  - reconnect invalidation for prior active sessions
-  - `reauth_required` handling when session metadata survives but the in-memory BYOK secret does not
-  - browser coverage for both happy-path countdown and relaunch-required recovery
+- `Phase 0` through `Phase 3` are complete on this branch.
+- Phase 3 now includes:
+  - authenticated bot catalog access inside the active playground shell
+  - shared manifest-based runtime contracts for `document_wizard` and `kb_concierge`
+  - bot-scoped chat runtime with bearer-token enforcement
+  - bot isolation checks that block cross-bot conversation reuse and inactive bot access
+  - reconnect-safe dashboard state resets without bot-catalog polling on every session tick
+  - browser coverage for bot switching, reconnect reset, and composer isolation
 - Local shell execution still requires `corepack pnpm` because `pnpm` is not directly on `PATH`.
 
 ## Verified Commands
 
+- `corepack pnpm --filter ./apps/api test -- tests/e2e/bot-runtime.spec.ts`
+- `corepack pnpm test:e2e -- tests/e2e/phase-3-bot-runtime.spec.ts`
 - `corepack pnpm test:e2e -- tests/e2e/phase-1-onboarding.spec.ts tests/e2e/phase-2-provider-session.spec.ts`
 - `corepack pnpm test:e2e`
 - `corepack pnpm test`
@@ -36,6 +37,6 @@
 
 ## Next Steps
 
-1. Commit the completed Phase 2 work on `codex/phase-0-foundation`.
-2. Start `Phase 3` and do not advance until its exit metrics pass.
+1. Commit the completed Phase 3 work on `codex/phase-0-foundation`.
+2. Start `Phase 4` and do not advance until its exit metrics pass.
 3. Keep subagents in strict lanes and repeat the same implementation -> spec review -> code quality review loop.

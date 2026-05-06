@@ -2,9 +2,9 @@
 
 ## Active
 
-- [ ] **Commit Phase 2** - record session-only provider connection, 3-hour session control, and relaunch-required recovery
-- [ ] **Execute Phase 3** - add bot catalog selection, chat shell, and server-side bot workflow dispatch
-- [ ] **Run Phase 3 reviews** - complete spec-compliance and code-quality review before phase close
+- [ ] **Commit Phase 3** - record bot runtime, starter bot catalog, and reconnect-safe dashboard behavior
+- [ ] **Execute Phase 4** - add PDF uploads, structured forms, and queued HTML-to-PDF report generation
+- [ ] **Run Phase 4 reviews** - complete spec-compliance and code-quality review before phase close
 
 ## Waiting On
 
@@ -16,6 +16,8 @@
 
 ## Done
 
+- [x] ~~Execute Phase 3~~ (2026-05-05)
+- [x] ~~Run Phase 3 reviews~~ (2026-05-05)
 - [x] ~~Execute Phase 2~~ (2026-05-05)
 - [x] ~~Run Phase 2 reviews~~ (2026-05-05)
 - [x] ~~Commit Phase 0~~ (2026-05-05)
