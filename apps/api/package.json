@@ -2,10 +2,17 @@
   "name": "@sgt-bots/api",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "fastify": "^5.5.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.5"
+  },
   "scripts": {
-    "build": "node -e \"process.stdout.write('api build stub\\n')\"",
+    "build": "tsc --project tsconfig.json",
+    "dev": "node --import tsx ./src/index.ts",
     "format": "node -e \"process.stdout.write('api format stub\\n')\"",
-    "lint": "node -e \"process.stdout.write('api lint stub\\n')\"",
-    "test": "node -e \"process.stdout.write('api test stub\\n')\""
+    "lint": "tsc --project tsconfig.json --noEmit",
+    "test": "vitest run"
   }
 }

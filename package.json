@@ -8,9 +8,10 @@
     "format": "corepack pnpm -r format",
     "lint": "corepack pnpm -r lint",
     "test": "corepack pnpm -r test",
-    "test:e2e": "playwright test"
+    "test:e2e": "node -e \"const { spawnSync } = require('node:child_process'); const args = process.argv.slice(1).filter((arg) => arg !== '--'); const result = spawnSync('playwright', ['test', ...args], { stdio: 'inherit', shell: true }); process.exit(result.status ?? 1);\""
   },
   "devDependencies": {
+    "@types/node": "^24.3.0",
     "@playwright/test": "^1.54.0",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"

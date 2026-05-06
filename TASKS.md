@@ -2,13 +2,13 @@
 
 ## Active
 
-- [ ] **Commit Phase 0** - record the scaffold, launch defaults, and smoke tests on the Phase 0 branch
-- [ ] **Execute Phase 1** - build onboarding, Telegram init-data validation, and the locked dashboard gate
-- [ ] **Run Phase 1 reviews** - complete spec-compliance and code-quality review before phase close
+- [ ] **Commit Phase 1** - record onboarding, Telegram validation, locked dashboard, and QA coverage on the Phase 1 branch
+- [ ] **Execute Phase 2** - add session-only provider connection and 3-hour session control
+- [ ] **Run Phase 2 reviews** - complete spec-compliance and code-quality review before phase close
 
 ## Waiting On
 
-- [ ] **Review launch defaults during Phase 1** - revise providers, starter bots, or renderer only if implementation evidence requires it
+- [ ] **Review launch defaults during Phase 2** - revise providers, starter bots, or renderer only if implementation evidence requires it
 
 ## Someday
 
@@ -16,6 +16,9 @@
 
 ## Done
 
+- [x] ~~Commit Phase 0~~ (2026-05-05)
+- [x] ~~Execute Phase 1~~ (2026-05-05)
+- [x] ~~Run Phase 1 reviews~~ (2026-05-05)
 - [x] ~~Execute Phase 0~~ (2026-05-05)
 - [x] ~~Run Phase 0 reviews~~ (2026-05-05)
 - [x] ~~Create the initial local commit~~ (2026-05-05)

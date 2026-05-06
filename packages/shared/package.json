@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node -e \"process.stdout.write('shared build stub\\n')\"",
+    "build": "tsc --project tsconfig.json --noEmit",
     "format": "node -e \"process.stdout.write('shared format stub\\n')\"",
-    "lint": "node -e \"process.stdout.write('shared lint stub\\n')\"",
+    "lint": "tsc --project tsconfig.json --noEmit",
     "test": "vitest run src/testing/workspace-smoke.spec.ts"
   }
 }
