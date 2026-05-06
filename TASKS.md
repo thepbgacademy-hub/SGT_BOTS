@@ -2,9 +2,9 @@
 
 ## Active
 
-- [ ] **Commit Phase 1** - record onboarding, Telegram validation, locked dashboard, and QA coverage on the Phase 1 branch
-- [ ] **Execute Phase 2** - add session-only provider connection and 3-hour session control
-- [ ] **Run Phase 2 reviews** - complete spec-compliance and code-quality review before phase close
+- [ ] **Commit Phase 2** - record session-only provider connection, 3-hour session control, and relaunch-required recovery
+- [ ] **Execute Phase 3** - add bot catalog selection, chat shell, and server-side bot workflow dispatch
+- [ ] **Run Phase 3 reviews** - complete spec-compliance and code-quality review before phase close
 
 ## Waiting On
 
@@ -16,6 +16,8 @@
 
 ## Done
 
+- [x] ~~Execute Phase 2~~ (2026-05-05)
+- [x] ~~Run Phase 2 reviews~~ (2026-05-05)
 - [x] ~~Commit Phase 0~~ (2026-05-05)
 - [x] ~~Execute Phase 1~~ (2026-05-05)
 - [x] ~~Run Phase 1 reviews~~ (2026-05-05)

@@ -9,7 +9,10 @@ import {
 
 export function App() {
   const [launchContext, setLaunchContext] = useState<LaunchContext | null>(null);
-  const [preferredName, setPreferredName] = useState<string | null>(null);
+  const [profile, setProfile] = useState<{
+    id: string;
+    preferredName: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const initData = readTelegramInitData(window.location.search);
 
@@ -42,8 +45,13 @@ export function App() {
     return <p>{error}</p>;
   }
 
-  if (preferredName) {
-    return <DashboardShell preferredName={preferredName} />;
+  if (profile) {
+    return (
+      <DashboardShell
+        initData={initData}
+        preferredName={profile.preferredName}
+      />
+    );
   }
 
   if (!launchContext) {
@@ -54,8 +62,8 @@ export function App() {
     <OnboardingPage
       initData={initData}
       launchContext={launchContext}
-      onComplete={({ preferredName: nextPreferredName }) => {
-        setPreferredName(nextPreferredName);
+      onComplete={(nextProfile) => {
+        setProfile(nextProfile);
       }}
     />
   );

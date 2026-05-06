@@ -6,6 +6,7 @@ export type AppEnv = {
   telegramBotUsername: string;
   telegramBotToken: string;
   profileRepoMode: "supabase" | "memory";
+  providerValidationMode: "live" | "stub";
   supabaseUrl?: string;
   supabaseServiceRoleKey?: string;
 };
@@ -77,6 +78,12 @@ export function readEnv(env: NodeJS.ProcessEnv = process.env): AppEnv {
   const supabaseUrl = env.SUPABASE_URL ?? fileEnv.SUPABASE_URL;
   const supabaseServiceRoleKey =
     env.SUPABASE_SERVICE_ROLE_KEY ?? fileEnv.SUPABASE_SERVICE_ROLE_KEY;
+  const providerValidationMode =
+    (env.PROVIDER_VALIDATION_MODE ??
+      fileEnv.PROVIDER_VALIDATION_MODE ??
+      "live") === "stub"
+      ? "stub"
+      : "live";
   const telegramBotToken =
     env.TELEGRAM_BOT_TOKEN ??
     env.BOT_TOKEN ??
@@ -91,6 +98,7 @@ export function readEnv(env: NodeJS.ProcessEnv = process.env): AppEnv {
       "sgt_playground_bot",
     telegramBotToken: requireEnv("TELEGRAM_BOT_TOKEN", telegramBotToken),
     profileRepoMode,
+    providerValidationMode,
     supabaseUrl:
       profileRepoMode === "supabase"
         ? requireEnv("SUPABASE_URL", supabaseUrl)

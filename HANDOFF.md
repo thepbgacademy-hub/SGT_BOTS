@@ -4,19 +4,20 @@
 
 - Active branch: `codex/phase-0-foundation`
 - Active worktree: `E:\REPOS\SGT_BOTS\.worktrees\codex-phase-0-foundation`
-- `Phase 0` and `Phase 1` are complete on this branch.
-- Phase 1 now includes:
-  - real Telegram WebApp init-data validation with freshness checks
-  - onboarding persistence aligned to the Phase 1 Supabase schema
-  - locked dashboard handoff after profile creation
-  - browser coverage for both success and recoverable failure paths
-  - real typecheck-based lint for `apps/api`, `apps/telegram-miniapp`, and `packages/shared`
+- `Phase 0`, `Phase 1`, and `Phase 2` are complete on this branch.
+- Phase 2 now includes:
+  - session-only provider connection for `openai` and `anthropic`
+  - upstream provider key validation with `stub` and `live` modes
+  - backend-issued 3-hour session token for active playground use
+  - durable provider/session metadata without durable raw API key storage
+  - reconnect invalidation for prior active sessions
+  - `reauth_required` handling when session metadata survives but the in-memory BYOK secret does not
+  - browser coverage for both happy-path countdown and relaunch-required recovery
 - Local shell execution still requires `corepack pnpm` because `pnpm` is not directly on `PATH`.
 
 ## Verified Commands
 
-- `corepack pnpm --filter ./apps/api test -- onboarding.spec.ts`
-- `corepack pnpm test:e2e -- --grep "profile onboarding"`
+- `corepack pnpm test:e2e -- tests/e2e/phase-1-onboarding.spec.ts tests/e2e/phase-2-provider-session.spec.ts`
 - `corepack pnpm test:e2e`
 - `corepack pnpm test`
 - `corepack pnpm lint`
@@ -35,6 +36,6 @@
 
 ## Next Steps
 
-1. Commit the completed Phase 1 work on `codex/phase-0-foundation`.
-2. Start `Phase 2` and do not advance until its exit metrics pass.
+1. Commit the completed Phase 2 work on `codex/phase-0-foundation`.
+2. Start `Phase 3` and do not advance until its exit metrics pass.
 3. Keep subagents in strict lanes and repeat the same implementation -> spec review -> code quality review loop.

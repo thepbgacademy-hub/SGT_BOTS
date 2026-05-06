@@ -9,7 +9,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "powershell -Command \"$env:APP_PORT='3001'; $env:PROFILE_REPO_MODE='memory'; $env:TELEGRAM_BOT_TOKEN='123456:phase-1-test-bot-token'; corepack pnpm --filter ./apps/api dev\"",
+        "powershell -Command \"$env:APP_PORT='3001'; $env:PROFILE_REPO_MODE='memory'; $env:PROVIDER_VALIDATION_MODE='stub'; $env:TELEGRAM_BOT_TOKEN='123456:phase-1-test-bot-token'; corepack pnpm --filter ./apps/api dev\"",
       url: "http://127.0.0.1:3001/health",
       reuseExistingServer: true,
       timeout: 120000,

@@ -30,6 +30,7 @@ export type TelegramProfileRow = {
 export type ProfileRepo = {
   insertUser(input: Omit<UserRow, "id">): Promise<UserRow>;
   insertTelegramProfile(input: TelegramProfileRow): Promise<TelegramProfileRow>;
+  getUserByTelegramUserId(telegramUserId: string): Promise<UserRow | null>;
   snapshot?: () => {
     users: UserRow[];
     telegram_profiles: TelegramProfileRow[];
@@ -63,6 +64,11 @@ export function createInMemoryProfileRepo(): InMemoryProfileRepo {
     async insertTelegramProfile(input) {
       telegramProfiles.push(input);
       return input;
+    },
+    async getUserByTelegramUserId(telegramUserId) {
+      return (
+        users.find((user) => user.telegram_user_id === telegramUserId) ?? null
+      );
     },
     snapshot() {
       return {
@@ -114,6 +120,29 @@ async function insertRow<TInput, TRow>(input: {
 
   return ((await response.json()) as TRow[])[0];
 }
+
+async function selectRows<TRow>(input: {
+  env: AppEnv;
+  table: string;
+  query: string;
+}) {
+  const env = requireSupabaseEnv(input.env);
+  const response = await fetch(`${env.supabaseUrl}/rest/v1/${input.table}${input.query}`, {
+    method: "GET",
+    headers: {
+      apikey: env.supabaseServiceRoleKey,
+      authorization: `Bearer ${env.supabaseServiceRoleKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Supabase select failed for ${input.table}: ${response.status} ${await response.text()}`,
+    );
+  }
+
+  return (await response.json()) as TRow[];
+}
 export function createSupabaseProfileRepo(env: AppEnv): ProfileRepo {
   return {
     async insertUser(input) {
@@ -149,6 +178,15 @@ export function createSupabaseProfileRepo(env: AppEnv): ProfileRepo {
           created_at: input.created_at,
         },
       });
+    },
+    async getUserByTelegramUserId(telegramUserId) {
+      const rows = await selectRows<UserRow>({
+        env,
+        table: "users",
+        query: `?telegram_user_id=eq.${encodeURIComponent(telegramUserId)}&select=*`,
+      });
+
+      return rows[0] ?? null;
     },
   };
 }

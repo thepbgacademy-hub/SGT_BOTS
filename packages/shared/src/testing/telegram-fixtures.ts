@@ -2,13 +2,21 @@ import crypto from "node:crypto";
 
 export const TEST_TELEGRAM_BOT_TOKEN = "123456:phase-1-test-bot-token";
 
+export type TelegramFixtureUser = {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  language_code: string;
+};
+
 export const TEST_TELEGRAM_USER = {
   id: 123456,
   username: "ada_l",
   first_name: "Ada",
   last_name: "Lovelace",
   language_code: "en",
-} as const;
+} as const satisfies TelegramFixtureUser;
 
 function createDataCheckString(entries: Array<[string, string]>) {
   return entries
@@ -22,7 +30,7 @@ export function createSignedTelegramInitData(input?: {
   authDate?: string;
   botToken?: string;
   queryId?: string;
-  user?: typeof TEST_TELEGRAM_USER;
+  user?: TelegramFixtureUser;
 }) {
   const authDate = input?.authDate ?? String(Math.floor(Date.now() / 1000));
   const botToken = input?.botToken ?? TEST_TELEGRAM_BOT_TOKEN;

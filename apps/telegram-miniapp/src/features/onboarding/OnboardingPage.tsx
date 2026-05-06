@@ -5,6 +5,7 @@ type OnboardingPageProps = {
   initData: string;
   launchContext: LaunchContext;
   onComplete: (profile: {
+    id: string;
     preferredName: string;
   }) => void;
 };
@@ -43,6 +44,7 @@ export function OnboardingPage({
       const payload = (await response.json()) as {
         message?: string;
         profile?: {
+          id: string;
           preferredName: string;
         };
       };
