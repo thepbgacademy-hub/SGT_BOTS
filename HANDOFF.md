@@ -4,7 +4,8 @@
 
 - Active branch: `codex/phase-0-foundation`
 - Active worktree: `E:\REPOS\SGT_BOTS\.worktrees\codex-phase-0-foundation`
-- `Phase 0` through `Phase 4` are complete in this worktree and ready to commit as a unit.
+- `Phase 0` through `Phase 4` are complete on this branch.
+- The Phase 4 implementation is committed as `4391fcc` (`feat: add uploads forms and report rendering`).
 - Phase 4 adds:
   - authenticated document-wizard PDF intake with stronger upload validation
   - structured `Client name` and `Objective` report inputs
@@ -34,6 +35,6 @@
 
 ## Next Steps
 
-1. Commit the completed Phase 4 work on `codex/phase-0-foundation`.
-2. Start `Phase 5` and do not advance until its exit metrics pass.
-3. Keep the same subagent lane discipline and phase review loop for review CTA, analytics, retention cleanup, and production-readiness checks.
+1. Start `Phase 5` and do not advance until its exit metrics pass.
+2. Keep the same subagent lane discipline and phase review loop for review CTA, analytics, retention cleanup, and production-readiness checks.
+3. Refresh continuity again after Phase 5 closes, which will be the second completion since the last compact cycle.
