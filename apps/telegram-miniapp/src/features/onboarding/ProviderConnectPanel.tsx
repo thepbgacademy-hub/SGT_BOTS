@@ -67,10 +67,10 @@ export function ProviderConnectPanel({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      {error ? <p role="alert">{error}</p> : null}
-      <label>
-        Provider
+    <form className="form-grid provider-form" onSubmit={handleSubmit}>
+      {error ? <p role="alert" className="alert-banner">{error}</p> : null}
+      <label className="field">
+        <span className="field-label">Provider</span>
         <select
           aria-label="Provider"
           onChange={(event) =>
@@ -82,8 +82,8 @@ export function ProviderConnectPanel({
           <option value="anthropic">Anthropic</option>
         </select>
       </label>
-      <label>
-        API key
+      <label className="field field--full">
+        <span className="field-label">API key</span>
         <input
           aria-label="API key"
           name="apiKey"
@@ -92,9 +92,15 @@ export function ProviderConnectPanel({
           value={apiKey}
         />
       </label>
-      <button disabled={submitting} type="submit">
-        Validate provider
-      </button>
+      <div className="provider-hint field--full">
+        The playground stays locked until your key validates. This connection is
+        session-only and expires with the timer.
+      </div>
+      <div className="form-actions field--full">
+        <button className="primary-button" disabled={submitting} type="submit">
+          Validate provider
+        </button>
+      </div>
     </form>
   );
 }

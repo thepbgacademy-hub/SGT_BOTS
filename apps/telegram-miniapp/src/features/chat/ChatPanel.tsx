@@ -223,21 +223,24 @@ export function ChatPanel({
 
   if (!bot) {
     return (
-      <section>
+      <section className="panel chat-panel">
         <h2>Chat</h2>
-        <p>Select a bot to start.</p>
+        <p className="muted-copy">Select a bot to start.</p>
       </section>
     );
   }
 
   return (
-    <section>
-      <header>
+    <section className="panel chat-panel">
+      <header className="panel-header">
+        <div>
+          <p className="eyebrow">Active Bot</p>
         <h2>{bot.name}</h2>
-        <p>{bot.description}</p>
+        </div>
+        <p className="panel-description">{bot.description}</p>
       </header>
       {supportsDocumentWizardReportFlow ? (
-        <>
+        <section className="workspace-strip">
           <UploadPanel
             disabled={submittingReport}
             file={documentFile}
@@ -247,18 +250,21 @@ export function ChatPanel({
             disabled={submittingReport}
             onSubmit={handleDocumentWizardSubmit}
           />
-          {reportStatus ? <p>{reportStatus}</p> : null}
-          {documentError ? <p role="alert">{documentError}</p> : null}
-        </>
+          <div className="workspace-feedback">
+            {reportStatus ? <p className="success-banner">{reportStatus}</p> : null}
+            {documentError ? <p role="alert" className="alert-banner">{documentError}</p> : null}
+          </div>
+        </section>
       ) : null}
-      <div>
+      <div className="message-stack">
         {messages.map((message) => (
-          <article key={message.id}>
-            <p>{message.content}</p>
+          <article className={message.role === "assistant" ? "message-card is-assistant" : "message-card is-user"} key={message.id}>
+            <p className="message-role">{message.role === "assistant" ? bot.name : "You"}</p>
+            <p className="message-copy">{message.content}</p>
             {message.citations?.length ? (
-              <ul aria-label="Citations">
+              <ul aria-label="Citations" className="citation-list">
                 {message.citations.map((citation) => (
-                  <li key={`${message.id}:${citation.title}`}>
+                  <li className="citation-pill" key={`${message.id}:${citation.title}`}>
                     <span>{citation.title}</span>
                     <span>{sourceLabel(citation.sourceId)}</span>
                   </li>
@@ -267,18 +273,27 @@ export function ChatPanel({
             ) : null}
           </article>
         ))}
+        {!messages.length ? (
+          <article className="message-card message-card--empty">
+            <p className="message-role">Ready</p>
+            <p className="message-copy">
+              Start the conversation here. Each bot stays inside its assigned
+              lane and only returns user-facing results.
+            </p>
+          </article>
+        ) : null}
       </div>
-      {chatError ? <p role="alert">{chatError}</p> : null}
-      <form onSubmit={handleSubmit}>
-        <label>
-          Message
+      {chatError ? <p role="alert" className="alert-banner">{chatError}</p> : null}
+      <form className="composer" onSubmit={handleSubmit}>
+        <label className="field field--full">
+          <span className="field-label">Message</span>
           <input
             aria-label="Chat input"
             onChange={(event) => setInput(event.target.value)}
             value={input}
           />
         </label>
-        <button disabled={submitting || !bot} type="submit">
+        <button className="primary-button composer-button" disabled={submitting || !bot} type="submit">
           Send message
         </button>
       </form>

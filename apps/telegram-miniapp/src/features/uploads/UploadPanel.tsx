@@ -18,16 +18,18 @@ export function UploadPanel({
   }
 
   return (
-    <section>
-      <p>
+    <section className="upload-panel">
+      <div className="upload-dropzone">
         <button
+          className="secondary-button"
           disabled={disabled}
           onClick={() => inputRef.current?.click()}
           type="button"
         >
           Upload PDF
         </button>
-      </p>
+        <p className="upload-hint">Professional reports are generated from your PDF and form inputs.</p>
+      </div>
       <input
         accept="application/pdf,.pdf"
         disabled={disabled}
@@ -36,7 +38,7 @@ export function UploadPanel({
         style={{ display: "none" }}
         type="file"
       />
-      <p>{file ? `Selected file: ${file.name}` : "No PDF selected yet."}</p>
+      <p className="upload-status">{file ? `Selected file: ${file.name}` : "No PDF selected yet."}</p>
     </section>
   );
 }

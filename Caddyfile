@@ -1,0 +1,15 @@
+playground.spyderbyte.cloud {
+  encode gzip zstd
+
+  handle /health {
+    reverse_proxy telegram-playground-backend:3000
+  }
+
+  handle /api/* {
+    reverse_proxy telegram-playground-backend:3000
+  }
+
+  handle {
+    reverse_proxy telegram-playground-frontend:8080
+  }
+}

@@ -47,10 +47,10 @@ export function DocumentWizardForm({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      {error ? <p role="alert">{error}</p> : null}
-      <label>
-        Client name
+    <form className="document-form" onSubmit={handleSubmit}>
+      {error ? <p role="alert" className="alert-banner">{error}</p> : null}
+      <label className="field">
+        <span className="field-label">Client name</span>
         <input
           aria-label="Client name"
           disabled={disabled}
@@ -63,8 +63,8 @@ export function DocumentWizardForm({
           value={clientName}
         />
       </label>
-      <label>
-        Objective
+      <label className="field">
+        <span className="field-label">Objective</span>
         <textarea
           aria-label="Objective"
           disabled={disabled}
@@ -78,7 +78,7 @@ export function DocumentWizardForm({
           value={objective}
         />
       </label>
-      <button disabled={disabled} type="submit">
+      <button className="primary-button" disabled={disabled} type="submit">
         Generate report
       </button>
     </form>

@@ -7,15 +7,25 @@ import {
 
 export type BotId =
   | "document_wizard"
-  | "kb_concierge"
   | "tutor"
-  | "researcher"
-  | "general_concierge";
+  | "form_wizard"
+  | "verifier"
+  | "concierge_general_academy_KB"
+  | "tax_legal_research";
+
+export type BotMenuPosition =
+  | "top-left"
+  | "middle-left"
+  | "bottom-left"
+  | "top-right"
+  | "middle-right"
+  | "bottom-right";
 
 export type BotManifest = {
   id: BotId;
   name: string;
   description: string;
+  menuPosition: BotMenuPosition;
   capabilities: BotCapabilities;
   sourceBinding: BotSourceBinding;
   toolPermissions: readonly BotToolPermission[];
@@ -26,8 +36,9 @@ export type BotManifest = {
 export const BOT_MANIFESTS = [
   {
     id: "document_wizard",
-    name: "Document Wizard",
-    description: "Turn notes into structured drafts and next-step checklists.",
+    name: "Cursive",
+    description: "Turns notes and source files into polished structured outputs.",
+    menuPosition: "top-left",
     capabilities: createBotCapabilities({
       chat: true,
       citations: false,
@@ -42,26 +53,10 @@ export const BOT_MANIFESTS = [
     active: true,
   },
   {
-    id: "kb_concierge",
-    name: "Knowledge Concierge",
-    description: "Answer grounded questions from the curated knowledge base.",
-    capabilities: createBotCapabilities({
-      chat: true,
-      citations: true,
-      html_report: false,
-      pdf_upload: false,
-      rag_query: true,
-      structured_form: false,
-    }),
-    sourceBinding: "knowledge_base",
-    toolPermissions: ["knowledge_base_search"],
-    promptVersion: "phase-3-v1",
-    active: true,
-  },
-  {
     id: "tutor",
-    name: "Tutor",
-    description: "Coach the user through a topic with guided explanations.",
+    name: "Insight",
+    description: "Guides the user step by step like a coach and explainer.",
+    menuPosition: "middle-left",
     capabilities: createBotCapabilities({
       chat: true,
       citations: false,
@@ -72,13 +67,32 @@ export const BOT_MANIFESTS = [
     }),
     sourceBinding: "none",
     toolPermissions: [],
-    promptVersion: "phase-5-v1",
+    promptVersion: "phase-6-v1",
     active: true,
   },
   {
-    id: "researcher",
-    name: "Researcher",
-    description: "Pull grounded findings and summarize what matters most.",
+    id: "form_wizard",
+    name: "ShAzZaM!",
+    description: "Collects structured inputs and builds final outputs from forms.",
+    menuPosition: "bottom-left",
+    capabilities: createBotCapabilities({
+      chat: true,
+      citations: false,
+      html_report: true,
+      pdf_upload: false,
+      rag_query: false,
+      structured_form: true,
+    }),
+    sourceBinding: "none",
+    toolPermissions: ["document_intake"],
+    promptVersion: "phase-6-v1",
+    active: true,
+  },
+  {
+    id: "verifier",
+    name: "Top Secret",
+    description: "Performs verification and high-scrutiny review workflows.",
+    menuPosition: "top-right",
     capabilities: createBotCapabilities({
       chat: true,
       citations: true,
@@ -89,31 +103,50 @@ export const BOT_MANIFESTS = [
     }),
     sourceBinding: "knowledge_base",
     toolPermissions: ["knowledge_base_search"],
-    promptVersion: "phase-5-v1",
+    promptVersion: "phase-6-v1",
     active: true,
   },
   {
-    id: "general_concierge",
-    name: "General Concierge",
-    description: "Triage requests and point the user to the right next move.",
+    id: "concierge_general_academy_KB",
+    name: "Rori",
+    description: "Routes knowledge-base questions across the academy domain.",
+    menuPosition: "middle-right",
     capabilities: createBotCapabilities({
       chat: true,
-      citations: false,
+      citations: true,
       html_report: false,
       pdf_upload: false,
-      rag_query: false,
+      rag_query: true,
       structured_form: false,
     }),
-    sourceBinding: "none",
-    toolPermissions: [],
-    promptVersion: "phase-5-v1",
+    sourceBinding: "knowledge_base",
+    toolPermissions: ["knowledge_base_search"],
+    promptVersion: "phase-6-v1",
+    active: true,
+  },
+  {
+    id: "tax_legal_research",
+    name: "Condor",
+    description: "Handles tax and legal research with grounded source support.",
+    menuPosition: "bottom-right",
+    capabilities: createBotCapabilities({
+      chat: true,
+      citations: true,
+      html_report: false,
+      pdf_upload: false,
+      rag_query: true,
+      structured_form: false,
+    }),
+    sourceBinding: "knowledge_base",
+    toolPermissions: ["knowledge_base_search"],
+    promptVersion: "phase-6-v1",
     active: true,
   },
 ] as const satisfies readonly BotManifest[];
 
 export type BotCatalogEntry = Pick<
   BotManifest,
-  "id" | "name" | "description" | "capabilities" | "sourceBinding"
+  "id" | "name" | "description" | "menuPosition" | "capabilities" | "sourceBinding"
 >;
 
 export function listBotCatalog(): BotCatalogEntry[] {
@@ -121,6 +154,7 @@ export function listBotCatalog(): BotCatalogEntry[] {
     id: bot.id,
     name: bot.name,
     description: bot.description,
+    menuPosition: bot.menuPosition,
     capabilities: bot.capabilities,
     sourceBinding: bot.sourceBinding,
   }));

@@ -6,6 +6,11 @@ import {
 } from "../../../workers/queue/src";
 import { readEnv, type AppEnv } from "./config/env";
 import { createAnalyticsService } from "./modules/analytics/analytics.service";
+import {
+  createInMemoryBotRegistryRepo,
+  createSupabaseBotRegistryRepo,
+  type BotRegistryRepo,
+} from "./modules/bots/bot-registry.repo";
 import { registerBotRoutes } from "./modules/bots/bot.route";
 import { createBotService } from "./modules/bots/bot.service";
 import { registerChatRoutes } from "./modules/chat/chat.route";
@@ -50,7 +55,7 @@ declare module "fastify" {
     sessionSecretStore: SessionSecretStore;
     sessionTokenService: ReturnType<typeof createSessionTokenService>;
     botService: {
-      listCatalog(): BotCatalogEntry[];
+      listCatalog(): Promise<BotCatalogEntry[]>;
     };
     uploadService: ReturnType<typeof createUploadService>;
     reportService: ReturnType<typeof createReportService>;
@@ -63,6 +68,7 @@ declare module "fastify" {
 export async function buildApp(options?: {
   env?: AppEnv;
   now?: () => number;
+  botRegistryRepo?: BotRegistryRepo;
   profileRepo?: ProfileRepo;
   sessionMetadataRepo?: SessionMetadataRepo;
   sessionSecretStore?: SessionSecretStore;
@@ -94,6 +100,11 @@ export async function buildApp(options?: {
     "sessionSecretStore",
     options?.sessionSecretStore ?? createInMemorySessionSecretStore(),
   );
+  const botRegistryRepo =
+    options?.botRegistryRepo ??
+    (appEnv.profileRepoMode === "memory"
+      ? createInMemoryBotRegistryRepo()
+      : createSupabaseBotRegistryRepo(appEnv));
   app.decorate(
     "sessionService",
     createSessionService({
@@ -109,7 +120,7 @@ export async function buildApp(options?: {
       secret: appEnv.telegramBotToken,
     }),
   );
-  app.decorate("botService", createBotService());
+  app.decorate("botService", createBotService({ registryRepo: botRegistryRepo }));
   app.decorate("chatService", createChatService({ now: options?.now }));
   app.decorate("uploadService", createUploadService({ now: options?.now }));
   let reportService!: ReturnType<typeof createReportService>;

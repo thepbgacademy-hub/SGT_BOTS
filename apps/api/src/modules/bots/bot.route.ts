@@ -43,7 +43,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
       });
 
       return {
-        bots: app.botService.listCatalog(),
+        bots: await app.botService.listCatalog(),
       };
     } catch (error) {
       const message = (error as Error).message;

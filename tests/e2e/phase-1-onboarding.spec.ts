@@ -13,6 +13,7 @@ test("profile onboarding user completes profile onboarding and reaches the locke
   await page.getByRole("button", { name: "Continue" }).click();
 
   await expect(page.getByText("Connect your provider to continue")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What the user sees in this playground" })).toBeVisible();
   await expect(page.getByText("Time remaining")).not.toBeVisible();
 });
 

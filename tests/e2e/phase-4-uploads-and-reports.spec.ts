@@ -34,7 +34,7 @@ test("document wizard shows upload, form, and generated artifact", async ({
 }) => {
   await completeOnboarding(page);
 
-  await page.getByRole("button", { name: "Document Wizard" }).click();
+  await page.getByRole("button", { name: "Cursive" }).click();
   await page.getByRole("button", { name: "Upload PDF" }).click();
   await page.setInputFiles('input[type="file"]', PDF_FIXTURE);
   await page.getByLabel("Client name").fill("Acme Co");
@@ -58,8 +58,9 @@ test("bots without the full document wizard capability set do not show the repor
         bots: [
           {
             id: "document_wizard",
-            name: "Document Wizard",
+            name: "Cursive",
             description: "Partial capability test bot.",
+            menuPosition: "top-left",
             capabilities: {
               chat: true,
               citations: false,
@@ -71,9 +72,10 @@ test("bots without the full document wizard capability set do not show the repor
             sourceBinding: "none",
           },
           {
-            id: "kb_concierge",
-            name: "Knowledge Concierge",
+            id: "concierge_general_academy_KB",
+            name: "Rori",
             description: "Answer grounded questions from the curated knowledge base.",
+            menuPosition: "middle-right",
             capabilities: {
               chat: true,
               citations: true,
@@ -91,14 +93,15 @@ test("bots without the full document wizard capability set do not show the repor
 
   await completeOnboarding(page);
 
-  await page.getByRole("button", { name: "Document Wizard" }).click();
+  await page.getByRole("button", { name: "Cursive" }).click();
   await expect(page.getByRole("button", { name: "Upload PDF" })).toHaveCount(0);
   await expect(page.getByLabel("Client name")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Generate report" }),
   ).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Knowledge Concierge" }).click();
+  await page.getByRole("button", { name: "Back to Menu" }).click();
+  await page.getByRole("button", { name: "Rori" }).click();
   await expect(page.getByRole("button", { name: "Upload PDF" })).toHaveCount(0);
   await expect(page.getByLabel("Client name")).toHaveCount(0);
 });
@@ -116,7 +119,7 @@ test("document wizard failures stay recoverable in the UI", async ({ page }) => 
 
   await completeOnboarding(page);
 
-  await page.getByRole("button", { name: "Document Wizard" }).click();
+  await page.getByRole("button", { name: "Cursive" }).click();
   await page.getByRole("button", { name: "Upload PDF" }).click();
   await page.setInputFiles('input[type="file"]', PDF_FIXTURE);
   await page.getByLabel("Client name").fill("Acme Co");

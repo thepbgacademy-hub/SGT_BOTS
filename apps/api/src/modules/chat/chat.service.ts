@@ -67,7 +67,11 @@ function requireToolPermission(
   }
 }
 
-function buildKnowledgeBaseReply(manifest: BotManifest, content: string): RuntimeReply {
+function buildKnowledgeBaseReply(
+  manifest: BotManifest,
+  content: string,
+  title = "Release Review Runbook",
+): RuntimeReply {
   requireCapability(manifest, "chat");
   requireCapability(manifest, "citations");
   requireCapability(manifest, "rag_query");
@@ -79,7 +83,7 @@ function buildKnowledgeBaseReply(manifest: BotManifest, content: string): Runtim
     citations: [
       {
         sourceId: "knowledge_base",
-        title: "Release Review Runbook",
+        title,
         url: "https://example.invalid/kb/release-review-runbook",
       },
     ],
@@ -109,7 +113,21 @@ function buildTutorReply(manifest: BotManifest, content: string): RuntimeReply {
   };
 }
 
-function buildResearcherReply(
+function buildFormWizardReply(
+  manifest: BotManifest,
+  content: string,
+): RuntimeReply {
+  requireCapability(manifest, "chat");
+  requireCapability(manifest, "structured_form");
+  requireCapability(manifest, "html_report");
+  requireToolPermission(manifest, "document_intake");
+
+  return {
+    output: `I can turn "${content}" into a guided intake workflow, capture the right fields, and assemble the final output cleanly.`,
+  };
+}
+
+function buildVerifierReply(
   manifest: BotManifest,
   content: string,
 ): RuntimeReply {
@@ -120,25 +138,36 @@ function buildResearcherReply(
   requireToolPermission(manifest, "knowledge_base_search");
 
   return {
-    output: `I researched "${content}" and pulled the strongest grounded lead to start your brief.`,
+    output: `I verified "${content}" against the strongest grounded reference I could reach inside the approved source lane.`,
     citations: [
       {
         sourceId: "knowledge_base",
-        title: "Research Briefing Index",
+        title: "Verification Control Checklist",
         url: "https://example.invalid/kb/research-briefing-index",
       },
     ],
   };
 }
 
-function buildGeneralConciergeReply(
+function buildTaxLegalResearchReply(
   manifest: BotManifest,
   content: string,
 ): RuntimeReply {
   requireCapability(manifest, "chat");
+  requireCapability(manifest, "citations");
+  requireCapability(manifest, "rag_query");
+  requireSourceBinding(manifest, "knowledge_base");
+  requireToolPermission(manifest, "knowledge_base_search");
 
   return {
-    output: `I can help triage "${content}" and route you to the right next action inside the playground.`,
+    output: `I researched "${content}" and surfaced the most relevant tax and legal lead to start your analysis.`,
+    citations: [
+      {
+        sourceId: "knowledge_base",
+        title: "Tax and Legal Research Index",
+        url: "https://example.invalid/kb/tax-legal-research-index",
+      },
+    ],
   };
 }
 
@@ -242,16 +271,18 @@ function buildRuntimeReply(
   trimmedContent: string,
 ): RuntimeReply {
   switch (manifest.id) {
-    case "kb_concierge":
-      return buildKnowledgeBaseReply(manifest, trimmedContent);
     case "document_wizard":
       return buildDocumentWizardReply(manifest, trimmedContent);
     case "tutor":
       return buildTutorReply(manifest, trimmedContent);
-    case "researcher":
-      return buildResearcherReply(manifest, trimmedContent);
-    case "general_concierge":
-      return buildGeneralConciergeReply(manifest, trimmedContent);
+    case "form_wizard":
+      return buildFormWizardReply(manifest, trimmedContent);
+    case "verifier":
+      return buildVerifierReply(manifest, trimmedContent);
+    case "concierge_general_academy_KB":
+      return buildKnowledgeBaseReply(manifest, trimmedContent);
+    case "tax_legal_research":
+      return buildTaxLegalResearchReply(manifest, trimmedContent);
     default: {
       const exhaustiveCheck: never = manifest.id;
       throw new Error(`unsupported bot: ${exhaustiveCheck}`);

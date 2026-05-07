@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { BotCatalogEntry } from "../../../../../packages/shared/src/bots/manifests";
 import {
-  ArtifactList,
   type ArtifactListItem,
 } from "../artifacts/ArtifactList";
 import { ChatPanel, type ChatMessage } from "../chat/ChatPanel";
-import { BotRail } from "./BotRail";
 import { ProviderConnectPanel } from "../onboarding/ProviderConnectPanel";
+import { BotSupportPanel } from "./BotSupportPanel";
 import { formatRemaining } from "../../lib/timer";
 import { SessionEndModal, type SessionEndPrompt } from "./SessionEndModal";
+import { MainMenu } from "./MainMenu";
+import { getBotWorkspacePanel } from "./bot-workspace-panels";
+import {
+  getMenuItem,
+  type PlaygroundMenuBotId,
+} from "./menu-config";
 
 type SessionSnapshot = {
   id: string;
@@ -37,7 +42,7 @@ export function DashboardShell({
   const [reviewPrompt, setReviewPrompt] = useState<SessionEndPrompt | null>(null);
   const [bots, setBots] = useState<BotCatalogEntry[]>([]);
   const [botError, setBotError] = useState<string | null>(null);
-  const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
+  const [selectedMenuBotId, setSelectedMenuBotId] = useState<PlaygroundMenuBotId | null>(null);
   const [artifacts, setArtifacts] = useState<ArtifactListItem[]>([]);
   const [remainingCountdownSeconds, setRemainingCountdownSeconds] = useState<number | null>(
     null,
@@ -99,16 +104,20 @@ export function DashboardShell({
     ? remainingCountdownSeconds ?? session?.remainingSeconds ?? 0
     : 0;
   const selectedBot =
-    bots.find((bot) => bot.id === selectedBotId) ?? bots[0] ?? null;
+    bots.find((bot) => bot.id === selectedMenuBotId) ?? null;
   const selectedConversation = selectedBot
     ? conversations[selectedBot.id]
     : undefined;
+  const selectedMenuItem = getMenuItem(bots, selectedMenuBotId);
+  const selectedWorkspacePanel = selectedBot
+    ? getBotWorkspacePanel(selectedBot.id)
+    : null;
 
   useEffect(() => {
     if (!activeSessionId || !sessionToken) {
       setConversations({});
       setBots([]);
-      setSelectedBotId(null);
+      setSelectedMenuBotId(null);
       return;
     }
 
@@ -134,16 +143,6 @@ export function DashboardShell({
         if (!cancelled) {
           setBotError(null);
           setBots(nextBots);
-          setSelectedBotId((currentSelectedBotId) => {
-            if (
-              currentSelectedBotId &&
-              nextBots.some((bot) => bot.id === currentSelectedBotId)
-            ) {
-              return currentSelectedBotId;
-            }
-
-            return nextBots[0]?.id ?? null;
-          });
         }
       })
       .catch(() => {
@@ -160,7 +159,7 @@ export function DashboardShell({
   useEffect(() => {
     setArtifacts([]);
     setConversations({});
-    setSelectedBotId(null);
+    setSelectedMenuBotId(null);
   }, [activeSessionId, sessionToken]);
 
   useEffect(() => {
@@ -261,6 +260,8 @@ export function DashboardShell({
     sessionToken,
   ]);
 
+  const selectedBotIsLive = Boolean(selectedBot && selectedMenuBotId);
+
   async function handleEndPlayground() {
     if (!activeSessionId || !sessionToken) {
       return;
@@ -309,80 +310,171 @@ export function DashboardShell({
     }
   }
 
+  function handleMenuSelection(menuBotId: PlaygroundMenuBotId) {
+    setSelectedMenuBotId(menuBotId);
+    setBotError(null);
+  }
+
+  function handleBackToMenu() {
+    setSelectedMenuBotId(null);
+  }
+
   return (
-    <main>
-      <header>
-        <p>Playground</p>
-        <h1>{preferredName}, your dashboard is ready</h1>
+    <main className="app-shell app-shell--dashboard">
+      <header className="dashboard-topbar panel">
+        <div>
+          <p className="eyebrow">Playground</p>
+          <h1>{preferredName}, your dashboard is ready</h1>
+        </div>
+        <div className="topbar-badge">Secure session workspace</div>
       </header>
       {reviewPrompt ? <SessionEndModal prompt={reviewPrompt} /> : null}
       {isSessionActive && sessionToken && !reviewPrompt ? (
         <>
-          <section>
-            <p>Provider connected</p>
-            <p>Time remaining</p>
-            <p>{formatRemaining(remainingSeconds)}</p>
-            <button onClick={handleEndPlayground} type="button">
-              End playground
-            </button>
+          <section className="session-banner panel">
+            <div>
+              <p className="eyebrow">Session Live</p>
+              <p className="session-status">
+                {selectedMenuItem ? `${selectedMenuItem.displayName} workspace live` : "Provider connected"}
+              </p>
+            </div>
+            <div className="timer-readout">
+              <span className="timer-label">Time remaining</span>
+              <span className="timer-value">{formatRemaining(remainingSeconds)}</span>
+            </div>
+            <div className="session-banner-actions">
+              {selectedMenuItem ? (
+                <button className="secondary-button" onClick={handleBackToMenu} type="button">
+                  Back to Menu
+                </button>
+              ) : null}
+              <button className="secondary-button" onClick={handleEndPlayground} type="button">
+                End playground
+              </button>
+            </div>
           </section>
-          {botError ? <p role="alert">{botError}</p> : null}
-          <section>
-            <BotRail
-              bots={bots}
-              selectedBotId={selectedBot?.id ?? null}
-              onSelect={setSelectedBotId}
-            />
-            <ChatPanel
-              key={selectedBot?.id ?? "no-bot-selected"}
-              bot={selectedBot}
-              conversationId={selectedConversation?.conversationId}
-              messages={selectedConversation?.messages ?? []}
-              onArtifactQueued={(artifact) => {
-                setArtifacts((currentArtifacts) => [
-                  artifact,
-                  ...currentArtifacts.filter(
-                    (currentArtifact) => currentArtifact.id !== artifact.id,
-                  ),
-                ]);
-              }}
-              onConversationUpdate={({ conversationId, messages }) => {
-                if (!selectedBot) {
-                  return;
-                }
+          {botError ? <p role="alert" className="alert-banner">{botError}</p> : null}
+          {selectedMenuItem ? (
+            selectedBotIsLive ? (
+              <section className="workspace-shell workspace-shell--active">
+                <img
+                  alt="Bot workspace frame"
+                  className="workspace-shell-image"
+                  src="/images/bot-dashboard.png"
+                />
+                <div className="workspace-shell-overlay workspace-shell-overlay--top workspace-shell-overlay--top-enter">
+                  <div className="workspace-title-block">
+                    <p className="eyebrow">Active Assistant</p>
+                    <h2>{selectedMenuItem.displayName}</h2>
+                    <p className="panel-description">{selectedMenuItem.description}</p>
+                  </div>
+                </div>
+                <div className="workspace-shell-overlay workspace-shell-overlay--sidebar-top workspace-shell-overlay--sidebar-top-enter">
+                  <div className="workspace-side-card">
+                    <p className="eyebrow">
+                      {selectedWorkspacePanel?.focusLabel ?? "Function"}
+                    </p>
+                    <h3>{selectedMenuItem.displayName}</h3>
+                    <p className="muted-copy">
+                      {selectedWorkspacePanel?.mission ?? selectedMenuItem.description}
+                    </p>
+                    {selectedWorkspacePanel ? (
+                      <div className="workspace-guidance">
+                        <p className="workspace-guidance__title">
+                          {selectedWorkspacePanel.workflowTitle}
+                        </p>
+                        <ul className="workspace-guidance__list">
+                          {selectedWorkspacePanel.workflowSteps.map((step) => (
+                            <li key={step}>{step}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="workspace-shell-overlay workspace-shell-overlay--sidebar-bottom workspace-shell-overlay--sidebar-bottom-enter">
+                  {selectedMenuBotId ? (
+                    <BotSupportPanel
+                      artifacts={artifacts.filter(
+                        (artifact) => artifact.botName === selectedMenuItem.displayName,
+                      )}
+                      botId={selectedMenuBotId}
+                    />
+                  ) : null}
+                </div>
+                <div className="workspace-shell-overlay workspace-shell-overlay--chat workspace-shell-overlay--chat-enter">
+                  <ChatPanel
+                    key={selectedBot?.id ?? "no-bot-selected"}
+                    bot={selectedBot}
+                    conversationId={selectedConversation?.conversationId}
+                    messages={selectedConversation?.messages ?? []}
+                    onArtifactQueued={(artifact) => {
+                      setArtifacts((currentArtifacts) => [
+                        artifact,
+                        ...currentArtifacts.filter(
+                          (currentArtifact) => currentArtifact.id !== artifact.id,
+                        ),
+                      ]);
+                    }}
+                    onConversationUpdate={({ conversationId, messages }) => {
+                      if (!selectedBot) {
+                        return;
+                      }
 
-                setConversations((currentConversations) => ({
-                  ...currentConversations,
-                  [selectedBot.id]: {
-                    conversationId,
-                    messages,
-                  },
-                }));
-              }}
-              sessionId={session.id}
-              sessionToken={sessionToken}
-            />
-            <ArtifactList artifacts={artifacts} />
-          </section>
+                      setConversations((currentConversations) => ({
+                        ...currentConversations,
+                        [selectedBot.id]: {
+                          conversationId,
+                          messages,
+                        },
+                      }));
+                    }}
+                    sessionId={session.id}
+                    sessionToken={sessionToken}
+                  />
+                </div>
+              </section>
+            ) : (
+              <section className="panel status-panel">
+                <p className="eyebrow">Pending Runtime</p>
+                <h2>{selectedMenuItem.displayName}</h2>
+                <p className="muted-copy">
+                  This menu lane is approved, but its backend runtime is the next
+                  step to activate.
+                </p>
+              </section>
+            )
+          ) : (
+            <div className="main-menu-enter">
+              <MainMenu
+                bots={bots}
+                onSelect={handleMenuSelection}
+                preferredName={preferredName}
+              />
+            </div>
+          )}
         </>
       ) : reviewPrompt ? (
-        <section>
+        <section className="panel status-panel">
+          <p className="eyebrow">Review Ready</p>
           <p>Review ready.</p>
         </section>
       ) : (
-        <section>
-          <p>Connect your provider to continue</p>
-          <p>Bot access stays locked until provider validation succeeds.</p>
+        <section className="dashboard-grid dashboard-grid--locked">
+          <div className="panel locked-panel">
+            <p className="eyebrow">Step 2</p>
+            <h2>Connect your provider to continue</h2>
+            <p className="panel-description">Bot access stays locked until provider validation succeeds.</p>
           {session?.state === "expired" ? (
-            <p>Your provider session expired. Connect again to continue.</p>
+            <p className="alert-banner">Your provider session expired. Connect again to continue.</p>
           ) : null}
           {requiresRelaunch ? (
-            <p>
+            <p className="alert-banner">
               Relaunch the Playground from Telegram to get a fresh secure
               launch before reconnecting your provider.
             </p>
           ) : null}
-          {sessionError ? <p role="alert">{sessionError}</p> : null}
+          {sessionError ? <p role="alert" className="alert-banner">{sessionError}</p> : null}
           {requiresRelaunch ? null : (
             <ProviderConnectPanel
               initData={initData}
@@ -395,6 +487,17 @@ export function DashboardShell({
               }}
             />
           )}
+          </div>
+          <div className="panel guidance-panel">
+            <p className="eyebrow">How It Works</p>
+            <h2>What the user sees in this playground</h2>
+            <ul className="guidance-list">
+              <li>Choose a bot with a distinct role and fixed capability lane.</li>
+              <li>Chat naturally while the system hides tools and workflow internals.</li>
+              <li>Upload PDFs or fill structured forms when the selected bot allows it.</li>
+              <li>Leave with a polished output and a clear review path.</li>
+            </ul>
+          </div>
         </section>
       )}
     </main>

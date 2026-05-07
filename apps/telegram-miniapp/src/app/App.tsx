@@ -42,7 +42,15 @@ export function App() {
   }, [initData]);
 
   if (error) {
-    return <p>{error}</p>;
+    return (
+      <main className="app-shell">
+        <section className="status-panel status-panel--error">
+          <p className="eyebrow">Launch Error</p>
+          <h1>Playground unavailable</h1>
+          <p>{error}</p>
+        </section>
+      </main>
+    );
   }
 
   if (profile) {
@@ -55,7 +63,15 @@ export function App() {
   }
 
   if (!launchContext) {
-    return <p>Loading Telegram launch...</p>;
+    return (
+      <main className="app-shell">
+        <section className="status-panel">
+          <p className="eyebrow">Initializing</p>
+          <h1>Loading Telegram launch...</h1>
+          <p>Validating your secure entry into the playground.</p>
+        </section>
+      </main>
+    );
   }
 
   return (

@@ -13,22 +13,27 @@ type ArtifactListProps = {
 
 export function ArtifactList({ artifacts }: ArtifactListProps) {
   return (
-    <section>
-      <h2>Artifacts</h2>
+    <section className="panel artifact-panel">
+      <header className="panel-header">
+        <div>
+          <p className="eyebrow">Output</p>
+          <h2>Artifacts</h2>
+        </div>
+      </header>
       {artifacts.length ? (
-        <ul>
+        <ul className="artifact-list">
           {artifacts.map((artifact) => (
-            <li key={artifact.id}>
-              <p>{artifact.fileName}</p>
-              <p>
+            <li className="artifact-card" key={artifact.id}>
+              <p className="artifact-title">{artifact.fileName}</p>
+              <p className="artifact-meta">
                 {artifact.botName} - {artifact.status}
               </p>
-              <p>Source: {artifact.originalFilename}</p>
+              <p className="artifact-source">Source: {artifact.originalFilename}</p>
             </li>
           ))}
         </ul>
       ) : (
-        <p>No artifacts queued yet.</p>
+        <p className="muted-copy">No artifacts queued yet.</p>
       )}
     </section>
   );

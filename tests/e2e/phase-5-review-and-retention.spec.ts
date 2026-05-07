@@ -48,10 +48,10 @@ test("user can end the session early and still get the review CTA", async ({
 }) => {
   await completeOnboarding(page);
 
-  await expect(page.getByRole("button", { name: "Tutor" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Researcher" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Insight" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Rori" })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "General Concierge" }),
+    page.getByRole("button", { name: "Condor" }),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "End playground" }).click();

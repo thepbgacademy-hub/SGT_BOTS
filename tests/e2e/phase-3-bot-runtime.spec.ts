@@ -12,7 +12,7 @@ const VALID_INIT_DATA = createSignedTelegramInitData({
   },
 });
 
-test("provider session unlocks the bot rail and both starter bots stay in their own lanes", async ({
+test("provider session unlocks the menu and selected bots stay in their own lanes", async ({
   page,
 }) => {
   await page.goto(`/?tgInitData=${encodeURIComponent(VALID_INIT_DATA)}`);
@@ -24,15 +24,12 @@ test("provider session unlocks the bot rail and both starter bots stay in their 
   await page.getByLabel("API key").fill("sk-test");
   await page.getByRole("button", { name: "Validate provider" }).click();
 
-  await expect(page.getByRole("heading", { name: "Bots" })).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Document Wizard" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Knowledge Concierge" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Cursive" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Rori" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Insight" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Knowledge Concierge" }).click();
+  await page.getByRole("button", { name: "Rori" }).click();
+  await expect(page.getByRole("button", { name: "Back to Menu" })).toBeVisible();
   await page.getByLabel("Chat input").fill(
     "What should I read before the release review?",
   );
@@ -43,7 +40,8 @@ test("provider session unlocks the bot rail and both starter bots stay in their 
   ).toBeVisible();
   await expect(page.getByText("Knowledge Base", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Document Wizard" }).click();
+  await page.getByRole("button", { name: "Back to Menu" }).click();
+  await page.getByRole("button", { name: "Cursive" }).click();
   await expect(
     page.getByRole("button", { name: "Upload PDF" }),
   ).toBeVisible();
@@ -122,7 +120,7 @@ test("session refresh does not refetch the catalog on every tick", async ({
   await page.getByLabel("API key").fill("sk-test");
   await page.getByRole("button", { name: "Validate provider" }).click();
 
-  await page.getByRole("button", { name: "Knowledge Concierge" }).click();
+  await page.getByRole("button", { name: "Rori" }).click();
   await page.getByLabel("Chat input").fill("What should I read before the release review?");
   await page.getByRole("button", { name: "Send message" }).click();
 
@@ -142,7 +140,7 @@ test("switching bots clears composer draft and chat errors", async ({ page }) =>
       botId?: string;
     };
 
-    if (firstChatAttempt && payload.botId === "kb_concierge") {
+    if (firstChatAttempt && payload.botId === "concierge_general_academy_KB") {
       firstChatAttempt = false;
       await route.fulfill({
         status: 500,
@@ -166,15 +164,75 @@ test("switching bots clears composer draft and chat errors", async ({ page }) =>
   await page.getByLabel("API key").fill("sk-test");
   await page.getByRole("button", { name: "Validate provider" }).click();
 
-  await page.getByRole("button", { name: "Knowledge Concierge" }).click();
+  await page.getByRole("button", { name: "Rori" }).click();
   await page.getByLabel("Chat input").fill("Leaky draft");
   await page.getByRole("button", { name: "Send message" }).click();
 
   await expect(page.getByRole("alert")).toHaveText("upstream failure");
   await expect(page.getByLabel("Chat input")).toHaveValue("Leaky draft");
 
-  await page.getByRole("button", { name: "Document Wizard" }).click();
+  await page.getByRole("button", { name: "Back to Menu" }).click();
+  await page.getByRole("button", { name: "Cursive" }).click();
 
   await expect(page.getByRole("alert")).not.toBeVisible();
   await expect(page.getByLabel("Chat input")).toHaveValue("");
+});
+
+test("menu renders only the bot lanes returned by the authenticated catalog", async ({
+  page,
+}) => {
+  await page.route("**/api/bots?**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        bots: [
+          {
+            id: "tax_legal_research",
+            name: "Condor",
+            description: "Handles tax and legal research with grounded source support.",
+            menuPosition: "bottom-right",
+            capabilities: {
+              chat: true,
+              citations: true,
+              html_report: false,
+              pdf_upload: false,
+              rag_query: true,
+              structured_form: false,
+            },
+            sourceBinding: "knowledge_base",
+          },
+          {
+            id: "document_wizard",
+            name: "Cursive",
+            description: "Turns notes and source files into polished structured outputs.",
+            menuPosition: "top-left",
+            capabilities: {
+              chat: true,
+              citations: false,
+              html_report: true,
+              pdf_upload: true,
+              rag_query: false,
+              structured_form: true,
+            },
+            sourceBinding: "none",
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto(`/?tgInitData=${encodeURIComponent(VALID_INIT_DATA)}`);
+  await page.getByLabel("First name").fill("Ada");
+  await page.getByLabel("Last name").fill("Lovelace");
+  await page.getByLabel("Preferred name").fill("Ada");
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await page.getByLabel("API key").fill("sk-test");
+  await page.getByRole("button", { name: "Validate provider" }).click();
+
+  await expect(page.getByRole("button", { name: "Cursive" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Condor" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Insight" })).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "Rori" })).not.toBeVisible();
 });

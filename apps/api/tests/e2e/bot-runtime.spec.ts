@@ -97,6 +97,24 @@ describe("bot runtime routes", () => {
     expect(sql).toContain("safety_flags jsonb");
   });
 
+  it("keeps the playground bot registry migration locked behind RLS with a read-only policy", async () => {
+    const sql = await readFile(
+      new URL(
+        "../../../../supabase/migrations/006_playground_bot_registry.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    expect(sql).toContain("alter table playground_bot_registry enable row level security");
+    expect(sql).toContain(
+      'create policy "Authenticated users can read the playground bot registry"',
+    );
+    expect(sql).toContain("on playground_bot_registry for select");
+    expect(sql).toContain("to authenticated");
+    expect(sql).toContain("using (true)");
+  });
+
   it("returns the authenticated bot catalog for an active provider session", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
 
@@ -113,8 +131,9 @@ describe("bot runtime routes", () => {
       bots: expect.arrayContaining([
         {
           id: "document_wizard",
-          name: "Document Wizard",
-          description: "Turn notes into structured drafts and next-step checklists.",
+          name: "Cursive",
+          description: "Turns notes and source files into polished structured outputs.",
+          menuPosition: "top-left",
           capabilities: {
             chat: true,
             citations: false,
@@ -126,9 +145,10 @@ describe("bot runtime routes", () => {
           sourceBinding: "none",
         },
         {
-          id: "kb_concierge",
-          name: "Knowledge Concierge",
-          description: "Answer grounded questions from the curated knowledge base.",
+          id: "concierge_general_academy_KB",
+          name: "Rori",
+          description: "Routes knowledge-base questions across the academy domain.",
+          menuPosition: "middle-right",
           capabilities: {
             chat: true,
             citations: true,
@@ -141,12 +161,23 @@ describe("bot runtime routes", () => {
         },
         expect.objectContaining({
           id: "tutor",
+          name: "Insight",
+          menuPosition: "middle-left",
         }),
         expect.objectContaining({
-          id: "researcher",
+          id: "form_wizard",
+          name: "ShAzZaM!",
+          menuPosition: "bottom-left",
         }),
         expect.objectContaining({
-          id: "general_concierge",
+          id: "verifier",
+          name: "Top Secret",
+          menuPosition: "top-right",
+        }),
+        expect.objectContaining({
+          id: "tax_legal_research",
+          name: "Condor",
+          menuPosition: "bottom-right",
         }),
       ]),
     });
@@ -163,14 +194,14 @@ describe("bot runtime routes", () => {
       },
       payload: {
         sessionId,
-        botId: "kb_concierge",
+        botId: "concierge_general_academy_KB",
         message: "What should I read before the release review?",
       },
     });
 
     expect(kbResponse.statusCode).toBe(200);
     expect(kbResponse.json()).toMatchObject({
-      botId: "kb_concierge",
+      botId: "concierge_general_academy_KB",
       output: expect.stringContaining("Release Review Runbook"),
       citations: [
         {
@@ -179,7 +210,7 @@ describe("bot runtime routes", () => {
         },
       ],
       conversation: {
-        botId: "kb_concierge",
+        botId: "concierge_general_academy_KB",
         sessionId,
       },
     });
@@ -196,7 +227,7 @@ describe("bot runtime routes", () => {
       },
       payload: {
         sessionId,
-        botId: "kb_concierge",
+        botId: "concierge_general_academy_KB",
         message: "What should I read before the release review?",
       },
     });
@@ -271,7 +302,7 @@ describe("bot runtime routes", () => {
       url: "/api/chat/messages",
       payload: {
         sessionId,
-        botId: "kb_concierge",
+        botId: "concierge_general_academy_KB",
         message: "Hello?",
       },
     });
@@ -321,7 +352,7 @@ describe("bot runtime routes", () => {
       expect(catalogResponse.json()).toMatchObject({
         bots: expect.arrayContaining([
           expect.objectContaining({
-            id: "kb_concierge",
+            id: "concierge_general_academy_KB",
           }),
         ]),
       });
