@@ -4,7 +4,9 @@
 
 - Working repo: `E:\REPOS\SGT_BOTS`
 - Active branch: `main`
-- GitHub remote already configured and pushed
+- GitHub remotes:
+  - source repo: `thepbgacademy-hub/SGT_BOTS`
+  - deployment repo push target used in this session: `thepbgacademy-hub/SGT_BOTS_APP`
 
 ## Current Build State
 
@@ -13,8 +15,7 @@
 - the mini app opens to the approved hex-image `MainMenu`
 - the bot workspace uses the approved gold dashboard frame
 - the menu is data-driven from the authenticated bot catalog
-- upper-left and lower-left dashboard panels are bot-aware
-- motion polish is in place for menu and dashboard transitions
+- bot-aware side panels and motion polish are in place
 
 ## Supabase
 
@@ -23,43 +24,50 @@
 - remote RLS: enabled
 - remote policy: `Authenticated users can read the playground bot registry`
 
+## Published Images
+
+- frontend: `ghcr.io/thepbgacademy-hub/sgt-bots-app-frontend:latest`
+- backend: `ghcr.io/thepbgacademy-hub/sgt-bots-app-backend:latest`
+
+## VPS Deployment Reality
+
+- the VPS already has an existing proxy container: `supabase-caddy`
+- do **not** deploy a second Caddy container on this VPS
+- ports `80/443` must remain with the existing proxy
+
 ## VPS Deployment Files
 
-- compose file: `docker-compose.vps.yml`
+- app-only compose file: `docker-compose.vps.yml`
 - frontend container: `Dockerfile.frontend`
 - backend container: `Dockerfile.backend`
-- caddy config: `Caddyfile`
+- existing-proxy site block reference: `Caddyfile`
 - frontend nginx config: `apps/telegram-miniapp/nginx.conf`
-- docker ignore: `.dockerignore`
 
-## VPS Deployment Model
+## Correct VPS Deployment Model
 
-- use `Node` as the app type
-- deploy as `3 services`:
-  - `caddy`
-  - `frontend`
-  - `backend`
-- reverse proxy domain:
-  - `playground.spyderbyte.cloud`
-- routes:
-  - `/` -> frontend
-  - `/api/*` -> backend
-  - `/health` -> backend
-- SSL terminates at Caddy
+- deploy only `2` app containers:
+  - `telegram-playground-frontend`
+  - `telegram-playground-backend`
+- both must join the shared external Docker network:
+  - `proxy`
+- the existing `supabase-caddy` instance should be updated with the site block from `Caddyfile`
+- routes in the existing proxy should be:
+  - `/` -> `telegram-playground-frontend:8080`
+  - `/api/*` -> `telegram-playground-backend:3000`
+  - `/health` -> `telegram-playground-backend:3000`
 
 ## Important Deployment Notes
 
-- backend now binds to `0.0.0.0` in `apps/api/src/index.ts` so Caddy can reach it across Docker networking
-- backend still runs from source with `tsx` in `Dockerfile.backend`; there is no compiled API `dist` output yet
-- `docker-compose.vps.yml` expects an external Docker network named `proxy`
-- if the VPS does not already have that network, create it first:
+- backend binds to `0.0.0.0` in `apps/api/src/index.ts`
+- backend runs from source with `tsx` in `Dockerfile.backend`; there is no compiled API `dist` output yet
+- if the VPS does not already have the shared network, create it first:
   - `docker network create proxy`
 
 ## Immediate Next Step
 
-1. Ensure DNS for `playground.spyderbyte.cloud` points to the VPS.
-2. Create the `proxy` Docker network on the VPS if it does not already exist.
-3. Run `docker compose -f docker-compose.vps.yml up -d --build`.
+1. Ask the VPS portal to deploy only the frontend and backend containers from GHCR.
+2. Ask it to attach both containers to the existing shared `proxy` network.
+3. Ask it to add the `playground.spyderbyte.cloud` site block from `Caddyfile` to the existing `supabase-caddy`.
 4. Smoke test:
   - `https://playground.spyderbyte.cloud/`
   - `https://playground.spyderbyte.cloud/health`

@@ -13,3 +13,8 @@ playground.spyderbyte.cloud {
     reverse_proxy telegram-playground-frontend:8080
   }
 }
+
+# Note:
+# This site block is intended to be added to the existing VPS Caddy instance
+# (for example `supabase-caddy`), not run as a second Caddy container on the
+# same host. The VPS already has ports 80/443 claimed by the existing proxy.
