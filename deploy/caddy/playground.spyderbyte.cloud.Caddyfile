@@ -1,0 +1,16 @@
+playground.spyderbyte.cloud {
+  encode gzip zstd
+
+  handle /health {
+    reverse_proxy sgt-bots-backend:3000
+  }
+
+  @api path /api/*
+  handle @api {
+    reverse_proxy sgt-bots-backend:3000
+  }
+
+  handle {
+    reverse_proxy sgt-bots-frontend:8080
+  }
+}
