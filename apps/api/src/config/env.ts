@@ -5,6 +5,7 @@ export type AppEnv = {
   appPort: number;
   telegramBotUsername: string;
   telegramBotToken: string;
+  telegramBotRuntimeMode: "off" | "polling";
   telegramReviewGroupUrl: string;
   profileRepoMode: "supabase" | "memory";
   providerValidationMode: "live" | "stub";
@@ -90,6 +91,12 @@ export function readEnv(env: NodeJS.ProcessEnv = process.env): AppEnv {
     env.BOT_TOKEN ??
     fileEnv.TELEGRAM_BOT_TOKEN ??
     fileEnv.BOT_TOKEN;
+  const telegramBotRuntimeMode =
+    (env.TELEGRAM_BOT_RUNTIME_MODE ??
+      fileEnv.TELEGRAM_BOT_RUNTIME_MODE ??
+      "off") === "polling"
+      ? "polling"
+      : "off";
 
   return {
     appPort: Number(env.APP_PORT ?? fileEnv.APP_PORT ?? "3000"),
@@ -98,6 +105,7 @@ export function readEnv(env: NodeJS.ProcessEnv = process.env): AppEnv {
       fileEnv.TELEGRAM_BOT_USERNAME ??
       "sgt_playground_bot",
     telegramBotToken: requireEnv("TELEGRAM_BOT_TOKEN", telegramBotToken),
+    telegramBotRuntimeMode,
     telegramReviewGroupUrl:
       env.TELEGRAM_REVIEW_GROUP_URL ??
       fileEnv.TELEGRAM_REVIEW_GROUP_URL ??

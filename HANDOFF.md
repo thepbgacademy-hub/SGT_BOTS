@@ -60,6 +60,9 @@
 
 - backend binds to `0.0.0.0` in `apps/api/src/index.ts`
 - backend runs from source with `tsx` in `Dockerfile.backend`; there is no compiled API `dist` output yet
+- backend requires `TELEGRAM_BOT_TOKEN` at runtime; `TELEGRAM_BOT_USERNAME` should also be set for the live bot identity
+- Telegram chat handling is now opt-in with `TELEGRAM_BOT_RUNTIME_MODE=polling` on the backend container
+- do **not** commit the live Telegram token into the repo; set it only in the VPS/container environment
 - if the VPS does not already have the shared network, create it first:
   - `docker network create proxy`
 
