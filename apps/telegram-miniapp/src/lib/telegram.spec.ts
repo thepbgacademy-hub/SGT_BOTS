@@ -21,7 +21,7 @@ describe("telegram helpers", () => {
           JSON.stringify({
             welcomeButton: {
               text: "Open Playground",
-              url: "https://t.me/sgt_playground_bot/app?startapp=profile-onboarding",
+              url: "https://t.me/sgt_playground_bot/playground?startapp=profile-onboarding",
             },
           }),
           { status: 200, headers: { "content-type": "application/json" } },
@@ -51,7 +51,7 @@ describe("telegram helpers", () => {
       },
       welcomeButton: {
         text: "Open Playground",
-        url: "https://t.me/sgt_playground_bot/app?startapp=profile-onboarding",
+        url: "https://t.me/sgt_playground_bot/playground?startapp=profile-onboarding",
       },
     });
   });

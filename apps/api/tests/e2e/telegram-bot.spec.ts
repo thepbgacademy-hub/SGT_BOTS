@@ -9,6 +9,7 @@ import {
 const env = readEnv({
   APP_PORT: "3001",
   TELEGRAM_BOT_USERNAME: "PBGbigkitty_bot",
+  TELEGRAM_BOT_APP_SHORT_NAME: "playground",
   TELEGRAM_BOT_TOKEN: "123456:test-token",
   PROFILE_REPO_MODE: "memory",
 });
@@ -40,7 +41,7 @@ describe("Telegram bot runtime", () => {
           [
             {
               text: "Open Playground",
-              url: "https://t.me/PBGbigkitty_bot/app?startapp=profile-onboarding",
+              url: "https://t.me/PBGbigkitty_bot/playground?startapp=profile-onboarding",
             },
           ],
         ],

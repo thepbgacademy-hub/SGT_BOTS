@@ -23,6 +23,7 @@ describe("POST /api/profiles", () => {
       env: readEnv({
         APP_PORT: "3001",
         TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+        TELEGRAM_BOT_APP_SHORT_NAME: "playground",
         TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
         PROFILE_REPO_MODE: "memory",
       }),
@@ -78,6 +79,7 @@ describe("POST /api/profiles", () => {
       env: readEnv({
         APP_PORT: "3001",
         TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+        TELEGRAM_BOT_APP_SHORT_NAME: "playground",
         TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
         PROFILE_REPO_MODE: "memory",
       }),
@@ -91,7 +93,7 @@ describe("POST /api/profiles", () => {
     expect(response.json()).toEqual({
       button: {
         text: "Open Playground",
-        url: "https://t.me/sgt_playground_bot/app?startapp=profile-onboarding",
+        url: "https://t.me/sgt_playground_bot/playground?startapp=profile-onboarding",
       },
     });
   });
@@ -101,6 +103,7 @@ describe("POST /api/profiles", () => {
       env: readEnv({
         APP_PORT: "3001",
         TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+        TELEGRAM_BOT_APP_SHORT_NAME: "playground",
         TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
         SUPABASE_URL: "https://example.supabase.co",
         SUPABASE_SERVICE_ROLE_KEY: "service-role-key",
@@ -143,6 +146,7 @@ describe("POST /api/profiles", () => {
       env: readEnv({
         APP_PORT: "3001",
         TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+        TELEGRAM_BOT_APP_SHORT_NAME: "playground",
         TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
         PROFILE_REPO_MODE: "supabase",
         SUPABASE_URL: "https://example.supabase.co",
@@ -214,6 +218,7 @@ describe("POST /api/profiles", () => {
       env: readEnv({
         APP_PORT: "3001",
         TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+        TELEGRAM_BOT_APP_SHORT_NAME: "playground",
         TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
         PROFILE_REPO_MODE: "memory",
       }),
@@ -240,6 +245,7 @@ describe("POST /api/profiles", () => {
       env: readEnv({
         APP_PORT: "3001",
         TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+        TELEGRAM_BOT_APP_SHORT_NAME: "playground",
         TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
         PROFILE_REPO_MODE: "memory",
       }),

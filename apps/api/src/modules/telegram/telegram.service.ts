@@ -7,7 +7,7 @@ import {
 export function buildWelcomeButton(env: AppEnv) {
   return {
     text: "Open Playground",
-    url: `https://t.me/${env.telegramBotUsername}/app?startapp=profile-onboarding`,
+    url: `https://t.me/${env.telegramBotUsername}/${env.telegramBotAppShortName}?startapp=profile-onboarding`,
   };
 }
 
