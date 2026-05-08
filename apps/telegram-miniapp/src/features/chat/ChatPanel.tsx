@@ -239,23 +239,6 @@ export function ChatPanel({
         </div>
         <p className="panel-description">{bot.description}</p>
       </header>
-      {supportsDocumentWizardReportFlow ? (
-        <section className="workspace-strip">
-          <UploadPanel
-            disabled={submittingReport}
-            file={documentFile}
-            onFileSelect={handleFileSelect}
-          />
-          <DocumentWizardForm
-            disabled={submittingReport}
-            onSubmit={handleDocumentWizardSubmit}
-          />
-          <div className="workspace-feedback">
-            {reportStatus ? <p className="success-banner">{reportStatus}</p> : null}
-            {documentError ? <p role="alert" className="alert-banner">{documentError}</p> : null}
-          </div>
-        </section>
-      ) : null}
       <div className="message-stack">
         {messages.map((message) => (
           <article className={message.role === "assistant" ? "message-card is-assistant" : "message-card is-user"} key={message.id}>
@@ -297,6 +280,23 @@ export function ChatPanel({
           Send message
         </button>
       </form>
+      {supportsDocumentWizardReportFlow ? (
+        <section className="workspace-strip">
+          <UploadPanel
+            disabled={submittingReport}
+            file={documentFile}
+            onFileSelect={handleFileSelect}
+          />
+          <DocumentWizardForm
+            disabled={submittingReport}
+            onSubmit={handleDocumentWizardSubmit}
+          />
+          <div className="workspace-feedback">
+            {reportStatus ? <p className="success-banner">{reportStatus}</p> : null}
+            {documentError ? <p role="alert" className="alert-banner">{documentError}</p> : null}
+          </div>
+        </section>
+      ) : null}
     </section>
   );
 }

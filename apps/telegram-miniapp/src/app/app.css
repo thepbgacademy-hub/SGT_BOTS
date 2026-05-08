@@ -941,30 +941,65 @@ h2 {
   }
 
   .menu-artboard {
-    aspect-ratio: 1 / 1.12;
+    aspect-ratio: 1792 / 1024;
+    max-width: 430px;
+    margin: 0 auto;
   }
 
   .hex-menu-button {
-    padding: 0.45rem;
-  }
-
-  .hex-menu-button--top-left,
-  .hex-menu-button--bottom-left {
-    padding-left: 4.15rem;
-  }
-
-  .hex-menu-button--middle-left {
-    padding-left: 3.7rem;
-  }
-
-  .hex-menu-button--top-right,
-  .hex-menu-button--middle-right,
-  .hex-menu-button--bottom-right {
-    padding-right: 3.7rem;
+    justify-content: center;
+    text-align: center;
+    padding: 0.2rem 0.4rem;
   }
 
   .hex-menu-button__name {
-    font-size: clamp(0.7rem, 2.35vw, 1rem);
-    letter-spacing: 0.04em;
+    width: 100%;
+    font-size: clamp(0.95rem, 3vw, 1.2rem);
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+  }
+
+  .hex-menu-button--top-left {
+    inset: 8.5% auto auto 6.2%;
+    width: 31%;
+    height: 24%;
+  }
+
+  .hex-menu-button--middle-left {
+    inset: 37.2% auto auto 0.9%;
+    width: 30%;
+    height: 23%;
+  }
+
+  .hex-menu-button--bottom-left {
+    inset: 68.5% auto auto 5.8%;
+    width: 31%;
+    height: 23%;
+  }
+
+  .hex-menu-button--top-right {
+    inset: 8.5% 5.8% auto auto;
+    width: 31%;
+    height: 24%;
+  }
+
+  .hex-menu-button--middle-right {
+    inset: 37.2% 1.5% auto auto;
+    width: 30%;
+    height: 23%;
+  }
+
+  .hex-menu-button--bottom-right {
+    inset: 68.5% 5.5% auto auto;
+    width: 31%;
+    height: 23%;
+  }
+
+  .workspace-shell .message-stack {
+    min-height: 220px;
+  }
+
+  .workspace-shell .chat-panel {
+    gap: 1rem;
   }
 }

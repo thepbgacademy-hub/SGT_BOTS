@@ -35,6 +35,26 @@ export function readTelegramInitData(search: string) {
   return params.get("tgInitData") || window.Telegram?.WebApp?.initData || "";
 }
 
+export async function waitForTelegramInitData(input: {
+  search: string;
+  timeoutMs?: number;
+  pollIntervalMs?: number;
+}) {
+  const timeoutMs = input.timeoutMs ?? 3_000;
+  const pollIntervalMs = input.pollIntervalMs ?? 100;
+  const startedAt = Date.now();
+  let initData = readTelegramInitData(input.search);
+
+  while (!initData && Date.now() - startedAt < timeoutMs) {
+    await new Promise((resolve) => {
+      setTimeout(resolve, pollIntervalMs);
+    });
+    initData = readTelegramInitData(input.search);
+  }
+
+  return initData;
+}
+
 export async function fetchLaunchContext(initData: string): Promise<LaunchContext> {
   const launchResponse = await fetch(
     `/api/telegram/launch?initData=${encodeURIComponent(initData)}`,

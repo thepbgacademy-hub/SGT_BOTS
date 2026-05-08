@@ -5,6 +5,7 @@ import {
   fetchLaunchContext,
   initializeTelegramWebApp,
   readTelegramInitData,
+  waitForTelegramInitData,
   type LaunchContext,
 } from "../lib/telegram";
 
@@ -18,8 +19,20 @@ export function App() {
   const [initData, setInitData] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+
     initializeTelegramWebApp();
-    setInitData(readTelegramInitData(window.location.search));
+    void waitForTelegramInitData({
+      search: window.location.search,
+    }).then((nextInitData) => {
+      if (!cancelled) {
+        setInitData(nextInitData || readTelegramInitData(window.location.search));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

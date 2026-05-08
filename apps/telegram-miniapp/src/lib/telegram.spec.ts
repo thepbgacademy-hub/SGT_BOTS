@@ -3,6 +3,7 @@ import {
   fetchLaunchContext,
   initializeTelegramWebApp,
   readTelegramInitData,
+  waitForTelegramInitData,
 } from "./telegram";
 
 afterEach(() => {
@@ -50,6 +51,31 @@ describe("telegram helpers", () => {
 
     expect(ready).toHaveBeenCalledTimes(1);
     expect(expand).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits briefly for Telegram runtime initData to appear", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("window", {
+      Telegram: {
+        WebApp: {},
+      },
+    } as unknown as Window & typeof globalThis);
+
+    const pending = waitForTelegramInitData({
+      search: "",
+      timeoutMs: 500,
+      pollIntervalMs: 50,
+    });
+
+    setTimeout(() => {
+      if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.initData = "delayed-runtime-data";
+      }
+    }, 100);
+
+    await vi.advanceTimersByTimeAsync(150);
+
+    await expect(pending).resolves.toBe("delayed-runtime-data");
   });
 
   it("builds launch context from the launch and prefill endpoints", async () => {
