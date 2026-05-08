@@ -3,6 +3,7 @@ import { DashboardShell } from "../features/dashboard/DashboardShell";
 import { OnboardingPage } from "../features/onboarding/OnboardingPage";
 import {
   fetchLaunchContext,
+  initializeTelegramWebApp,
   readTelegramInitData,
   type LaunchContext,
 } from "../lib/telegram";
@@ -14,13 +15,20 @@ export function App() {
     preferredName: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const initData = readTelegramInitData(window.location.search);
+  const [initData, setInitData] = useState("");
+
+  useEffect(() => {
+    initializeTelegramWebApp();
+    setInitData(readTelegramInitData(window.location.search));
+  }, []);
 
   useEffect(() => {
     if (!initData) {
       setError("Telegram launch data is required.");
       return;
     }
+
+    setError(null);
 
     let cancelled = false;
 

@@ -13,9 +13,26 @@ export type LaunchContext = {
   };
 };
 
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: {
+        initData?: string;
+        ready?: () => void;
+        expand?: () => void;
+      };
+    };
+  }
+}
+
+export function initializeTelegramWebApp() {
+  window.Telegram?.WebApp?.ready?.();
+  window.Telegram?.WebApp?.expand?.();
+}
+
 export function readTelegramInitData(search: string) {
   const params = new URLSearchParams(search);
-  return params.get("tgInitData") || "";
+  return params.get("tgInitData") || window.Telegram?.WebApp?.initData || "";
 }
 
 export async function fetchLaunchContext(initData: string): Promise<LaunchContext> {

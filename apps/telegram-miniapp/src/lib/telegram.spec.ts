@@ -1,9 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchLaunchContext, readTelegramInitData } from "./telegram";
+import {
+  fetchLaunchContext,
+  initializeTelegramWebApp,
+  readTelegramInitData,
+} from "./telegram";
 
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  Reflect.deleteProperty(globalThis, "window");
 });
 
 describe("telegram helpers", () => {
@@ -11,6 +16,40 @@ describe("telegram helpers", () => {
     expect(readTelegramInitData("?tgInitData=signed-data&foo=bar")).toBe(
       "signed-data",
     );
+  });
+
+  it("falls back to Telegram WebApp initData when no query param exists", () => {
+    vi.stubGlobal("window", {
+      Telegram: {
+        WebApp: {
+          initData: "runtime-signed-data",
+        },
+      },
+    });
+
+    expect(readTelegramInitData("")).toBe("runtime-signed-data");
+  });
+
+  it("initializes the Telegram WebApp shell when available", () => {
+    const ready = vi.fn();
+    const expand = vi.fn();
+    vi.stubGlobal("window", {
+      WebApp: {
+        ready,
+        expand,
+      },
+      Telegram: {
+        WebApp: {
+          ready,
+          expand,
+        },
+      },
+    } as unknown as Window & typeof globalThis);
+
+    initializeTelegramWebApp();
+
+    expect(ready).toHaveBeenCalledTimes(1);
+    expect(expand).toHaveBeenCalledTimes(1);
   });
 
   it("builds launch context from the launch and prefill endpoints", async () => {
