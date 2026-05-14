@@ -128,6 +128,28 @@ describe("Telegram bot runtime", () => {
     expect(sendMessage).toHaveBeenCalledTimes(1);
   });
 
+  it("ignores /start in private chats", async () => {
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+
+    await handleTelegramUpdate({
+      env,
+      sendMessage,
+      update: {
+        update_id: 1,
+        message: {
+          message_id: 99,
+          chat: {
+            id: 12345,
+            type: "private",
+          },
+          text: "/start",
+        },
+      },
+    });
+
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
   it("polls updates and advances the offset", async () => {
     const fetchMock = vi
       .fn()
@@ -194,7 +216,7 @@ describe("Telegram bot runtime", () => {
       }),
     );
     expect(nextOffset).toBe(8);
-    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).not.toHaveBeenCalled();
   });
 
   it("clears any existing webhook before polling mode is used", async () => {

@@ -252,7 +252,9 @@ describe("bot runtime routes", () => {
     expect(documentResponse.statusCode).toBe(200);
     expect(documentResponse.json()).toMatchObject({
       botId: "document_wizard",
-      output: expect.stringContaining("Upload a PDF or paste your notes"),
+      output: expect.stringContaining(
+        "does not look like a credit-bureau dispute request yet",
+      ),
       citations: [],
       conversation: {
         botId: "document_wizard",

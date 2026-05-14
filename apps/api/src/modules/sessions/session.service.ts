@@ -195,6 +195,34 @@ export function createSessionService(deps: {
         status: "allowed",
       };
     },
+    async getProviderSecretForUser(input: {
+      sessionId: string;
+      userId: string;
+    }) {
+      const details = await getStoredSession(input.sessionId);
+
+      if (details.session.user_id !== input.userId) {
+        throw new Error("session not found");
+      }
+
+      if (details.session.status !== "active") {
+        throw new Error("session invalidated");
+      }
+
+      const expiresAtMs = new Date(details.session.ends_at).getTime();
+
+      if (now() >= expiresAtMs) {
+        throw new Error("session expired");
+      }
+
+      const secret = secretStore.get(details.session.id);
+
+      if (!secret) {
+        throw new Error("session secret unavailable");
+      }
+
+      return secret;
+    },
   };
 }
 

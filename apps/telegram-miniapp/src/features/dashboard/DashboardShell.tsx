@@ -4,6 +4,17 @@ import {
   type ArtifactListItem,
 } from "../artifacts/ArtifactList";
 import { ChatPanel, type ChatMessage } from "../chat/ChatPanel";
+import {
+  EMPTY_CURSIVE_CREDIT_DISPUTE_INTAKE,
+  getCoherentCursiveGenerationState,
+  isCursiveCreditDisputeIntakeComplete,
+  isCursiveOfficialCategory,
+  type CursiveCreditDisputeIntake,
+  type CursiveGenerationHandoffState,
+} from "../cursive/CursiveIntakeWizard";
+import {
+  type CursiveCategorySlug,
+} from "../cursive/CursiveCategoryPicker";
 import { ProviderConnectPanel } from "../onboarding/ProviderConnectPanel";
 import { BotSupportPanel } from "./BotSupportPanel";
 import { formatRemaining } from "../../lib/timer";
@@ -32,6 +43,49 @@ type DashboardShellProps = {
 
 const DEFAULT_REVIEW_GROUP_URL = "https://t.me/your_review_group";
 
+type CursiveWorkspaceState = {
+  generationState: CursiveGenerationHandoffState;
+  intake: CursiveCreditDisputeIntake;
+  intakeStarted: boolean;
+  previewError: string | null;
+  previewHtml: string | null;
+  previewIsStale: boolean;
+  previewPortalText: string | null;
+  previewSnapshot: CursivePreviewSnapshot | null;
+  previewStatus: "idle" | "loading" | "ready";
+  previewToken: string | null;
+  selectedCategory: CursiveCategorySlug | null;
+};
+
+type CursivePreviewSnapshot = {
+  categorySlug: "credit_bureau_dispute";
+  generatedDate: string;
+  consumerName: string;
+  consumerAddressLines: string[];
+  bureauName: string;
+  bureauAddressLines: string[];
+  subjectLine: string;
+  salutation: string;
+  bodyParagraphs: string[];
+  closing: string;
+  citations: string[];
+  portalText: string;
+};
+
+const EMPTY_CURSIVE_WORKSPACE_STATE: CursiveWorkspaceState = {
+  generationState: "idle",
+  intake: EMPTY_CURSIVE_CREDIT_DISPUTE_INTAKE,
+  intakeStarted: false,
+  previewError: null,
+  previewHtml: null,
+  previewIsStale: false,
+  previewPortalText: null,
+  previewSnapshot: null,
+  previewStatus: "idle",
+  previewToken: null,
+  selectedCategory: null,
+};
+
 export function DashboardShell({
   initData,
   preferredName,
@@ -44,6 +98,7 @@ export function DashboardShell({
   const [botError, setBotError] = useState<string | null>(null);
   const [selectedMenuBotId, setSelectedMenuBotId] = useState<PlaygroundMenuBotId | null>(null);
   const [artifacts, setArtifacts] = useState<ArtifactListItem[]>([]);
+  const [artifactError, setArtifactError] = useState<string | null>(null);
   const [remainingCountdownSeconds, setRemainingCountdownSeconds] = useState<number | null>(
     null,
   );
@@ -56,6 +111,9 @@ export function DashboardShell({
       }
     >
   >({});
+  const [cursiveWorkspace, setCursiveWorkspace] = useState<CursiveWorkspaceState>(
+    EMPTY_CURSIVE_WORKSPACE_STATE,
+  );
   const reviewPromptRequestKeyRef = useRef<string | null>(null);
   const forceSessionExpiry = useMemo(
     () =>
@@ -112,6 +170,35 @@ export function DashboardShell({
   const selectedWorkspacePanel = selectedBot
     ? getBotWorkspacePanel(selectedBot.id)
     : null;
+  const isCursiveWorkspace = selectedBot?.id === "document_wizard";
+  const workspaceFocusLabel = isCursiveWorkspace
+    ? "Category-First Intake"
+    : (selectedWorkspacePanel?.focusLabel ?? "Function");
+  const workspaceMission = isCursiveWorkspace
+    ? "Open with a category, complete the official intake, and use helper chat only as support."
+    : (selectedWorkspacePanel?.mission ?? selectedMenuItem?.description ?? "");
+  const workspaceWorkflowTitle = isCursiveWorkspace
+    ? "Inside Phase C1:"
+    : selectedWorkspacePanel?.workflowTitle;
+  const workspaceWorkflowSteps = isCursiveWorkspace
+    ? [
+        "choose a Cursive category first",
+        "complete the required official intake fields",
+        "generate the preview from official intake",
+        "refresh the preview after edits before relying on document outputs",
+      ]
+    : (selectedWorkspacePanel?.workflowSteps ?? []);
+  const workspaceSupportTitle = isCursiveWorkspace
+    ? "Intake guardrails"
+    : selectedWorkspacePanel?.supportTitle;
+  const workspaceSupportItems = isCursiveWorkspace
+    ? [
+        "official intake remains the source of truth",
+        "preview stays locked until required fields are complete",
+        "a stale preview stays visible, but it no longer reflects the latest intake",
+        "refresh the preview after edits before relying on document outputs",
+      ]
+    : (selectedWorkspacePanel?.supportItems ?? []);
 
   useEffect(() => {
     if (!activeSessionId || !sessionToken) {
@@ -159,6 +246,7 @@ export function DashboardShell({
   useEffect(() => {
     setArtifacts([]);
     setConversations({});
+    setCursiveWorkspace(EMPTY_CURSIVE_WORKSPACE_STATE);
     setSelectedMenuBotId(null);
   }, [activeSessionId, sessionToken]);
 
@@ -262,6 +350,82 @@ export function DashboardShell({
 
   const selectedBotIsLive = Boolean(selectedBot && selectedMenuBotId);
 
+  useEffect(() => {
+    if (!activeSessionId || !sessionToken) {
+      return;
+    }
+
+    const currentSessionId = activeSessionId;
+    let cancelled = false;
+
+    async function refreshArtifacts() {
+      try {
+        const response = await fetch(
+          `/api/reports/artifacts?sessionId=${encodeURIComponent(currentSessionId)}`,
+          {
+            headers: {
+              authorization: `Bearer ${sessionToken}`,
+            },
+          },
+        );
+        const payload = (await response.json()) as {
+          artifacts?: Array<{
+            artifactType: "pdf";
+            botId: string;
+            createdAt: string;
+            downloadUrl: string | null;
+            failureReason: string | null;
+            fileName: string;
+            generatedAt: string;
+            id: string;
+            originalFilename: string;
+            status: "queued" | "ready" | "failed";
+          }>;
+        };
+
+        if (!response.ok || !payload.artifacts || cancelled) {
+          if (!cancelled) {
+            setArtifactError("Unable to refresh artifact status.");
+          }
+          return;
+        }
+
+        setArtifactError(null);
+        setArtifacts(
+          payload.artifacts.map((artifact) => ({
+            artifactType: artifact.artifactType,
+            botName:
+              bots.find((bot) => bot.id === artifact.botId)?.name ?? artifact.botId,
+            createdAt: artifact.createdAt,
+            downloadUrl: artifact.downloadUrl,
+            failureReason: artifact.failureReason,
+            fileName: artifact.fileName,
+            generatedAt: artifact.generatedAt,
+            id: artifact.id,
+            originalFilename: artifact.originalFilename,
+            status: artifact.status,
+          })),
+        );
+      } catch {
+        if (cancelled) {
+          return;
+        }
+
+        setArtifactError("Unable to refresh artifact status.");
+      }
+    }
+
+    void refreshArtifacts();
+    const intervalId = window.setInterval(() => {
+      void refreshArtifacts();
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [activeSessionId, bots, sessionToken]);
+
   async function handleEndPlayground() {
     if (!activeSessionId || !sessionToken) {
       return;
@@ -319,14 +483,163 @@ export function DashboardShell({
     setSelectedMenuBotId(null);
   }
 
+  function handleCursiveCategoryChange(category: CursiveCategorySlug) {
+    setCursiveWorkspace((currentWorkspace) => ({
+      ...currentWorkspace,
+      generationState: getCoherentCursiveGenerationState(
+        category,
+        currentWorkspace.intake,
+      ),
+      intakeStarted:
+        category === currentWorkspace.selectedCategory
+          ? currentWorkspace.intakeStarted
+          : false,
+      previewError: null,
+      previewHtml:
+        category === currentWorkspace.selectedCategory
+          ? currentWorkspace.previewHtml
+          : null,
+      previewIsStale:
+        category === currentWorkspace.selectedCategory
+          ? currentWorkspace.previewIsStale
+          : false,
+      previewStatus:
+        category === currentWorkspace.selectedCategory
+          ? currentWorkspace.previewStatus
+          : "idle",
+      previewPortalText:
+        category === currentWorkspace.selectedCategory
+          ? currentWorkspace.previewPortalText
+          : null,
+      previewSnapshot:
+        category === currentWorkspace.selectedCategory
+          ? currentWorkspace.previewSnapshot
+          : null,
+      previewToken:
+        category === currentWorkspace.selectedCategory
+          ? currentWorkspace.previewToken
+          : null,
+      selectedCategory: category,
+    }));
+  }
+
+  function handleCursiveIntakeStart() {
+    setCursiveWorkspace((currentWorkspace) => ({
+      ...currentWorkspace,
+      intakeStarted: true,
+    }));
+  }
+
+  function handleCursiveIntakeChange(
+    field: keyof CursiveCreditDisputeIntake,
+    value: string,
+  ) {
+    setCursiveWorkspace((currentWorkspace) => {
+      const nextIntake = {
+        ...currentWorkspace.intake,
+        [field]: value,
+      };
+
+      return {
+        ...currentWorkspace,
+        generationState: getCoherentCursiveGenerationState(
+          currentWorkspace.selectedCategory,
+          nextIntake,
+        ),
+        previewError: null,
+        intake: nextIntake,
+        previewIsStale:
+          currentWorkspace.previewHtml !== null ||
+          currentWorkspace.previewPortalText !== null,
+      };
+    });
+  }
+
+  async function handleCursiveGenerate() {
+    if (
+      !sessionToken ||
+      !selectedBot ||
+      !session ||
+      !isCursiveOfficialCategory(cursiveWorkspace.selectedCategory) ||
+      !isCursiveCreditDisputeIntakeComplete(cursiveWorkspace.intake)
+    ) {
+      return;
+    }
+
+    setCursiveWorkspace((currentWorkspace) => ({
+      ...currentWorkspace,
+      previewError: null,
+      previewStatus: "loading",
+    }));
+
+    try {
+      const response = await fetch(
+        "/api/reports/cursive/credit-bureau-dispute/preview",
+        {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${sessionToken}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            sessionId: session.id,
+            botId: selectedBot.id,
+            intake: cursiveWorkspace.intake,
+          }),
+        },
+      );
+      const payload = (await response.json()) as {
+          html?: string;
+          message?: string;
+          portalText?: string;
+          previewSnapshot?: CursivePreviewSnapshot;
+          previewToken?: string;
+        };
+
+      if (
+        !response.ok ||
+        !payload.html ||
+        !payload.previewSnapshot ||
+        !payload.previewToken
+      ) {
+        setCursiveWorkspace((currentWorkspace) => ({
+          ...currentWorkspace,
+          previewError: payload.message ?? "Unable to generate the Cursive preview right now.",
+          previewStatus: "idle",
+        }));
+        return;
+      }
+
+      setCursiveWorkspace((currentWorkspace) => ({
+        ...currentWorkspace,
+        generationState: getCoherentCursiveGenerationState(
+          currentWorkspace.selectedCategory,
+          currentWorkspace.intake,
+        ),
+        previewError: null,
+        previewHtml: payload.html ?? null,
+        previewIsStale: false,
+        previewPortalText: payload.portalText ?? null,
+        previewSnapshot: payload.previewSnapshot ?? null,
+        previewStatus: "ready",
+        previewToken: payload.previewToken ?? null,
+      }));
+    } catch {
+      setCursiveWorkspace((currentWorkspace) => ({
+        ...currentWorkspace,
+        previewError: "Unable to generate the Cursive preview right now.",
+        previewStatus: "idle",
+      }));
+    }
+  }
+
   return (
     <main className="app-shell app-shell--dashboard">
       <header className="dashboard-topbar panel">
         <div>
-          <p className="eyebrow">Playground</p>
+          <p className="eyebrow">PBG Playground</p>
           <h1>{preferredName}, your dashboard is ready</h1>
         </div>
-        <div className="topbar-badge">Secure session workspace</div>
       </header>
       {reviewPrompt ? <SessionEndModal prompt={reviewPrompt} /> : null}
       {isSessionActive && sessionToken && !reviewPrompt ? (
@@ -354,6 +667,7 @@ export function DashboardShell({
             </div>
           </section>
           {botError ? <p role="alert" className="alert-banner">{botError}</p> : null}
+          {artifactError ? <p role="alert" className="alert-banner">{artifactError}</p> : null}
           {selectedMenuItem ? (
             selectedBotIsLive ? (
               <section className="workspace-shell workspace-shell--active">
@@ -362,29 +676,16 @@ export function DashboardShell({
                   className="workspace-shell-image"
                   src="/images/bot-dashboard.png"
                 />
-                <div className="workspace-shell-overlay workspace-shell-overlay--top workspace-shell-overlay--top-enter">
-                  <div className="workspace-title-block">
-                    <p className="eyebrow">Active Assistant</p>
-                    <h2>{selectedMenuItem.displayName}</h2>
-                    <p className="panel-description">{selectedMenuItem.description}</p>
-                  </div>
-                </div>
                 <div className="workspace-shell-overlay workspace-shell-overlay--sidebar-top workspace-shell-overlay--sidebar-top-enter">
                   <div className="workspace-side-card">
-                    <p className="eyebrow">
-                      {selectedWorkspacePanel?.focusLabel ?? "Function"}
-                    </p>
+                    <p className="eyebrow">{workspaceFocusLabel}</p>
                     <h3>{selectedMenuItem.displayName}</h3>
-                    <p className="muted-copy">
-                      {selectedWorkspacePanel?.mission ?? selectedMenuItem.description}
-                    </p>
-                    {selectedWorkspacePanel ? (
+                    <p className="muted-copy">{workspaceMission}</p>
+                    {workspaceWorkflowTitle ? (
                       <div className="workspace-guidance">
-                        <p className="workspace-guidance__title">
-                          {selectedWorkspacePanel.workflowTitle}
-                        </p>
+                        <p className="workspace-guidance__title">{workspaceWorkflowTitle}</p>
                         <ul className="workspace-guidance__list">
-                          {selectedWorkspacePanel.workflowSteps.map((step) => (
+                          {workspaceWorkflowSteps.map((step) => (
                             <li key={step}>{step}</li>
                           ))}
                         </ul>
@@ -393,7 +694,50 @@ export function DashboardShell({
                   </div>
                 </div>
                 <div className="workspace-shell-overlay workspace-shell-overlay--sidebar-bottom workspace-shell-overlay--sidebar-bottom-enter">
-                  {selectedMenuBotId ? (
+                  {isCursiveWorkspace ? (
+                    <div className="workspace-side-card">
+                      <p className="eyebrow">Workflow Support</p>
+                      <h3>{workspaceSupportTitle}</h3>
+                      <ul className="support-panel-list">
+                        {workspaceSupportItems.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                      {artifacts.filter(
+                        (artifact) => artifact.botName === selectedMenuItem.displayName,
+                      ).length ? (
+                        <ul className="artifact-list">
+                          {artifacts
+                            .filter(
+                              (artifact) => artifact.botName === selectedMenuItem.displayName,
+                            )
+                            .map((artifact) => (
+                              <li className="artifact-card" key={artifact.id}>
+                                <p className="artifact-title">{artifact.fileName}</p>
+                                <p className="artifact-meta">
+                                  {artifact.botName} - {artifact.status}
+                                </p>
+                                <p className="artifact-source">
+                                  Source: {artifact.originalFilename}
+                                </p>
+                                {artifact.failureReason ? (
+                                  <p className="alert-banner">{artifact.failureReason}</p>
+                                ) : null}
+                                {artifact.downloadUrl ? (
+                                  <p className="artifact-actions">
+                                    <a className="secondary-button" href={artifact.downloadUrl}>
+                                      Download PDF
+                                    </a>
+                                  </p>
+                                ) : null}
+                              </li>
+                            ))}
+                        </ul>
+                      ) : (
+                        <p className="muted-copy">No saved outputs in this workspace yet.</p>
+                      )}
+                    </div>
+                  ) : selectedMenuBotId ? (
                     <BotSupportPanel
                       artifacts={artifacts.filter(
                         (artifact) => artifact.botName === selectedMenuItem.displayName,
@@ -407,7 +751,21 @@ export function DashboardShell({
                     key={selectedBot?.id ?? "no-bot-selected"}
                     bot={selectedBot}
                     conversationId={selectedConversation?.conversationId}
+                    cursiveIntake={cursiveWorkspace.intake}
+                    cursiveIntakeStarted={cursiveWorkspace.intakeStarted}
+                    cursivePreviewError={cursiveWorkspace.previewError}
+                    cursivePreviewHtml={cursiveWorkspace.previewHtml}
+                    cursivePreviewIsStale={cursiveWorkspace.previewIsStale}
+                    cursivePreviewPortalText={cursiveWorkspace.previewPortalText}
+                    cursivePreviewSnapshot={cursiveWorkspace.previewSnapshot}
+                    cursivePreviewToken={cursiveWorkspace.previewToken}
+                    isGeneratingCursivePreview={
+                      cursiveWorkspace.previewStatus === "loading"
+                    }
                     messages={selectedConversation?.messages ?? []}
+                    onCursiveCategoryChange={handleCursiveCategoryChange}
+                    onCursiveGenerate={handleCursiveGenerate}
+                    onCursiveIntakeChange={handleCursiveIntakeChange}
                     onArtifactQueued={(artifact) => {
                       setArtifacts((currentArtifacts) => [
                         artifact,
@@ -429,6 +787,8 @@ export function DashboardShell({
                         },
                       }));
                     }}
+                    onStartCursiveIntake={handleCursiveIntakeStart}
+                    selectedCursiveCategory={cursiveWorkspace.selectedCategory}
                     sessionId={session.id}
                     sessionToken={sessionToken}
                   />

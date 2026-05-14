@@ -12,6 +12,27 @@ const VALID_INIT_DATA = createSignedTelegramInitData({
   },
 });
 
+async function unlockCursiveDocumentLane(
+  page: Parameters<typeof test>[0]["page"],
+) {
+  await page.getByRole("button", { name: "Credit Bureau Dispute" }).click();
+  await page.getByRole("button", { name: "Start official letter" }).click();
+  await page.getByLabel("Consumer name").fill("Ada Lovelace");
+  await page.getByLabel("Credit bureau").selectOption("experian");
+  await page.getByLabel("Mailing address").fill("123 Example Street");
+  await page.getByLabel("Account reference").fill("ACCT-42");
+  await page.getByLabel("Dispute reason").fill(
+    "This account is being reported inaccurately.",
+  );
+  await page.getByRole("button", { name: "Generate dispute letter" }).click();
+  await expect(
+    page.getByRole("button", { name: "Refresh preview" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Credit Bureau Dispute Letter" }),
+  ).toBeVisible();
+}
+
 test("provider session unlocks the menu and selected bots stay in their own lanes", async ({
   page,
 }) => {
@@ -44,13 +65,21 @@ test("provider session unlocks the menu and selected bots stay in their own lane
   await page.getByRole("button", { name: "Cursive" }).click();
   await expect(
     page.getByRole("button", { name: "Upload PDF" }),
+  ).toHaveCount(0);
+
+  await unlockCursiveDocumentLane(page);
+
+  await expect(
+    page.getByRole("button", { name: "Save PDF draft" }),
   ).toBeVisible();
 
   await page.getByLabel("Chat input").fill("Draft a launch brief for tomorrow.");
   await page.getByRole("button", { name: "Send message" }).click();
 
   await expect(
-    page.getByText("Upload a PDF or paste your notes and I will shape the final report flow for you."),
+    page.getByText(
+      "does not look like a credit-bureau dispute request yet",
+    ),
   ).toBeVisible();
   await expect(page.getByText("Release Review Runbook")).not.toBeVisible();
 });

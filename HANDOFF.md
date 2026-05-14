@@ -4,80 +4,58 @@
 
 - Working repo: `E:\REPOS\SGT_BOTS`
 - Active branch: `main`
-- GitHub remotes:
-  - source repo: `thepbgacademy-hub/SGT_BOTS`
-  - deployment repo push target used in this session: `thepbgacademy-hub/SGT_BOTS_APP`
+- Source repo: `https://github.com/thepbgacademy-hub/SGT_BOTS`
+- Deployment repo: `https://github.com/thepbgacademy-hub/SGT_BOTS_APP`
 
-## Current Build State
+## Live State
 
-- MVP backend is working
-- local browser preview is working
-- the mini app opens to the approved hex-image `MainMenu`
-- the bot workspace uses the approved gold dashboard frame
-- the menu is data-driven from the authenticated bot catalog
-- bot-aware side panels and motion polish are in place
+- `https://playground.spyderbyte.cloud` loads inside Telegram
+- backend health and VPS proxy wiring are working
+- Telegram launch, profile creation, and provider validation are working
+- VPS self-hosted Supabase schema has been applied manually through `006`
 
-## Supabase
+## Current Product Focus
 
-- table: `public.playground_bot_registry`
-- local migration: `supabase/migrations/006_playground_bot_registry.sql`
-- remote RLS: enabled
-- remote policy: `Authenticated users can read the playground bot registry`
+- Telegram playground menu alignment is now good enough to move forward
+- each menu hex opens the correct bot workflow in the live Telegram mini app
+- current focus has shifted to `Cursive` as the first real workflow bot
+- Cursive now has a written design spec and implementation plan in the repo:
+  - `docs\superpowers\specs\2026-05-08-cursive-playground-design.md`
+  - `docs\superpowers\plans\2026-05-08-cursive-playground-v1-implementation.md`
 
-## Published Images
+## Next Verification
 
-- frontend: `ghcr.io/thepbgacademy-hub/sgt-bots-app-frontend:latest`
-- backend: `ghcr.io/thepbgacademy-hub/sgt-bots-app-backend:latest`
+- decide execution mode for the Cursive implementation plan
+- begin with Cursive `credit bureau dispute` as the first full category
+- preserve helper-only chat while moving official draft generation to structured intake + review + PDF render
 
-## VPS Deployment Reality
+## Known Remaining Gaps
 
-- the VPS already has an existing proxy container: `supabase-caddy`
-- do **not** deploy a second Caddy container on this VPS
-- ports `80/443` must remain with the existing proxy
+- chat behavior across bots is still scaffolded/stubbed and not the final prompt/guardrail/workflow layer
+- Cursive still needs its category engine, Supabase-backed template data, and review pipeline implemented
+- most tables besides `playground_bot_registry` still need proper RLS/policies before broader rollout
 
-## VPS Deployment Files
+## Important Runtime Notes
 
-- app-only compose file: `docker-compose.vps.yml`
-- frontend container: `Dockerfile.frontend`
-- backend container: `Dockerfile.backend`
-- existing-proxy site block reference: `Caddyfile`
-- frontend nginx config: `apps/telegram-miniapp/nginx.conf`
+- backend container env must include:
+  - `TELEGRAM_BOT_TOKEN`
+  - `TELEGRAM_BOT_USERNAME=PBGbigkitty_bot`
+  - `TELEGRAM_BOT_RUNTIME_MODE=polling`
+  - `TELEGRAM_BOT_APP_SHORT_NAME=playground`
+  - `SUPABASE_URL=http://kong:8000`
+  - self-hosted `SUPABASE_SERVICE_ROLE_KEY`
+- frontend image is served through the existing `supabase-caddy` proxy on `playground.spyderbyte.cloud`
 
-## Correct VPS Deployment Model
+## Latest Frontend Verification
 
-- deploy only `2` app containers:
-  - `telegram-playground-frontend`
-  - `telegram-playground-backend`
-- both must join the shared external Docker network:
-  - `proxy`
-- the existing `supabase-caddy` instance should be updated with the site block from `Caddyfile`
-- routes in the existing proxy should be:
-  - `/` -> `telegram-playground-frontend:8080`
-  - `/api/*` -> `telegram-playground-backend:3000`
-  - `/health` -> `telegram-playground-backend:3000`
-
-## Important Deployment Notes
-
-- backend binds to `0.0.0.0` in `apps/api/src/index.ts`
-- backend runs from source with `tsx` in `Dockerfile.backend`; there is no compiled API `dist` output yet
-- backend requires `TELEGRAM_BOT_TOKEN` at runtime; `TELEGRAM_BOT_USERNAME` should also be set for the live bot identity
-- the welcome deep link also depends on `TELEGRAM_BOT_APP_SHORT_NAME`, which must match the Mini App short name configured in BotFather
-- Telegram chat handling is now opt-in with `TELEGRAM_BOT_RUNTIME_MODE=polling` on the backend container
-- do **not** commit the live Telegram token into the repo; set it only in the VPS/container environment
-- if the VPS does not already have the shared network, create it first:
-  - `docker network create proxy`
-
-## Immediate Next Step
-
-1. Ask the VPS portal to deploy only the frontend and backend containers from GHCR.
-2. Ask it to attach both containers to the existing shared `proxy` network.
-3. Ask it to add the `playground.spyderbyte.cloud` site block from `Caddyfile` to the existing `supabase-caddy`.
-4. Smoke test:
-  - `https://playground.spyderbyte.cloud/`
-  - `https://playground.spyderbyte.cloud/health`
-  - Telegram mini app launch flow
-
-## Verification Baseline
-
-- `corepack pnpm --filter ./apps/api lint`
+- `corepack pnpm --filter ./apps/telegram-miniapp lint`
 - `corepack pnpm --filter ./apps/telegram-miniapp build`
+
+## Current References
+
+- Design: `E:\REPOS\SGT_BOTS\docs\superpowers\specs\2026-05-05-telegram-playground-design.md`
+- Implementation plan: `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-05-telegram-playground-v1-implementation.md`
+- Cursive design: `E:\REPOS\SGT_BOTS\docs\superpowers\specs\2026-05-08-cursive-playground-design.md`
+- Cursive implementation plan: `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-08-cursive-playground-v1-implementation.md`
+- Tasks: `E:\REPOS\SGT_BOTS\TASKS.md`
+- VPS manual SQL bundle: `E:\REPOS\SGT_BOTS\vps-supabase-manual\`

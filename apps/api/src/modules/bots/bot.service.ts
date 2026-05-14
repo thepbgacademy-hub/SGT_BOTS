@@ -4,6 +4,10 @@ import {
 } from "../../../../../packages/shared/src/bots/manifests";
 import type { BotRegistryRepo } from "./bot-registry.repo";
 
+export function isStructuredBot(botId: string) {
+  return getBotManifest(botId)?.capabilities.structured_form ?? false;
+}
+
 export function createBotService(input: { registryRepo: BotRegistryRepo }) {
   return {
     async listCatalog(): Promise<BotCatalogEntry[]> {

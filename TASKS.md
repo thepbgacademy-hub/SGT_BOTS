@@ -2,8 +2,8 @@
 
 ## Active
 
-- [ ] **Push the branch to GitHub** - publish `codex/phase-0-foundation` when the remote is ready
-- [ ] **Choose the post-v1 milestone** - decide between deployment hardening, richer bot workflows, or conversion polish
+- [ ] **Execute Cursive v1 plan** - begin with the `credit bureau dispute` category using the written Cursive design and implementation plan
+- [ ] **Start real bot workflow layer** - replace scaffolded bot replies with prompts, guardrails, skills, and lane-specific behavior after menu alignment is approved
 
 ## Waiting On
 

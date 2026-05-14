@@ -40,11 +40,18 @@ tmp/
 .tmp/
 
 # Generated artifacts
-artifacts/
-uploads/
-reports/
+/artifacts/
+/\.runtime-artifacts/
+/apps/api/.runtime-artifacts/
+/uploads/
+/reports/
 test-results/
 playwright-report/
+
+# Local secrets
+/sudo_deploy.txt
+/wf_api_deploy_token.txt
+/wf_api_vault_key.txt
 
 # Local worktrees
 .worktrees/
