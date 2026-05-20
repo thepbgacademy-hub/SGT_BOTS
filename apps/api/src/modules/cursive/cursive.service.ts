@@ -241,6 +241,12 @@ export function createCursiveService(deps?: {
   }
 
   return {
+    getWorkflowEntry() {
+      return {
+        chatEnabled: false,
+        modes: ["manual_dispute", "analyze_uploaded_report"] as const,
+      };
+    },
     isHelperOnlyBot,
     buildCreditBureauDisputeHelperReply(userGoal: string) {
       const config = getDefaultConfig();
