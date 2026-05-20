@@ -1,6 +1,10 @@
 # Cursive Playground V1 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> Superseded on 2026-05-19 by `docs/superpowers/plans/2026-05-19-cursive-v2-redesign-implementation.md`.
+> This plan is fully replaced because the 2026-05-19 redesign changes Cursive architecture and scope.
+> Do not execute this plan for current Cursive work.
+
+> **Archived plan notice:** The agentic-worker instructions below are retained only as historical context. Do not use this plan, its tasks, or its execution guidance for current Cursive work.
 
 **Goal:** Build `Cursive` as a category-driven letter-generation bot inside the existing Telegram playground, starting with a complete `credit bureau dispute` workflow and expanding to the remaining letter categories behind the same intake, review, and HTML-to-PDF engine.
 
@@ -720,10 +724,8 @@ git commit -m "feat: expand cursive category catalog"
 
 ## Execution Handoff
 
-Plan complete and saved to `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-08-cursive-playground-v1-implementation.md`. Two execution options:
+Archived execution handoff only. This plan is superseded and must not be executed.
 
-**1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
+Use `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-redesign-implementation.md` for active Cursive implementation guidance.
 
-**2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
-
-**Which approach?**
+The execution options below are obsolete historical text and are not approved for current work.

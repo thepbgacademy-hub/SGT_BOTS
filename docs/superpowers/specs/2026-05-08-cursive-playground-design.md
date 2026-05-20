@@ -1,5 +1,9 @@
 # Cursive Playground Design
 
+> Superseded on 2026-05-19 by `docs/superpowers/specs/2026-05-19-cursive-v2-redesign.md`.
+> This document is fully replaced because the 2026-05-19 redesign changes Cursive architecture and scope.
+> Do not use this document as the active Cursive source of truth.
+
 ## Summary
 
 This document defines the v1 design for `Cursive`, the playground bot that helps users produce clear, concise, and accurate letters using structured intake, helper-only chat, approved citations, controlled addresses, and professional `8.5 x 11` HTML-to-PDF output.

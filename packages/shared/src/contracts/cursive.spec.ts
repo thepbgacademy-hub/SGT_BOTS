@@ -1,134 +1,94 @@
 import { describe, expect, it } from "vitest";
 import {
-  CursiveCategorySchema,
-  CursiveDraftStatusSchema,
-  CursiveIntakeSchemaSchema,
-  CursivePromptPayloadSchema,
-  CursiveReviewResultSchema,
-  CursiveTemplatePayloadSchema,
+  CursiveControlledAssertionSchema,
+  CursiveModeSchema,
+  CursiveEvidencePostureSchema,
+  CursiveViolationTypeSchema,
+  CursiveReportTypeSchema,
 } from "./cursive";
 
-describe("CursiveCategorySchema", () => {
-  it("accepts the credit bureau dispute category", () => {
+describe("Cursive v2 shared contracts", () => {
+  it("accepts the workflow-only wizard modes", () => {
+    expect(CursiveModeSchema.parse("manual_dispute")).toBe("manual_dispute");
+    expect(CursiveModeSchema.parse("analyze_uploaded_report")).toBe(
+      "analyze_uploaded_report",
+    );
+  });
+
+  it("accepts the approved manual evidence postures", () => {
     expect(
-      CursiveCategorySchema.parse({
-        slug: "credit_bureau_dispute",
-        displayName: "Credit Bureau Dispute",
-        helperMode: "helper-only",
-        outputModes: ["portal_text", "html_letter", "pdf_letter"],
-      }),
-    ).toEqual({
-      slug: "credit_bureau_dispute",
-      displayName: "Credit Bureau Dispute",
-      helperMode: "helper-only",
-      outputModes: ["portal_text", "html_letter", "pdf_letter"],
-    });
-  });
-
-  it("rejects unsupported output modes", () => {
-    const result = CursiveCategorySchema.safeParse({
-      slug: "credit_bureau_dispute",
-      displayName: "Credit Bureau Dispute",
-      helperMode: "helper-only",
-      outputModes: ["email"],
-    });
-
-    expect(result.success).toBe(false);
-  });
-});
-
-describe("CursiveTemplatePayloadSchema", () => {
-  it("accepts the seeded credit bureau dispute template payload", () => {
+      CursiveEvidencePostureSchema.parse("cross_bureau_inconsistency"),
+    ).toBe("cross_bureau_inconsistency");
     expect(
-      CursiveTemplatePayloadSchema.parse({
-        salutation: "To Whom It May Concern:",
-        closing: "Sincerely,",
-      }),
-    ).toEqual({
-      salutation: "To Whom It May Concern:",
-      closing: "Sincerely,",
-    });
+      CursiveEvidencePostureSchema.parse("single_bureau_inaccuracy_with_proof"),
+    ).toBe("single_bureau_inaccuracy_with_proof");
   });
 
-  it("rejects template payloads that try to carry category output modes", () => {
-    const result = CursiveTemplatePayloadSchema.safeParse({
-      salutation: "To Whom It May Concern:",
-      closing: "Sincerely,",
-      outputModes: ["portal_text", "html_letter", "pdf_letter"],
-    });
-
-    expect(result.success).toBe(false);
-  });
-});
-
-describe("CursivePromptPayloadSchema", () => {
-  it("accepts the seeded credit bureau dispute prompt payload", () => {
+  it("accepts the first cross-bureau violation type", () => {
     expect(
-      CursivePromptPayloadSchema.parse({
-        systemPrompt:
-          "You are a helper-only assistant collecting and organizing facts for a credit bureau dispute letter.",
-        draftInstructions: [
-          "Summarize the dispute facts clearly and professionally.",
-          "Reference the seeded citations when they support the user's dispute.",
-        ],
-      }),
-    ).toEqual({
-      systemPrompt:
-        "You are a helper-only assistant collecting and organizing facts for a credit bureau dispute letter.",
-      draftInstructions: [
-        "Summarize the dispute facts clearly and professionally.",
-        "Reference the seeded citations when they support the user's dispute.",
-      ],
-    });
+      CursiveViolationTypeSchema.parse("different_balances_across_bureaus"),
+    ).toBe("different_balances_across_bureaus");
   });
 
-  it("rejects prompt payloads with non-string draft instruction elements", () => {
-    const result = CursivePromptPayloadSchema.safeParse({
-      systemPrompt:
-        "You are a helper-only assistant collecting and organizing facts for a credit bureau dispute letter.",
-      draftInstructions: ["Summarize the dispute facts clearly and professionally.", 123],
-    });
-
-    expect(result.success).toBe(false);
-  });
-});
-
-describe("CursiveIntakeSchemaSchema", () => {
-  it("rejects intake fields with unexpected nested properties", () => {
-    const result = CursiveIntakeSchemaSchema.safeParse({
-      fields: [
-        {
-          key: "consumer_name",
-          label: "Consumer name",
-          required: true,
-          outputModes: ["portal_text"],
-        },
-      ],
-    });
-
-    expect(result.success).toBe(false);
-  });
-});
-
-describe("CursiveReviewResultSchema", () => {
-  it("rejects review payload drift from unexpected properties", () => {
-    const result = CursiveReviewResultSchema.safeParse({
-      status: "drafting",
-      notes: [],
-      helperMode: "helper-only",
-    });
-
-    expect(result.success).toBe(false);
-  });
-});
-
-describe("CursiveDraftStatusSchema", () => {
-  it("accepts only the persisted draft lifecycle states", () => {
-    expect(CursiveDraftStatusSchema.options).toEqual([
-      "drafting",
-      "review_ready",
-      "needs_revision",
-      "approved",
+  it("matches the full approved violation catalog", () => {
+    expect(CursiveViolationTypeSchema.options).toEqual([
+      "different_balances_across_bureaus",
+      "different_delinquency_dates_across_bureaus",
+      "incorrect_account_number_across_bureaus",
+      "incorrect_creditor_name_across_bureaus",
+      "incorrect_payment_status_across_bureaus",
+      "open_closed_status_conflict_across_bureaus",
+      "incorrect_account_number",
+      "incorrect_creditor_name",
+      "duplicate_creditor_or_collector_reporting",
+      "incorrect_payment_status",
+      "closed_account_reported_as_open",
+      "account_not_mine",
     ]);
+  });
+
+  it("accepts the first upload report types", () => {
+    expect(CursiveReportTypeSchema.parse("tri_merge")).toBe("tri_merge");
+    expect(CursiveReportTypeSchema.parse("single_bureau")).toBe("single_bureau");
+  });
+
+  it("accepts a controlled assertion with non-empty id and label", () => {
+    expect(
+      CursiveControlledAssertionSchema.parse({
+        id: "assertion_1",
+        label: "Balance differs across bureaus",
+      }),
+    ).toEqual({
+      id: "assertion_1",
+      label: "Balance differs across bureaus",
+    });
+  });
+
+  it("rejects controlled assertions with extra properties", () => {
+    const result = CursiveControlledAssertionSchema.safeParse({
+      id: "assertion_1",
+      label: "Balance differs across bureaus",
+      legacyCategory: "credit_bureau_dispute",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects controlled assertions with empty required fields", () => {
+    const result = CursiveControlledAssertionSchema.safeParse({
+      id: "",
+      label: "",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects legacy or out-of-scope cursive values", () => {
+    expect(CursiveModeSchema.safeParse("helper_only_chat").success).toBe(false);
+    expect(CursiveEvidencePostureSchema.safeParse("category_first").success).toBe(false);
+    expect(CursiveViolationTypeSchema.safeParse("credit_bureau_dispute").success).toBe(
+      false,
+    );
+    expect(CursiveReportTypeSchema.safeParse("html_letter").success).toBe(false);
   });
 });
