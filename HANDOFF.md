@@ -3,59 +3,119 @@
 ## Current Repo
 
 - Working repo: `E:\REPOS\SGT_BOTS`
-- Active branch: `main`
+- Active branch: `codex/cursive-phase-a`
 - Source repo: `https://github.com/thepbgacademy-hub/SGT_BOTS`
-- Deployment repo: `https://github.com/thepbgacademy-hub/SGT_BOTS_APP`
+- Current branch is the source of truth for the resumed Cursive build
 
-## Live State
+## Read These First
 
-- `https://playground.spyderbyte.cloud` loads inside Telegram
-- backend health and VPS proxy wiring are working
-- Telegram launch, profile creation, and provider validation are working
-- VPS self-hosted Supabase schema has been applied manually through `006`
+1. `E:\REPOS\SGT_BOTS\HANDOFF.md`
+2. `E:\REPOS\SGT_BOTS\TASKS.md`
+3. `E:\REPOS\SGT_BOTS\docs\superpowers\specs\2026-05-19-cursive-v2-redesign.md`
+4. `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-redesign-implementation.md`
+5. `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-error-log.md`
 
-## Current Product Focus
+## What This Build Is
 
-- Telegram playground menu alignment is now good enough to move forward
-- each menu hex opens the correct bot workflow in the live Telegram mini app
-- current focus has shifted to `Cursive` as the first real workflow bot
-- Cursive now has a written design spec and implementation plan in the repo:
-  - `docs\superpowers\specs\2026-05-08-cursive-playground-design.md`
-  - `docs\superpowers\plans\2026-05-08-cursive-playground-v1-implementation.md`
+- `SGT_BOTS` is the Telegram playground for the Academy's try-before-you-buy experience
+- users enter their provider/BYOK info before launching a bot
+- each playground session is limited to 3 hours
+- each bot should feel like its own tool, not just a cosmetic skin over one shared chat shell
 
-## Next Verification
+## What Cursive Does
 
-- decide execution mode for the Cursive implementation plan
-- begin with Cursive `credit bureau dispute` as the first full category
-- preserve helper-only chat while moving official draft generation to structured intake + review + PDF render
+- `Cursive` is the first serious workflow bot inside the six-bot playground
+- it is no longer a chat assistant
+- it is now a guided dispute workflow engine focused on bureau-targeted removal-demand letters
+- it supports:
+  - `Manual dispute`
+  - `Analyze uploaded report`
+- manual disputes branch into:
+  - `Inconsistent reporting across bureaus`
+  - `One bureau is reporting the item inaccurately and I have proof`
+- uploaded report analysis branches into:
+  - `Tri-merge report`
+  - `Single-bureau report`
 
-## Known Remaining Gaps
+## End Goal
 
-- chat behavior across bots is still scaffolded/stubbed and not the final prompt/guardrail/workflow layer
-- Cursive still needs its category engine, Supabase-backed template data, and review pipeline implemented
-- most tables besides `playground_bot_registry` still need proper RLS/policies before broader rollout
+- ship a clean, mobile-first, full-screen Cursive workspace inside the playground
+- keep the mini app utility-first and menu-driven
+- generate bureau-specific removal-demand letters from controlled inputs and evidence
+- never expose internal prompts, skills, or LLM workflow to the user
+- keep the other playground bots/pages intact while making Cursive the first fully operational lane
 
-## Important Runtime Notes
+## Current Implemented State
 
-- backend container env must include:
-  - `TELEGRAM_BOT_TOKEN`
-  - `TELEGRAM_BOT_USERNAME=PBGbigkitty_bot`
-  - `TELEGRAM_BOT_RUNTIME_MODE=polling`
-  - `TELEGRAM_BOT_APP_SHORT_NAME=playground`
-  - `SUPABASE_URL=http://kong:8000`
-  - self-hosted `SUPABASE_SERVICE_ROLE_KEY`
-- frontend image is served through the existing `supabase-caddy` proxy on `playground.spyderbyte.cloud`
+- shared Cursive v2 workflow contracts are in place in `packages\shared\src\contracts\cursive.ts`
+- the API workflow seam has been reset for workflow-only Cursive under `apps\api\src\modules\cursive\`
+- `document_wizard` chat is blocked from acting like a conversational bot in `apps\api\src\modules\chat\chat.service.ts`
+- the mini app now has a dedicated full-screen Cursive shell:
+  - `apps\telegram-miniapp\src\features\cursive\CursiveWorkspace.tsx`
+  - `apps\telegram-miniapp\src\features\cursive\CursiveStepper.tsx`
+  - `apps\telegram-miniapp\src\features\cursive\CursiveFooter.tsx`
+- `DashboardShell.tsx` routes Cursive into the new workflow shell
+- the old Cursive category/chat-first mini app flow has been removed
 
-## Latest Frontend Verification
+## Phase Just Completed
 
-- `corepack pnpm --filter ./apps/telegram-miniapp lint`
-- `corepack pnpm --filter ./apps/telegram-miniapp build`
+- `Phase C` landed the Cursive full-screen workspace shell
+- the manual lane now starts with:
+  - `Mode`
+  - `Evidence`
+  - `Violation`
+- the persistent playground countdown now lives inside the Cursive workspace footer
+- Cursive no longer shares the old chat-first experience
 
-## Current References
+## Verified Green So Far
 
-- Design: `E:\REPOS\SGT_BOTS\docs\superpowers\specs\2026-05-05-telegram-playground-design.md`
-- Implementation plan: `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-05-telegram-playground-v1-implementation.md`
-- Cursive design: `E:\REPOS\SGT_BOTS\docs\superpowers\specs\2026-05-08-cursive-playground-design.md`
-- Cursive implementation plan: `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-08-cursive-playground-v1-implementation.md`
-- Tasks: `E:\REPOS\SGT_BOTS\TASKS.md`
-- VPS manual SQL bundle: `E:\REPOS\SGT_BOTS\vps-supabase-manual\`
+- shared contract tests passed
+- targeted API workflow tests passed
+- Cursive mini-app tests passed
+- mini-app lint passed
+- mini-app build passed
+- browser E2E for the current Cursive shell path passed
+
+## Exact Next Pickup
+
+- continue with the next implementation phase from the Cursive v2 implementation plan
+- the next real build target is the backend/template/artifact migration for Cursive v2
+- replace the old category-era preview/save flow with the new workflow-driven preview/artifact path
+- migrate the remaining legacy credit-dispute output flow so it matches the new Cursive doctrine:
+  - menu-driven intake
+  - no chat
+  - removal-demand letters only
+  - validation gate before delivery
+- do not start VPS rollout yet
+- do not start the next bot yet
+- finish the Cursive preview/artifact lane first
+
+## Known Current Break / Next Test Target
+
+- the older preview/artifact API tests are still the next red-to-green target:
+  - `E:\REPOS\SGT_BOTS\apps\api\tests\e2e\cursive-preview.spec.ts`
+  - `E:\REPOS\SGT_BOTS\apps\api\tests\e2e\cursive-artifacts.spec.ts`
+- these are the main indicators that the old category-era output pipeline has not been fully migrated yet
+
+## Non-Negotiable Cursive Rules
+
+- no chat inside Cursive
+- no generic `verify this account` language
+- no bureau validation requests
+- no `please correct if needed` fallback language
+- no arguing which bureau is right or wrong
+- no surfacing prompts, skills, or internal LLM workflow
+- keep intake menu-driven wherever practical
+- collect only the minimum facts needed for the chosen violation
+- do not ask the user for replacement data that helps a bureau repair the tradeline
+
+## Error Log Discipline
+
+- before repeating a fix attempt, read:
+  - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-error-log.md`
+- keep appending real mistakes and recovery notes there so the same errors are not repeated
+
+## Ignore Unless Asked
+
+- `E:\REPOS\SGT_BOTS\resume-next-session-sgt-bots.md` is currently untracked
+- leave it alone unless the user explicitly asks to use or clean it up
