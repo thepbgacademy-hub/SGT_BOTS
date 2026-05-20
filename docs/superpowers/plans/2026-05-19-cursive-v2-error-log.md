@@ -74,3 +74,33 @@ The token '&&' is not a valid statement separator in this version.
 **Fix applied:** Re-run staging and commit as separate PowerShell-native commands instead of shell-style chaining.
 
 **Rule going forward:** In this desktop PowerShell environment, avoid `&&` command joins and prefer separate commands or PowerShell-native sequencing.
+
+### 2026-05-19 - Dashboard helper signature drift broke mini-app build
+
+**Context:** Phase C mini-app shell integration.
+
+**Problem:** A helper function in `DashboardShell.tsx` was refactored to accept a typed object, but the implementation signature was left as positional parameters. That broke Vitest, `tsc`, and Vite build on the same syntax line before any UI tests could run.
+
+**Fix applied:** Converted the helper to a real destructured object parameter and re-ran the exact mini-app test, lint, and build gates.
+
+**Rule going forward:** When changing a helper from positional args to an object contract, update both the function signature and all call sites before trusting green component tests.
+
+### 2026-05-19 - Stale category-era mini-app files kept lint red after the shell cutover
+
+**Context:** Phase C mini-app lint pass after Cursive moved to the new workspace shell.
+
+**Problem:** `CursiveCategoryPicker.tsx` and `CursiveIntakeWizard.tsx` were no longer referenced by the active UI, but they still imported removed shared-contract exports. `tsc --noEmit` failed even though the new workspace path itself was correct.
+
+**Fix applied:** Removed the unused category/intake files and their spec once the new shell fully replaced that path in `DashboardShell`.
+
+**Rule going forward:** After a workflow cutover, immediately delete or quarantine dead UI files that still depend on retired shared contracts instead of leaving them to poison lint later.
+
+### 2026-05-19 - Playwright startup exposed stale API Cursive contract imports
+
+**Context:** Phase C browser E2E startup for the redesigned Cursive shell.
+
+**Problem:** Playwright could not boot the API dev server because legacy modules still imported retired shared Cursive exports, first in `cursive-live-config.service.ts`, then in `cursive-review.service.ts` via the shared review schema boundary.
+
+**Fix applied:** Replaced the live-config module with a compatibility service that preserves explicit env behavior while avoiding dead shared imports, and restored the minimal legacy shared contract exports needed for review/schema compatibility.
+
+**Rule going forward:** Before calling a frontend phase complete, boot the full Playwright stack at least once; stale server-only imports may survive unit tests and only show up when the real app starts.

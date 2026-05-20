@@ -4,17 +4,6 @@ import {
   type ArtifactListItem,
 } from "../artifacts/ArtifactList";
 import { ChatPanel, type ChatMessage } from "../chat/ChatPanel";
-import {
-  EMPTY_CURSIVE_CREDIT_DISPUTE_INTAKE,
-  getCoherentCursiveGenerationState,
-  isCursiveCreditDisputeIntakeComplete,
-  isCursiveOfficialCategory,
-  type CursiveCreditDisputeIntake,
-  type CursiveGenerationHandoffState,
-} from "../cursive/CursiveIntakeWizard";
-import {
-  type CursiveCategorySlug,
-} from "../cursive/CursiveCategoryPicker";
 import { ProviderConnectPanel } from "../onboarding/ProviderConnectPanel";
 import { BotSupportPanel } from "./BotSupportPanel";
 import { formatRemaining } from "../../lib/timer";
@@ -25,6 +14,15 @@ import {
   getMenuItem,
   type PlaygroundMenuBotId,
 } from "./menu-config";
+import {
+  type CursiveMode,
+  type CursiveEvidencePosture,
+  type CursiveViolationType,
+} from "../../../../../packages/shared/src/contracts/cursive";
+import {
+  CursiveWorkspace,
+  type CursiveWorkspaceStep,
+} from "../cursive/CursiveWorkspace";
 
 type SessionSnapshot = {
   id: string;
@@ -43,48 +41,295 @@ type DashboardShellProps = {
 
 const DEFAULT_REVIEW_GROUP_URL = "https://t.me/your_review_group";
 
-type CursiveWorkspaceState = {
-  generationState: CursiveGenerationHandoffState;
-  intake: CursiveCreditDisputeIntake;
-  intakeStarted: boolean;
-  previewError: string | null;
-  previewHtml: string | null;
-  previewIsStale: boolean;
-  previewPortalText: string | null;
-  previewSnapshot: CursivePreviewSnapshot | null;
-  previewStatus: "idle" | "loading" | "ready";
-  previewToken: string | null;
-  selectedCategory: CursiveCategorySlug | null;
+type CursiveStep = "mode" | "evidence" | "violation";
+
+export type CursiveWorkflowState = {
+  currentStep: CursiveStep;
+  evidencePosture: CursiveEvidencePosture | null;
+  mode: CursiveMode | null;
+  violationType: CursiveViolationType | null;
 };
 
-type CursivePreviewSnapshot = {
-  categorySlug: "credit_bureau_dispute";
-  generatedDate: string;
-  consumerName: string;
-  consumerAddressLines: string[];
-  bureauName: string;
-  bureauAddressLines: string[];
-  subjectLine: string;
-  salutation: string;
-  bodyParagraphs: string[];
-  closing: string;
-  citations: string[];
-  portalText: string;
+const EMPTY_CURSIVE_WORKFLOW_STATE: CursiveWorkflowState = {
+  currentStep: "mode",
+  evidencePosture: null,
+  mode: null,
+  violationType: null,
 };
 
-const EMPTY_CURSIVE_WORKSPACE_STATE: CursiveWorkspaceState = {
-  generationState: "idle",
-  intake: EMPTY_CURSIVE_CREDIT_DISPUTE_INTAKE,
-  intakeStarted: false,
-  previewError: null,
-  previewHtml: null,
-  previewIsStale: false,
-  previewPortalText: null,
-  previewSnapshot: null,
-  previewStatus: "idle",
-  previewToken: null,
-  selectedCategory: null,
+const CURSIVE_WORKSPACE_STEPS: CursiveWorkspaceStep[] = [
+  { id: "mode", label: "Mode" },
+  { id: "evidence", label: "Evidence" },
+  { id: "violation", label: "Violation" },
+];
+
+const CROSS_BUREAU_VIOLATIONS: Array<{
+  id: CursiveViolationType;
+  label: string;
+}> = [
+  {
+    id: "different_balances_across_bureaus",
+    label: "Different balances across bureaus",
+  },
+  {
+    id: "different_delinquency_dates_across_bureaus",
+    label: "Different delinquency dates across bureaus",
+  },
+  {
+    id: "incorrect_account_number_across_bureaus",
+    label: "Incorrect account number across bureaus",
+  },
+  {
+    id: "incorrect_creditor_name_across_bureaus",
+    label: "Incorrect creditor or furnisher name across bureaus",
+  },
+  {
+    id: "incorrect_payment_status_across_bureaus",
+    label: "Incorrect payment status across bureaus",
+  },
+  {
+    id: "open_closed_status_conflict_across_bureaus",
+    label: "Open/closed status conflict across bureaus",
+  },
+];
+
+const SINGLE_BUREAU_VIOLATIONS: Array<{
+  id: CursiveViolationType;
+  label: string;
+}> = [
+  {
+    id: "incorrect_account_number",
+    label: "Incorrect account number",
+  },
+  {
+    id: "incorrect_creditor_name",
+    label: "Incorrect creditor or furnisher name",
+  },
+  {
+    id: "duplicate_creditor_or_collector_reporting",
+    label: "Duplicate creditor or collector reporting",
+  },
+  {
+    id: "incorrect_payment_status",
+    label: "Incorrect payment status",
+  },
+  {
+    id: "closed_account_reported_as_open",
+    label: "Closed account reported as open",
+  },
+  {
+    id: "account_not_mine",
+    label: "Account not mine",
+  },
+];
+
+export function getNextCursiveStepState(
+  choice: CursiveMode | CursiveEvidencePosture | CursiveViolationType,
+  state: CursiveWorkflowState,
+): CursiveWorkflowState {
+  if (choice === "manual_dispute" || choice === "analyze_uploaded_report") {
+    return {
+      currentStep: "evidence",
+      evidencePosture: null,
+      mode: choice,
+      violationType: null,
+    };
+  }
+
+  if (
+    choice === "cross_bureau_inconsistency" ||
+    choice === "single_bureau_inaccuracy_with_proof"
+  ) {
+    return {
+      ...state,
+      currentStep: "violation",
+      evidencePosture: choice,
+      violationType: null,
+    };
+  }
+
+  return {
+    ...state,
+    currentStep: "violation",
+    violationType: choice,
+  };
+}
+
+type CursiveWorkspaceShellProps = {
+  countdownValue: string;
+  onBackToMenu: () => void;
+  onBackStep: () => void;
+  onChoiceSelect: (
+    choice: CursiveMode | CursiveEvidencePosture | CursiveViolationType,
+  ) => void;
+  state: CursiveWorkflowState;
 };
+
+function getCursiveModeLabel(mode: CursiveMode | null) {
+  if (mode === "manual_dispute") {
+    return "Manual dispute";
+  }
+
+  if (mode === "analyze_uploaded_report") {
+    return "Analyze uploaded report";
+  }
+
+  return "Choose how to begin";
+}
+
+function getCursiveActiveStepContent({
+  state,
+  onChoiceSelect,
+}: Pick<CursiveWorkspaceShellProps, "state" | "onChoiceSelect">) {
+  if (state.currentStep === "mode") {
+    return (
+      <section className="cursive-card">
+        <div className="cursive-card__header">
+          <div>
+            <p className="eyebrow">Step 1</p>
+            <h3>Choose how to begin</h3>
+          </div>
+          <p className="panel-description">
+            Start from your own facts or move into uploaded-report analysis next.
+          </p>
+        </div>
+        <div className="cursive-generation-lane">
+          <button
+            className="primary-button"
+            onClick={() => onChoiceSelect("manual_dispute")}
+            type="button"
+          >
+            Manual dispute
+          </button>
+          <button className="secondary-button" disabled type="button">
+            Analyze uploaded report
+          </button>
+        </div>
+        <p className="muted-copy">
+          Uploaded-report analysis is the next Cursive lane. This phase is landing the
+          manual dispute flow first.
+        </p>
+      </section>
+    );
+  }
+
+  if (state.currentStep === "evidence") {
+    return (
+      <section className="cursive-card">
+        <div className="cursive-card__header">
+          <div>
+            <p className="eyebrow">Step 2</p>
+            <h3>How are you documenting this issue?</h3>
+          </div>
+          <p className="panel-description">
+            Pick the evidence posture that matches the dispute you want to build.
+          </p>
+        </div>
+        <div className="cursive-generation-lane">
+          <button
+            className="primary-button"
+            onClick={() => onChoiceSelect("cross_bureau_inconsistency")}
+            type="button"
+          >
+            Inconsistent reporting across bureaus
+          </button>
+          <button
+            className="secondary-button"
+            onClick={() =>
+              onChoiceSelect("single_bureau_inaccuracy_with_proof")
+            }
+            type="button"
+          >
+            One bureau is reporting the item inaccurately and I have proof
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  const violationChoices =
+    state.evidencePosture === "cross_bureau_inconsistency"
+      ? CROSS_BUREAU_VIOLATIONS
+      : SINGLE_BUREAU_VIOLATIONS;
+
+  return (
+    <section className="cursive-card">
+      <div className="cursive-card__header">
+        <div>
+          <p className="eyebrow">Step 3</p>
+          <h3>
+            {state.evidencePosture === "cross_bureau_inconsistency"
+              ? "Choose the inconsistency type"
+              : "Choose the reporting problem"}
+          </h3>
+        </div>
+        <p className="panel-description">
+          Keep the intake tight by selecting the exact violation lane before deeper
+          details open.
+        </p>
+      </div>
+      <div className="cursive-generation-lane">
+        {violationChoices.map((violation) => (
+          <button
+            className={
+              state.violationType === violation.id
+                ? "primary-button"
+                : "secondary-button"
+            }
+            key={violation.id}
+            onClick={() => onChoiceSelect(violation.id)}
+            type="button"
+          >
+            {violation.label}
+          </button>
+        ))}
+      </div>
+      {state.violationType ? (
+        <p className="success-banner">
+          Violation selected. Details, review, and results steps land in the next Cursive
+          phase.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+export function CursiveWorkspaceShell({
+  countdownValue,
+  onBackStep,
+  onBackToMenu,
+  onChoiceSelect,
+  state,
+}: CursiveWorkspaceShellProps) {
+  const nextLabel =
+    state.currentStep === "violation" ? "Details next" : "Next step";
+  const footerSlot =
+    state.currentStep === "violation" && state.violationType ? (
+      <span className="muted-copy">Details, review, and results are next.</span>
+    ) : null;
+
+  return (
+    <CursiveWorkspace
+      activeStepId={state.currentStep}
+      countdownLabel="Playground time remaining"
+      countdownValue={countdownValue}
+      footerSlot={footerSlot}
+      isBackDisabled={false}
+      isNextDisabled={true}
+      laneLabel={getCursiveModeLabel(state.mode)}
+      nextLabel={nextLabel}
+      onBack={onBackStep}
+      onTitleBack={onBackToMenu}
+      steps={CURSIVE_WORKSPACE_STEPS}
+      title="Cursive"
+    >
+      {getCursiveActiveStepContent({
+        state,
+        onChoiceSelect,
+      })}
+    </CursiveWorkspace>
+  );
+}
 
 export function DashboardShell({
   initData,
@@ -111,8 +356,8 @@ export function DashboardShell({
       }
     >
   >({});
-  const [cursiveWorkspace, setCursiveWorkspace] = useState<CursiveWorkspaceState>(
-    EMPTY_CURSIVE_WORKSPACE_STATE,
+  const [cursiveWorkflow, setCursiveWorkflow] = useState<CursiveWorkflowState>(
+    EMPTY_CURSIVE_WORKFLOW_STATE,
   );
   const reviewPromptRequestKeyRef = useRef<string | null>(null);
   const forceSessionExpiry = useMemo(
@@ -171,35 +416,6 @@ export function DashboardShell({
     ? getBotWorkspacePanel(selectedBot.id)
     : null;
   const isCursiveWorkspace = selectedBot?.id === "document_wizard";
-  const workspaceFocusLabel = isCursiveWorkspace
-    ? "Category-First Intake"
-    : (selectedWorkspacePanel?.focusLabel ?? "Function");
-  const workspaceMission = isCursiveWorkspace
-    ? "Open with a category, complete the official intake, and use helper chat only as support."
-    : (selectedWorkspacePanel?.mission ?? selectedMenuItem?.description ?? "");
-  const workspaceWorkflowTitle = isCursiveWorkspace
-    ? "Inside Phase C1:"
-    : selectedWorkspacePanel?.workflowTitle;
-  const workspaceWorkflowSteps = isCursiveWorkspace
-    ? [
-        "choose a Cursive category first",
-        "complete the required official intake fields",
-        "generate the preview from official intake",
-        "refresh the preview after edits before relying on document outputs",
-      ]
-    : (selectedWorkspacePanel?.workflowSteps ?? []);
-  const workspaceSupportTitle = isCursiveWorkspace
-    ? "Intake guardrails"
-    : selectedWorkspacePanel?.supportTitle;
-  const workspaceSupportItems = isCursiveWorkspace
-    ? [
-        "official intake remains the source of truth",
-        "preview stays locked until required fields are complete",
-        "a stale preview stays visible, but it no longer reflects the latest intake",
-        "refresh the preview after edits before relying on document outputs",
-      ]
-    : (selectedWorkspacePanel?.supportItems ?? []);
-
   useEffect(() => {
     if (!activeSessionId || !sessionToken) {
       setConversations({});
@@ -246,7 +462,7 @@ export function DashboardShell({
   useEffect(() => {
     setArtifacts([]);
     setConversations({});
-    setCursiveWorkspace(EMPTY_CURSIVE_WORKSPACE_STATE);
+    setCursiveWorkflow(EMPTY_CURSIVE_WORKFLOW_STATE);
     setSelectedMenuBotId(null);
   }, [activeSessionId, sessionToken]);
 
@@ -480,157 +696,8 @@ export function DashboardShell({
   }
 
   function handleBackToMenu() {
+    setCursiveWorkflow(EMPTY_CURSIVE_WORKFLOW_STATE);
     setSelectedMenuBotId(null);
-  }
-
-  function handleCursiveCategoryChange(category: CursiveCategorySlug) {
-    setCursiveWorkspace((currentWorkspace) => ({
-      ...currentWorkspace,
-      generationState: getCoherentCursiveGenerationState(
-        category,
-        currentWorkspace.intake,
-      ),
-      intakeStarted:
-        category === currentWorkspace.selectedCategory
-          ? currentWorkspace.intakeStarted
-          : false,
-      previewError: null,
-      previewHtml:
-        category === currentWorkspace.selectedCategory
-          ? currentWorkspace.previewHtml
-          : null,
-      previewIsStale:
-        category === currentWorkspace.selectedCategory
-          ? currentWorkspace.previewIsStale
-          : false,
-      previewStatus:
-        category === currentWorkspace.selectedCategory
-          ? currentWorkspace.previewStatus
-          : "idle",
-      previewPortalText:
-        category === currentWorkspace.selectedCategory
-          ? currentWorkspace.previewPortalText
-          : null,
-      previewSnapshot:
-        category === currentWorkspace.selectedCategory
-          ? currentWorkspace.previewSnapshot
-          : null,
-      previewToken:
-        category === currentWorkspace.selectedCategory
-          ? currentWorkspace.previewToken
-          : null,
-      selectedCategory: category,
-    }));
-  }
-
-  function handleCursiveIntakeStart() {
-    setCursiveWorkspace((currentWorkspace) => ({
-      ...currentWorkspace,
-      intakeStarted: true,
-    }));
-  }
-
-  function handleCursiveIntakeChange(
-    field: keyof CursiveCreditDisputeIntake,
-    value: string,
-  ) {
-    setCursiveWorkspace((currentWorkspace) => {
-      const nextIntake = {
-        ...currentWorkspace.intake,
-        [field]: value,
-      };
-
-      return {
-        ...currentWorkspace,
-        generationState: getCoherentCursiveGenerationState(
-          currentWorkspace.selectedCategory,
-          nextIntake,
-        ),
-        previewError: null,
-        intake: nextIntake,
-        previewIsStale:
-          currentWorkspace.previewHtml !== null ||
-          currentWorkspace.previewPortalText !== null,
-      };
-    });
-  }
-
-  async function handleCursiveGenerate() {
-    if (
-      !sessionToken ||
-      !selectedBot ||
-      !session ||
-      !isCursiveOfficialCategory(cursiveWorkspace.selectedCategory) ||
-      !isCursiveCreditDisputeIntakeComplete(cursiveWorkspace.intake)
-    ) {
-      return;
-    }
-
-    setCursiveWorkspace((currentWorkspace) => ({
-      ...currentWorkspace,
-      previewError: null,
-      previewStatus: "loading",
-    }));
-
-    try {
-      const response = await fetch(
-        "/api/reports/cursive/credit-bureau-dispute/preview",
-        {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${sessionToken}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            sessionId: session.id,
-            botId: selectedBot.id,
-            intake: cursiveWorkspace.intake,
-          }),
-        },
-      );
-      const payload = (await response.json()) as {
-          html?: string;
-          message?: string;
-          portalText?: string;
-          previewSnapshot?: CursivePreviewSnapshot;
-          previewToken?: string;
-        };
-
-      if (
-        !response.ok ||
-        !payload.html ||
-        !payload.previewSnapshot ||
-        !payload.previewToken
-      ) {
-        setCursiveWorkspace((currentWorkspace) => ({
-          ...currentWorkspace,
-          previewError: payload.message ?? "Unable to generate the Cursive preview right now.",
-          previewStatus: "idle",
-        }));
-        return;
-      }
-
-      setCursiveWorkspace((currentWorkspace) => ({
-        ...currentWorkspace,
-        generationState: getCoherentCursiveGenerationState(
-          currentWorkspace.selectedCategory,
-          currentWorkspace.intake,
-        ),
-        previewError: null,
-        previewHtml: payload.html ?? null,
-        previewIsStale: false,
-        previewPortalText: payload.portalText ?? null,
-        previewSnapshot: payload.previewSnapshot ?? null,
-        previewStatus: "ready",
-        previewToken: payload.previewToken ?? null,
-      }));
-    } catch {
-      setCursiveWorkspace((currentWorkspace) => ({
-        ...currentWorkspace,
-        previewError: "Unable to generate the Cursive preview right now.",
-        previewStatus: "idle",
-      }));
-    }
   }
 
   return (
@@ -670,6 +737,41 @@ export function DashboardShell({
           {artifactError ? <p role="alert" className="alert-banner">{artifactError}</p> : null}
           {selectedMenuItem ? (
             selectedBotIsLive ? (
+              isCursiveWorkspace ? (
+                <CursiveWorkspaceShell
+                  countdownValue={formatRemaining(remainingSeconds)}
+                  onBackStep={() => {
+                    setCursiveWorkflow((currentState) => {
+                      if (currentState.currentStep === "violation") {
+                        return {
+                          ...currentState,
+                          currentStep: "evidence",
+                          violationType: null,
+                        };
+                      }
+
+                      if (currentState.currentStep === "evidence") {
+                        return {
+                          currentStep: "mode",
+                          evidencePosture: null,
+                          mode: currentState.mode,
+                          violationType: null,
+                        };
+                      }
+
+                      handleBackToMenu();
+                      return currentState;
+                    });
+                  }}
+                  onBackToMenu={handleBackToMenu}
+                  onChoiceSelect={(choice) => {
+                    setCursiveWorkflow((currentState) =>
+                      getNextCursiveStepState(choice, currentState),
+                    );
+                  }}
+                  state={cursiveWorkflow}
+                />
+              ) : (
               <section className="workspace-shell workspace-shell--active">
                 <img
                   alt="Bot workspace frame"
@@ -678,14 +780,20 @@ export function DashboardShell({
                 />
                 <div className="workspace-shell-overlay workspace-shell-overlay--sidebar-top workspace-shell-overlay--sidebar-top-enter">
                   <div className="workspace-side-card">
-                    <p className="eyebrow">{workspaceFocusLabel}</p>
+                    <p className="eyebrow">
+                      {selectedWorkspacePanel?.focusLabel ?? "Function"}
+                    </p>
                     <h3>{selectedMenuItem.displayName}</h3>
-                    <p className="muted-copy">{workspaceMission}</p>
-                    {workspaceWorkflowTitle ? (
+                    <p className="muted-copy">
+                      {selectedWorkspacePanel?.mission ?? selectedMenuItem.description}
+                    </p>
+                    {selectedWorkspacePanel?.workflowTitle ? (
                       <div className="workspace-guidance">
-                        <p className="workspace-guidance__title">{workspaceWorkflowTitle}</p>
+                        <p className="workspace-guidance__title">
+                          {selectedWorkspacePanel.workflowTitle}
+                        </p>
                         <ul className="workspace-guidance__list">
-                          {workspaceWorkflowSteps.map((step) => (
+                          {(selectedWorkspacePanel?.workflowSteps ?? []).map((step) => (
                             <li key={step}>{step}</li>
                           ))}
                         </ul>
@@ -694,50 +802,7 @@ export function DashboardShell({
                   </div>
                 </div>
                 <div className="workspace-shell-overlay workspace-shell-overlay--sidebar-bottom workspace-shell-overlay--sidebar-bottom-enter">
-                  {isCursiveWorkspace ? (
-                    <div className="workspace-side-card">
-                      <p className="eyebrow">Workflow Support</p>
-                      <h3>{workspaceSupportTitle}</h3>
-                      <ul className="support-panel-list">
-                        {workspaceSupportItems.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                      {artifacts.filter(
-                        (artifact) => artifact.botName === selectedMenuItem.displayName,
-                      ).length ? (
-                        <ul className="artifact-list">
-                          {artifacts
-                            .filter(
-                              (artifact) => artifact.botName === selectedMenuItem.displayName,
-                            )
-                            .map((artifact) => (
-                              <li className="artifact-card" key={artifact.id}>
-                                <p className="artifact-title">{artifact.fileName}</p>
-                                <p className="artifact-meta">
-                                  {artifact.botName} - {artifact.status}
-                                </p>
-                                <p className="artifact-source">
-                                  Source: {artifact.originalFilename}
-                                </p>
-                                {artifact.failureReason ? (
-                                  <p className="alert-banner">{artifact.failureReason}</p>
-                                ) : null}
-                                {artifact.downloadUrl ? (
-                                  <p className="artifact-actions">
-                                    <a className="secondary-button" href={artifact.downloadUrl}>
-                                      Download PDF
-                                    </a>
-                                  </p>
-                                ) : null}
-                              </li>
-                            ))}
-                        </ul>
-                      ) : (
-                        <p className="muted-copy">No saved outputs in this workspace yet.</p>
-                      )}
-                    </div>
-                  ) : selectedMenuBotId ? (
+                  {selectedMenuBotId ? (
                     <BotSupportPanel
                       artifacts={artifacts.filter(
                         (artifact) => artifact.botName === selectedMenuItem.displayName,
@@ -751,21 +816,7 @@ export function DashboardShell({
                     key={selectedBot?.id ?? "no-bot-selected"}
                     bot={selectedBot}
                     conversationId={selectedConversation?.conversationId}
-                    cursiveIntake={cursiveWorkspace.intake}
-                    cursiveIntakeStarted={cursiveWorkspace.intakeStarted}
-                    cursivePreviewError={cursiveWorkspace.previewError}
-                    cursivePreviewHtml={cursiveWorkspace.previewHtml}
-                    cursivePreviewIsStale={cursiveWorkspace.previewIsStale}
-                    cursivePreviewPortalText={cursiveWorkspace.previewPortalText}
-                    cursivePreviewSnapshot={cursiveWorkspace.previewSnapshot}
-                    cursivePreviewToken={cursiveWorkspace.previewToken}
-                    isGeneratingCursivePreview={
-                      cursiveWorkspace.previewStatus === "loading"
-                    }
                     messages={selectedConversation?.messages ?? []}
-                    onCursiveCategoryChange={handleCursiveCategoryChange}
-                    onCursiveGenerate={handleCursiveGenerate}
-                    onCursiveIntakeChange={handleCursiveIntakeChange}
                     onArtifactQueued={(artifact) => {
                       setArtifacts((currentArtifacts) => [
                         artifact,
@@ -787,13 +838,12 @@ export function DashboardShell({
                         },
                       }));
                     }}
-                    onStartCursiveIntake={handleCursiveIntakeStart}
-                    selectedCursiveCategory={cursiveWorkspace.selectedCategory}
                     sessionId={session.id}
                     sessionToken={sessionToken}
                   />
                 </div>
               </section>
+              )
             ) : (
               <section className="panel status-panel">
                 <p className="eyebrow">Pending Runtime</p>

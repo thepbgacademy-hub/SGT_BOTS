@@ -2,15 +2,6 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { BotCatalogEntry } from "../../../../../packages/shared/src/bots/manifests";
 import type { ArtifactListItem } from "../artifacts/ArtifactList";
 import {
-  CursiveCategoryPicker,
-  type CursiveCategorySlug,
-} from "../cursive/CursiveCategoryPicker";
-import {
-  CursiveIntakeWizard,
-  isCursiveDocumentLaneUnlocked,
-  type CursiveCreditDisputeIntake,
-} from "../cursive/CursiveIntakeWizard";
-import {
   DocumentWizardForm,
   type DocumentWizardReportFormData,
 } from "../forms/DocumentWizardForm";
@@ -36,46 +27,14 @@ export type ChatMessage = {
 type ChatPanelProps = {
   bot: BotCatalogEntry | null;
   conversationId?: string;
-  cursiveIntake: CursiveCreditDisputeIntake;
-  cursiveIntakeStarted: boolean;
-  cursivePreviewError: string | null;
-  cursivePreviewHtml: string | null;
-  cursivePreviewIsStale: boolean;
-  cursivePreviewPortalText: string | null;
-  cursivePreviewSnapshot: CursivePreviewSnapshot | null;
-  cursivePreviewToken: string | null;
-  isGeneratingCursivePreview: boolean;
-  onCursiveCategoryChange: (category: CursiveCategorySlug) => void;
-  onCursiveGenerate: () => void;
-  onCursiveIntakeChange: (
-    field: keyof CursiveCreditDisputeIntake,
-    value: string,
-  ) => void;
   messages: ChatMessage[];
   onArtifactQueued: (artifact: ArtifactListItem) => void;
   onConversationUpdate: (result: {
     conversationId: string;
     messages: ChatMessage[];
   }) => void;
-  onStartCursiveIntake: () => void;
-  selectedCursiveCategory: CursiveCategorySlug | null;
   sessionId: string;
   sessionToken: string;
-};
-
-type CursivePreviewSnapshot = {
-  categorySlug: "credit_bureau_dispute";
-  generatedDate: string;
-  consumerName: string;
-  consumerAddressLines: string[];
-  bureauName: string;
-  bureauAddressLines: string[];
-  subjectLine: string;
-  salutation: string;
-  bodyParagraphs: string[];
-  closing: string;
-  citations: string[];
-  portalText: string;
 };
 
 function sourceLabel(sourceId: ChatCitation["sourceId"]) {
@@ -85,23 +44,9 @@ function sourceLabel(sourceId: ChatCitation["sourceId"]) {
 export function ChatPanel({
   bot,
   conversationId,
-  cursiveIntake,
-  cursiveIntakeStarted,
-  cursivePreviewError,
-  cursivePreviewHtml,
-  cursivePreviewIsStale,
-  cursivePreviewPortalText,
-  cursivePreviewSnapshot,
-  cursivePreviewToken,
-  isGeneratingCursivePreview,
   messages,
-  onCursiveCategoryChange,
-  onCursiveGenerate,
-  onCursiveIntakeChange,
   onArtifactQueued,
   onConversationUpdate,
-  onStartCursiveIntake,
-  selectedCursiveCategory,
   sessionId,
   sessionToken,
 }: ChatPanelProps) {
@@ -149,23 +94,10 @@ export function ChatPanel({
     );
   }
 
-  const isCursiveBot = bot?.id === "document_wizard";
   const supportsDocumentWizardReportFlow = Boolean(
     bot?.capabilities.pdf_upload &&
       bot.capabilities.structured_form &&
-      bot.capabilities.html_report &&
-      !isCursiveBot,
-  );
-  const canSaveCursivePdfDraft = Boolean(
-    isCursiveBot &&
-      isCursiveDocumentLaneUnlocked(
-        selectedCursiveCategory,
-        cursivePreviewHtml,
-        cursivePreviewIsStale,
-      ) &&
-      cursivePreviewSnapshot &&
-      cursivePreviewToken &&
-      !cursivePreviewIsStale,
+      bot.capabilities.html_report,
   );
   let latestVisibleUserMessageId: string | null = null;
 
@@ -349,79 +281,6 @@ export function ChatPanel({
     }
   }
 
-  async function handleCursiveSavePdfDraft() {
-    if (
-      !bot ||
-      !isCursiveBot ||
-      !cursivePreviewHtml ||
-      !cursivePreviewSnapshot ||
-      !cursivePreviewToken ||
-      cursivePreviewIsStale
-    ) {
-      return;
-    }
-
-    setDocumentError(null);
-    setReportStatus(null);
-    setSubmittingReport(true);
-
-    try {
-      const response = await fetch(
-        "/api/reports/cursive/credit-bureau-dispute/save-pdf-draft",
-        {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${sessionToken}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            botId: bot.id,
-            previewHtml: cursivePreviewHtml,
-            previewSnapshot: cursivePreviewSnapshot,
-            previewToken: cursivePreviewToken,
-            sessionId,
-          }),
-        },
-      );
-      const payload = (await response.json()) as {
-        message?: string;
-        artifactType?: "pdf";
-        artifact?: {
-          id?: string;
-          fileName?: string;
-          originalFilename?: string;
-          status?: "queued" | "ready" | "failed";
-        };
-      };
-
-      if (
-        !response.ok ||
-        payload.artifactType !== "pdf" ||
-        !payload.artifact?.id ||
-        !payload.artifact.fileName ||
-        !payload.artifact.status
-      ) {
-        setDocumentError(payload.message ?? "Unable to queue your PDF draft.");
-        return;
-      }
-
-      onArtifactQueued({
-        id: payload.artifact.id,
-        artifactType: payload.artifactType,
-        botName: bot.name,
-        fileName: payload.artifact.fileName,
-        originalFilename:
-          payload.artifact.originalFilename ?? "credit-bureau-dispute-preview.html",
-        status: payload.artifact.status,
-      });
-      setReportStatus("PDF draft queued");
-    } catch {
-      setDocumentError("Unable to queue your PDF draft.");
-    } finally {
-      setSubmittingReport(false);
-    }
-  }
-
   if (!bot) {
     return (
       <section className="panel chat-panel">
@@ -438,131 +297,8 @@ export function ChatPanel({
           <p className="eyebrow">Active Assistant</p>
           <h2>{bot.name}</h2>
         </div>
-        <p className="panel-description">
-          {isCursiveBot
-            ? "Helper chat stays visible for questions and wording support. The official letter flow only starts after you explicitly open it."
-            : bot.description}
-        </p>
+        <p className="panel-description">{bot.description}</p>
       </header>
-      {isCursiveBot ? (
-        <div className="cursive-shell">
-          <CursiveCategoryPicker
-            onSelect={onCursiveCategoryChange}
-            selectedCategory={selectedCursiveCategory}
-          />
-          {!cursiveIntakeStarted ? (
-            <section
-              className={[
-                "cursive-card",
-                "cursive-card--muted",
-                messages.length ? "cursive-card--compact" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              <div className="cursive-card__header">
-                <div>
-                  <p className="eyebrow">Helper Chat First</p>
-                  <h3>
-                    {messages.length
-                      ? "Helper chat stays open while you think it through"
-                      : "Ask questions before you start the letter"}
-                  </h3>
-                </div>
-                <p className="panel-description">
-                  {messages.length
-                    ? "Keep asking questions here. The official intake stays separate until you explicitly begin it."
-                    : "Cursive can explain the process, help you think through the facts, and answer wording questions. The official intake stays separate until you explicitly begin it."}
-                </p>
-              </div>
-              <div className="cursive-generation-lane">
-                <div>
-                  <p className="cursive-generation-lane__title">Official letter flow</p>
-                  <p className="muted-copy">
-                    When you are ready to move from questions into the real letter
-                    flow, open the official intake for the selected category.
-                  </p>
-                </div>
-                <button
-                  className="primary-button"
-                  disabled={!selectedCursiveCategory}
-                  onClick={onStartCursiveIntake}
-                  type="button"
-                >
-                  Start official letter
-                </button>
-              </div>
-            </section>
-          ) : (
-            <CursiveIntakeWizard
-              category={selectedCursiveCategory}
-              hasPreview={Boolean(cursivePreviewHtml)}
-              isPreviewStale={cursivePreviewIsStale}
-              isGeneratingPreview={isGeneratingCursivePreview}
-              intake={cursiveIntake}
-              onChange={onCursiveIntakeChange}
-              onGenerate={onCursiveGenerate}
-            />
-          )}
-        </div>
-      ) : null}
-      {isCursiveBot &&
-      (cursivePreviewHtml || cursivePreviewPortalText || cursivePreviewError) ? (
-        <section className="cursive-preview-card" aria-label="Cursive letter preview">
-          <div className="cursive-preview-card__header">
-            <div>
-              <p className="eyebrow">Preview</p>
-              <h3>Credit Bureau Dispute Letter</h3>
-            </div>
-            <p className="panel-description">
-              {cursivePreviewIsStale
-                ? "This preview is based on earlier official intake. Refresh it before saving the PDF draft."
-                : "This preview reflects the latest generated official intake for Cursive."}
-            </p>
-          </div>
-          {cursivePreviewIsStale ? (
-            <p role="status" className="alert-banner">
-              Official intake changed after this preview. Refresh preview before saving the PDF draft.
-            </p>
-          ) : null}
-          {cursivePreviewError ? (
-            <p role="alert" className="alert-banner">{cursivePreviewError}</p>
-          ) : null}
-          {cursivePreviewHtml ? (
-            <iframe
-              className="cursive-preview-frame"
-              sandbox=""
-              srcDoc={cursivePreviewHtml}
-              title="Cursive letter preview"
-            />
-          ) : null}
-          {cursivePreviewPortalText ? (
-            <label className="field field--full cursive-portal-text-field">
-              <span className="field-label">Portal text for bureau portals</span>
-              <textarea
-                aria-label="Portal text for bureau portals"
-                className="cursive-portal-text"
-                readOnly
-                value={cursivePreviewPortalText}
-              />
-            </label>
-          ) : null}
-          {isCursiveBot ? (
-            <div className="workspace-feedback">
-              <button
-                className="primary-button"
-                disabled={!canSaveCursivePdfDraft || submittingReport}
-                onClick={handleCursiveSavePdfDraft}
-                type="button"
-              >
-                {submittingReport ? "Saving PDF draft..." : "Save PDF draft"}
-              </button>
-              {reportStatus ? <p className="success-banner">{reportStatus}</p> : null}
-              {documentError ? <p role="alert" className="alert-banner">{documentError}</p> : null}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
       <div className="message-stack">
         {messages.map((message) => {
           const isOlderUserMessage =
@@ -610,9 +346,7 @@ export function ChatPanel({
           <article className="message-card message-card--empty">
             <p className="message-role">Ready</p>
             <p className="message-copy">
-              {isCursiveBot
-                ? "Ask Cursive questions first. When you are ready to draft the real letter, tap Start official letter above."
-                : "Start the conversation here. Each bot stays inside its assigned lane and only returns user-facing results."}
+              Start the conversation here. Each bot stays inside its assigned lane and only returns user-facing results.
             </p>
           </article>
         ) : null}

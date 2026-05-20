@@ -30,15 +30,63 @@ export const CursiveViolationTypeSchema = z.enum([
   "account_not_mine",
 ]);
 
+export const CURSIVE_DRAFT_STATUSES = [
+  "drafting",
+  "review_ready",
+  "needs_revision",
+  "approved",
+] as const;
+
+export const CursiveIntakeFieldSchema = z
+  .object({
+    key: z.string().min(1),
+    label: z.string().min(1),
+    required: z.boolean(),
+  })
+  .strict();
+
+export const CursiveIntakeSchemaSchema = z
+  .object({
+    fields: z.array(CursiveIntakeFieldSchema).min(1),
+  })
+  .strict();
+
+export const CursivePromptPayloadSchema = z
+  .object({
+    systemPrompt: z.string().min(1),
+    draftInstructions: z.array(z.string().min(1)).min(1),
+  })
+  .strict();
+
+export const CursiveTemplatePayloadSchema = z
+  .object({
+    salutation: z.string().min(1),
+    closing: z.string().min(1),
+  })
+  .strict();
+
 export const CursiveControlledAssertionSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
 }).strict();
 
+export const CursiveReviewResultSchema = z
+  .object({
+    status: z.enum(CURSIVE_DRAFT_STATUSES),
+    notes: z.array(z.string()),
+  })
+  .strict();
+
 export type CursiveMode = z.infer<typeof CursiveModeSchema>;
 export type CursiveEvidencePosture = z.infer<typeof CursiveEvidencePostureSchema>;
 export type CursiveReportType = z.infer<typeof CursiveReportTypeSchema>;
 export type CursiveViolationType = z.infer<typeof CursiveViolationTypeSchema>;
+export type CursiveIntakeSchema = z.infer<typeof CursiveIntakeSchemaSchema>;
+export type CursivePromptPayload = z.infer<typeof CursivePromptPayloadSchema>;
+export type CursiveTemplatePayload = z.infer<
+  typeof CursiveTemplatePayloadSchema
+>;
 export type CursiveControlledAssertion = z.infer<
   typeof CursiveControlledAssertionSchema
 >;
+export type CursiveReviewResult = z.infer<typeof CursiveReviewResultSchema>;

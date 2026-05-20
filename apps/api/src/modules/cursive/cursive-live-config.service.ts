@@ -1,18 +1,69 @@
 import type { AppEnv } from "../../config/env";
-import {
-  CursiveCategorySchema,
-  CursiveIntakeSchemaSchema,
-  CursivePromptPayloadSchema,
-  CursiveTemplatePayloadSchema,
-  type CursiveCategorySlug,
-} from "../../../../../packages/shared/src/contracts/cursive";
-import {
-  createCursiveRepo,
-  type CursiveCategoryConfig,
-  type CursiveRepoAddress,
-  type CursiveRepoCategory,
-  type CursiveRepoCitation,
-} from "./cursive.repo";
+
+type LegacyCursiveCategory = {
+  slug: string;
+  displayName: string;
+  helperMode: "helper-only";
+  outputModes: string[];
+  enabled: boolean;
+  sortOrder: number;
+  summary: string;
+};
+
+type LegacyIntakeField = {
+  key: string;
+  label: string;
+  required: boolean;
+};
+
+type LegacyCursiveCategoryConfig = {
+  category: LegacyCursiveCategory;
+  intakeSchema: {
+    schemaVersion: string;
+    helperMode: "helper-only";
+    intakeSchema: {
+      fields: LegacyIntakeField[];
+    };
+  };
+  promptProfile: {
+    promptVersion: string;
+    helperMode: "helper-only";
+    promptPayload: {
+      systemPrompt: string;
+      draftInstructions: string[];
+    };
+  };
+  citations: Array<{
+    citationKey: string;
+    citationText: string;
+    sortOrder: number;
+  }>;
+  addresses: Array<{
+    addressKey: string;
+    organizationName: string;
+    attentionLine: string;
+    addressLine1: string;
+    addressLine2: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+    sortOrder: number;
+  }>;
+  templateDefaults: {
+    templateVersion: string;
+    helperMode: "helper-only";
+    templatePayload: {
+      salutation: string;
+      closing: string;
+    };
+  };
+};
+
+export type CursiveConfigService = {
+  getCategoryConfig(categorySlug: string): Promise<LegacyCursiveCategoryConfig>;
+  listCategories(): Promise<readonly LegacyCursiveCategory[]>;
+};
 
 type SupabaseCategoryRow = {
   slug: string;
@@ -28,21 +79,29 @@ type SupabaseIntakeSchemaRow = {
   category_slug: string;
   schema_version: string;
   helper_mode: "helper-only";
-  intake_schema: unknown;
+  intake_schema: {
+    fields: LegacyIntakeField[];
+  };
 };
 
 type SupabasePromptRow = {
   category_slug: string;
   prompt_version: string;
   helper_mode: "helper-only";
-  prompt_payload: unknown;
+  prompt_payload: {
+    systemPrompt: string;
+    draftInstructions: string[];
+  };
 };
 
 type SupabaseTemplateRow = {
   category_slug: string;
   template_version: string;
   helper_mode: "helper-only";
-  template_payload: unknown;
+  template_payload: {
+    salutation: string;
+    closing: string;
+  };
 };
 
 type SupabaseCitationRow = {
@@ -66,10 +125,137 @@ type SupabaseAddressRow = {
   sort_order: number;
 };
 
-export type CursiveConfigService = {
-  getCategoryConfig(categorySlug: CursiveCategorySlug): Promise<CursiveCategoryConfig>;
-  listCategories(): Promise<readonly CursiveRepoCategory[]>;
-};
+const FALLBACK_CATEGORY_CONFIG: LegacyCursiveCategoryConfig = Object.freeze({
+  category: Object.freeze({
+    slug: "credit_bureau_dispute",
+    displayName: "Credit Bureau Dispute",
+    helperMode: "helper-only",
+    outputModes: ["portal_text", "html_letter", "pdf_letter"],
+    enabled: true,
+    sortOrder: 10,
+    summary:
+      "Legacy fallback credit bureau dispute config kept only to support existing preview and artifact routes while Cursive v2 is being migrated.",
+  }),
+  intakeSchema: Object.freeze({
+    schemaVersion: "v1",
+    helperMode: "helper-only",
+    intakeSchema: Object.freeze({
+      fields: Object.freeze([
+        Object.freeze({ key: "consumer_name", label: "Consumer name", required: true }),
+        Object.freeze({
+          key: "consumer_address",
+          label: "Mailing address",
+          required: true,
+        }),
+        Object.freeze({ key: "bureau_choice", label: "Credit bureau", required: true }),
+        Object.freeze({
+          key: "account_reference",
+          label: "Account reference",
+          required: true,
+        }),
+        Object.freeze({ key: "dispute_reason", label: "Dispute reason", required: true }),
+      ]),
+    }),
+  }),
+  promptProfile: Object.freeze({
+    promptVersion: "v1",
+    helperMode: "helper-only",
+    promptPayload: Object.freeze({
+      systemPrompt:
+        "Legacy fallback prompt profile retained only to keep preview routes bootable during the Cursive v2 migration.",
+      draftInstructions: Object.freeze([
+        "Use only the official intake supplied to the route.",
+        "Do not invent facts.",
+      ]),
+    }),
+  }),
+  citations: Object.freeze([
+    Object.freeze({
+      citationKey: "fcra_general",
+      citationText: "15 U.S.C. Secs. 1681 et seq. (FCRA)",
+      sortOrder: 10,
+    }),
+    Object.freeze({
+      citationKey: "reg_v",
+      citationText: "12 C.F.R. Sec. 1022.41-48 (Reg V)",
+      sortOrder: 20,
+    }),
+    Object.freeze({
+      citationKey: "fcra_611",
+      citationText: "15 U.S.C. Sec. 1681i",
+      sortOrder: 30,
+    }),
+  ]),
+  addresses: Object.freeze([
+    Object.freeze({
+      addressKey: "experian_disputes",
+      organizationName: "Experian",
+      attentionLine: "Dispute by Mail",
+      addressLine1: "P.O. Box 4500",
+      addressLine2: "",
+      city: "Allen",
+      state: "TX",
+      postalCode: "75013",
+      country: "US",
+      sortOrder: 10,
+    }),
+    Object.freeze({
+      addressKey: "equifax_disputes",
+      organizationName: "Equifax",
+      attentionLine: "Information Services LLC",
+      addressLine1: "P.O. Box 740256",
+      addressLine2: "",
+      city: "Atlanta",
+      state: "GA",
+      postalCode: "30374",
+      country: "US",
+      sortOrder: 20,
+    }),
+    Object.freeze({
+      addressKey: "transunion_disputes",
+      organizationName: "TransUnion",
+      attentionLine: "Consumer Solutions",
+      addressLine1: "P.O. Box 2000",
+      addressLine2: "",
+      city: "Chester",
+      state: "PA",
+      postalCode: "19016-2000",
+      country: "US",
+      sortOrder: 30,
+    }),
+  ]),
+  templateDefaults: Object.freeze({
+    templateVersion: "v1",
+    helperMode: "helper-only",
+    templatePayload: Object.freeze({
+      salutation: "To Whom It May Concern:",
+      closing: "Sincerely,",
+    }),
+  }),
+});
+
+function createFallbackCursiveConfigService(): CursiveConfigService {
+  return {
+    async getCategoryConfig(categorySlug) {
+      if (categorySlug !== FALLBACK_CATEGORY_CONFIG.category.slug) {
+        throw new Error(`Missing fallback Cursive config for category: ${categorySlug}`);
+      }
+
+      return FALLBACK_CATEGORY_CONFIG;
+    },
+    async listCategories() {
+      return [FALLBACK_CATEGORY_CONFIG.category];
+    },
+  };
+}
+
+function hasSupabaseEnv(env: AppEnv) {
+  return Boolean(env.supabaseUrl && env.supabaseServiceRoleKey);
+}
+
+function hasPartialSupabaseEnv(env: AppEnv) {
+  return Boolean(env.supabaseUrl || env.supabaseServiceRoleKey) && !hasSupabaseEnv(env);
+}
 
 function requireSupabaseEnv(env: AppEnv) {
   if (!env.supabaseUrl || !env.supabaseServiceRoleKey) {
@@ -80,14 +266,6 @@ function requireSupabaseEnv(env: AppEnv) {
     supabaseServiceRoleKey: env.supabaseServiceRoleKey,
     supabaseUrl: env.supabaseUrl,
   };
-}
-
-function hasSupabaseEnv(env: AppEnv) {
-  return Boolean(env.supabaseUrl && env.supabaseServiceRoleKey);
-}
-
-function hasPartialSupabaseEnv(env: AppEnv) {
-  return Boolean(env.supabaseUrl || env.supabaseServiceRoleKey) && !hasSupabaseEnv(env);
 }
 
 async function selectRows<TRow>(input: {
@@ -117,7 +295,9 @@ async function selectRows<TRow>(input: {
   return (await response.json()) as TRow[];
 }
 
-function freezeCategoryConfig(config: CursiveCategoryConfig): CursiveCategoryConfig {
+function freezeCategoryConfig(
+  config: LegacyCursiveCategoryConfig,
+): LegacyCursiveCategoryConfig {
   return Object.freeze({
     ...config,
     category: Object.freeze({
@@ -145,33 +325,17 @@ function freezeCategoryConfig(config: CursiveCategoryConfig): CursiveCategoryCon
     }),
     citations: Object.freeze(
       config.citations.map((citation) => Object.freeze({ ...citation })),
-    ) as unknown as CursiveRepoCitation[],
+    ),
     addresses: Object.freeze(
       config.addresses.map((address) => Object.freeze({ ...address })),
-    ) as unknown as CursiveRepoAddress[],
+    ),
     templateDefaults: Object.freeze({
       ...config.templateDefaults,
       templatePayload: Object.freeze({
         ...config.templateDefaults.templatePayload,
       }),
     }),
-  }) as CursiveCategoryConfig;
-}
-
-function mapCategory(row: SupabaseCategoryRow): CursiveCategoryConfig["category"] {
-  const category = CursiveCategorySchema.parse({
-    displayName: row.display_name,
-    helperMode: row.helper_mode,
-    outputModes: row.output_modes,
-    slug: row.slug,
   });
-
-  return {
-    ...category,
-    enabled: row.enabled,
-    sortOrder: row.sort_order,
-    summary: row.summary,
-  };
 }
 
 function requireSingleRow<TRow>(rows: TRow[], label: string, categorySlug: string) {
@@ -192,25 +356,6 @@ function requireCollectionRows<TRow>(
   }
 
   return rows;
-}
-
-export function createFallbackCursiveConfigService(
-  repo = createCursiveRepo(),
-): CursiveConfigService {
-  return {
-    async getCategoryConfig(categorySlug) {
-      const config = repo.getCategoryConfig(categorySlug);
-
-      if (!config) {
-        throw new Error(`Missing fallback Cursive config for category: ${categorySlug}`);
-      }
-
-      return config;
-    },
-    async listCategories() {
-      return repo.listCategories();
-    },
-  };
 }
 
 export function createSupabaseCursiveConfigService(
@@ -261,20 +406,15 @@ export function createSupabaseCursiveConfigService(
           }),
         ]);
 
-      const category = mapCategory(
-        requireSingleRow(categoryRows, "category", categorySlug),
-      );
-      const intakeSchemaRow = requireSingleRow(
-        intakeRows,
-        "intake schema",
-        categorySlug,
-      );
+      const categoryRow = requireSingleRow(categoryRows, "category", categorySlug);
+      const intakeRow = requireSingleRow(intakeRows, "intake schema", categorySlug);
       const promptRow = requireSingleRow(promptRows, "prompt profile", categorySlug);
       const templateRow = requireSingleRow(
         templateRows,
         "template defaults",
         categorySlug,
       );
+
       const citations = requireCollectionRows(
         citationRows,
         "citations",
@@ -287,40 +427,46 @@ export function createSupabaseCursiveConfigService(
       );
 
       return freezeCategoryConfig({
-        addresses: addresses.map((row) => ({
-          addressKey: row.address_key,
-          addressLine1: row.address_line_1,
-          addressLine2: row.address_line_2,
-          attentionLine: row.attention_line,
-          city: row.city,
-          country: row.country,
-          organizationName: row.organization_name,
-          postalCode: row.postal_code,
-          sortOrder: row.sort_order,
-          state: row.state,
-        })),
-        category,
+        category: {
+          slug: categoryRow.slug,
+          displayName: categoryRow.display_name,
+          helperMode: categoryRow.helper_mode,
+          outputModes: categoryRow.output_modes,
+          enabled: categoryRow.enabled,
+          sortOrder: categoryRow.sort_order,
+          summary: categoryRow.summary,
+        },
+        intakeSchema: {
+          schemaVersion: intakeRow.schema_version,
+          helperMode: intakeRow.helper_mode,
+          intakeSchema: intakeRow.intake_schema,
+        },
+        promptProfile: {
+          promptVersion: promptRow.prompt_version,
+          helperMode: promptRow.helper_mode,
+          promptPayload: promptRow.prompt_payload,
+        },
         citations: citations.map((row) => ({
           citationKey: row.citation_key,
           citationText: row.citation_text,
           sortOrder: row.sort_order,
         })),
-        intakeSchema: {
-          helperMode: intakeSchemaRow.helper_mode,
-          intakeSchema: CursiveIntakeSchemaSchema.parse(intakeSchemaRow.intake_schema),
-          schemaVersion: intakeSchemaRow.schema_version,
-        },
-        promptProfile: {
-          helperMode: promptRow.helper_mode,
-          promptPayload: CursivePromptPayloadSchema.parse(promptRow.prompt_payload),
-          promptVersion: promptRow.prompt_version,
-        },
+        addresses: addresses.map((row) => ({
+          addressKey: row.address_key,
+          organizationName: row.organization_name,
+          attentionLine: row.attention_line,
+          addressLine1: row.address_line_1,
+          addressLine2: row.address_line_2,
+          city: row.city,
+          state: row.state,
+          postalCode: row.postal_code,
+          country: row.country,
+          sortOrder: row.sort_order,
+        })),
         templateDefaults: {
-          helperMode: templateRow.helper_mode,
-          templatePayload: CursiveTemplatePayloadSchema.parse(
-            templateRow.template_payload,
-          ),
           templateVersion: templateRow.template_version,
+          helperMode: templateRow.helper_mode,
+          templatePayload: templateRow.template_payload,
         },
       });
     },
@@ -333,8 +479,16 @@ export function createSupabaseCursiveConfigService(
       });
 
       return Object.freeze(
-        rows.map((row) => mapCategory(row)).sort((a, b) => a.sortOrder - b.sortOrder),
-      ) as readonly CursiveRepoCategory[];
+        rows.map((row) => ({
+          slug: row.slug,
+          displayName: row.display_name,
+          helperMode: row.helper_mode,
+          outputModes: row.output_modes,
+          enabled: row.enabled,
+          sortOrder: row.sort_order,
+          summary: row.summary,
+        })),
+      );
     },
   };
 }
@@ -343,7 +497,6 @@ export function createCursiveConfigService(
   env: AppEnv,
   input?: {
     fetchImpl?: typeof fetch;
-    fallbackRepo?: ReturnType<typeof createCursiveRepo>;
   },
 ): CursiveConfigService {
   if (hasPartialSupabaseEnv(env)) {
@@ -352,11 +505,11 @@ export function createCursiveConfigService(
     );
   }
 
-  if (!hasSupabaseEnv(env)) {
-    return createFallbackCursiveConfigService(input?.fallbackRepo);
+  if (hasSupabaseEnv(env)) {
+    return createSupabaseCursiveConfigService(env, {
+      fetchImpl: input?.fetchImpl,
+    });
   }
 
-  return createSupabaseCursiveConfigService(env, {
-    fetchImpl: input?.fetchImpl,
-  });
+  return createFallbackCursiveConfigService();
 }
