@@ -2,10 +2,11 @@
 
 ## Status
 
-These notes prepare the Cursive v2 branch for rollout. They do not authorize an immediate VPS deployment by themselves.
+These notes prepare the merged Cursive v2 `main` branch for rollout. They do not authorize an immediate VPS deployment by themselves.
 
 Cursive v2 is ready for rollout packaging when these local gates are fresh and passing:
 
+- `git diff --check`
 - `corepack pnpm -r test`
 - `corepack pnpm -r lint`
 - `corepack pnpm -r build`
@@ -25,14 +26,15 @@ The latest completed Cursive verification covered:
 ## Order Of Operations
 
 1. Finish the local branch.
-   - Keep `codex/cursive-phase-a` as the source of truth until merged or deliberately replaced.
+   - Use `main` as the source of truth after PR #1 is merged.
+   - The merged rollout commit is `1de9059`.
    - Review the working tree and exclude unrelated local-only files, especially `resume-next-session-sgt-bots.md`.
    - Confirm no ignored secret files are copied into docs, commits, issue comments, or handoffs.
    - Run the full local verification gate listed above.
 
-2. Commit and push the corrected branch to GitHub.
-   - Commit the Cursive v2 implementation, tests, fixtures, and docs together or in reviewable logical commits.
-   - Confirm GitHub receives the same branch that passed local verification.
+2. Confirm GitHub is the source of the deployment commit.
+   - Confirm `origin/main` contains the merged Cursive v2 commit.
+   - Deploy from `main` at commit `1de9059` or a later commit that intentionally includes it.
    - Do not deploy from an older helper-chat Cursive branch.
 
 3. Prepare the VPS host.
@@ -41,11 +43,13 @@ The latest completed Cursive verification covered:
    - Confirm Supabase migration `007_cursive_category_engine.sql` and seed `supabase/seed/007_cursive_seed.sql` have been applied before relying on live Cursive config.
    - Confirm the external Docker network named `proxy` exists, because `docker-compose.vps.yml` joins that network.
    - Confirm the existing Caddy instance owns ports 80/443 and includes the site block from `Caddyfile`.
+   - Confirm the backend image can support Playwright Chromium before calling the deploy healthy. The current `Dockerfile.backend` uses `node:22-alpine`; if Chromium cannot launch there, update the backend image or install the required browser/runtime dependencies before proceeding.
 
 4. Build and start the updated services on the VPS.
    - Use `docker-compose.vps.yml`.
    - Rebuild both services so the mini app bundle and API runtime come from the same commit.
    - Restart the backend and frontend containers together.
+   - Do not replace the VPS `.env` with any local vault file wholesale. Copy only the exact keys required for VPS 2.
 
 5. Run post-deploy checks before calling the rollout complete.
    - `/health` responds through the public domain.
@@ -112,6 +116,7 @@ Cursive PDF generation depends on the report artifact pipeline and Playwright-ba
 Before rollout completion:
 
 - Confirm the backend container can import and run the Playwright renderer used by `workers/queue/src/jobs/render-report.job.ts`.
+- Confirm `chromium.launch()` works inside the backend container, not only on the host.
 - Confirm the backend container can actually render a Cursive PDF, not merely start the API process.
 - Confirm generated PDF bytes begin with `%PDF-`.
 - Confirm artifact records progress from `queued` to `ready`.
