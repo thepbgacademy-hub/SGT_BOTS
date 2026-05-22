@@ -43,7 +43,7 @@ The latest completed Cursive verification covered:
    - Confirm Supabase migration `007_cursive_category_engine.sql` and seed `supabase/seed/007_cursive_seed.sql` have been applied before relying on live Cursive config.
    - Confirm the external Docker network named `proxy` exists, because `docker-compose.vps.yml` joins that network.
    - Confirm the existing Caddy instance owns ports 80/443 and includes the site block from `Caddyfile`.
-   - Confirm the backend image can support Playwright Chromium before calling the deploy healthy. The current `Dockerfile.backend` uses `node:22-alpine`; if Chromium cannot launch there, update the backend image or install the required browser/runtime dependencies before proceeding.
+   - Confirm the backend image can support Playwright Chromium before calling the deploy healthy. `Dockerfile.backend` installs Playwright Chromium and its system dependencies for the report renderer; if Chromium cannot launch, fix the image before proceeding.
 
 4. Build and start the updated services on the VPS.
    - Use `docker-compose.vps.yml`.

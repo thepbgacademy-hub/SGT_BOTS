@@ -420,3 +420,13 @@ The token '&&' is not a valid statement separator in this version.
 **Fix applied:** Added explicit `40000` timeout budgets to every bot-runtime E2E that calls the authorized-session helper, expanded the handoff pre-deploy gate list, and replaced the stale embedded rollout-note scaffold with a pointer to the current rollout notes.
 
 **Rule going forward:** When a helper setup is the real source of flake risk, apply the test budget rule to every caller in the same suite. Rollout handoffs should link to the canonical checklist instead of keeping a second, abbreviated copy.
+
+### 2026-05-22 - Backend container must include Playwright browser dependencies
+
+**Context:** Local Docker rollout rehearsal before deploying Cursive v2 to VPS 2.
+
+**Problem:** The backend image built on `node:22-alpine`, but Cursive PDF generation calls the Playwright renderer from the backend runtime. The first container smoke test failed because Chromium browser binaries were not present in the image.
+
+**Fix applied:** Changed `Dockerfile.backend` to use `node:22-bookworm-slim` and install Playwright Chromium plus system dependencies during the image build. Verified the rebuilt backend image can render PDF bytes beginning with `%PDF-`.
+
+**Rule going forward:** Any deployment that relies on server-side PDF generation must include a container-level PDF smoke test. API startup alone is not enough.
