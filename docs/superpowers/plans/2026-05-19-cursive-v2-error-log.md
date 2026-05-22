@@ -430,3 +430,13 @@ The token '&&' is not a valid statement separator in this version.
 **Fix applied:** Changed `Dockerfile.backend` to use `node:22-bookworm-slim` and install Playwright Chromium plus system dependencies during the image build. Verified the rebuilt backend image can render PDF bytes beginning with `%PDF-`.
 
 **Rule going forward:** Any deployment that relies on server-side PDF generation must include a container-level PDF smoke test. API startup alone is not enough.
+
+### 2026-05-22 - VPS 2 topology uses web-proxy and image-based SGT stack
+
+**Context:** Read-only VPS 2 rollout inspection after Cursive v2 was merged.
+
+**Problem:** The repo rollout files still referred to older service/container names and an external Docker network named `proxy`. The live VPS 2 Caddy config routes `playground.spyderbyte.cloud` to `sgt-bots-backend` and `sgt-bots-frontend` on the external `web-proxy` network, and the backend also needs the external `supabase_default` network to reach Supabase Kong.
+
+**Fix applied:** Updated `docker-compose.vps.yml`, `Caddyfile`, and rollout notes to match the live VPS 2 service names and networks. Verified the public health endpoint works, the current live Cursive v2 entry route still returns `404` before deployment, and Supabase has the Cursive tables/seeded category state needed by the new backend.
+
+**Rule going forward:** Before deploying from a checked-in compose file, compare it against the running container labels and Caddy service names on the target host. Do not assume local compose network names match VPS reality.
