@@ -8,6 +8,7 @@ import type {
   BotSourceBinding,
   BotToolPermission,
 } from "../../../../../packages/shared/src/bots/capabilities";
+import type { CursiveCategoryConfig } from "../cursive/cursive.repo";
 
 type ChatRole = "user" | "assistant";
 
@@ -90,21 +91,6 @@ function buildKnowledgeBaseReply(
   };
 }
 
-function buildDocumentWizardReply(
-  manifest: BotManifest,
-  content: string,
-): RuntimeReply {
-  requireCapability(manifest, "chat");
-  requireCapability(manifest, "pdf_upload");
-  requireCapability(manifest, "structured_form");
-  requireCapability(manifest, "html_report");
-  requireToolPermission(manifest, "document_intake");
-
-  return {
-    output: `I can turn "${content}" into a structured draft. Upload a PDF or paste your notes and I will shape the final report flow for you.`,
-  };
-}
-
 function buildTutorReply(manifest: BotManifest, content: string): RuntimeReply {
   requireCapability(manifest, "chat");
 
@@ -171,11 +157,28 @@ function buildTaxLegalResearchReply(
   };
 }
 
-export function createChatService(deps?: { now?: () => number }) {
+export function createChatService(deps?: {
+  cursiveRepo?: {
+    getCategoryConfig(categorySlug: string): CursiveCategoryConfig | null;
+    listCategories(): readonly CursiveCategoryConfig["category"][];
+    getDefaultCategoryConfig(): CursiveCategoryConfig;
+  };
+  now?: () => number;
+  resolveManifest?: (botId: string) => BotManifest;
+  buildRuntimeReply?: (
+    manifest: BotManifest,
+    trimmedContent: string,
+  ) => RuntimeReply;
+}) {
   const conversations = new Map<string, ConversationRecord>();
   let conversationCount = 0;
   let messageCount = 0;
   const now = deps?.now ?? (() => Date.now());
+  const resolveManifest = deps?.resolveManifest ?? requireBotManifest;
+  const buildReply =
+    deps?.buildRuntimeReply ??
+    ((manifest: BotManifest, trimmedContent: string) =>
+      buildRuntimeReply(manifest, trimmedContent));
 
   function nextConversationId() {
     conversationCount += 1;
@@ -201,7 +204,7 @@ export function createChatService(deps?: { now?: () => number }) {
         throw new Error("message content required");
       }
 
-      const manifest = requireBotManifest(input.botId);
+      const manifest = resolveManifest(input.botId);
       const existingConversation = input.conversationId
         ? conversations.get(input.conversationId)
         : undefined;
@@ -222,6 +225,8 @@ export function createChatService(deps?: { now?: () => number }) {
         throw new Error("conversation not found");
       }
 
+      const runtimeReply = buildReply(manifest, trimmedContent);
+      const createdAt = new Date(now()).toISOString();
       const conversation =
         existingConversation ??
         {
@@ -229,7 +234,7 @@ export function createChatService(deps?: { now?: () => number }) {
           botId: manifest.id,
           sessionId: input.sessionId,
           userId: input.userId,
-          createdAt: new Date(now()).toISOString(),
+          createdAt,
           state: "active" as const,
           endedAt: null,
         };
@@ -238,14 +243,12 @@ export function createChatService(deps?: { now?: () => number }) {
         conversations.set(conversation.id, conversation);
       }
 
-      const createdAt = new Date(now()).toISOString();
       const userMessage: ChatMessage = {
         id: nextMessageId(),
         role: "user",
         content: trimmedContent,
         createdAt,
       };
-      const runtimeReply = buildRuntimeReply(manifest, trimmedContent);
       const assistantMessage: ChatMessage = {
         id: nextMessageId(),
         role: "assistant",
@@ -272,7 +275,7 @@ function buildRuntimeReply(
 ): RuntimeReply {
   switch (manifest.id) {
     case "document_wizard":
-      return buildDocumentWizardReply(manifest, trimmedContent);
+      throw new Error("cursive workflow only");
     case "tutor":
       return buildTutorReply(manifest, trimmedContent);
     case "form_wizard":

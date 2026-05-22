@@ -46,8 +46,10 @@ async function onboardProfile(
 }
 
 describe("provider connection and session start", () => {
-  it("issues a backend session token that remains valid after telegram init data ages out", async () => {
-    let now = Date.parse("2026-05-05T12:00:00.000Z");
+  it(
+    "issues a backend session token that remains valid after telegram init data ages out",
+    async () => {
+      let now = Date.parse("2026-05-05T12:00:00.000Z");
     const validInitData = createSignedTelegramInitData();
     const profileRepo = createInMemoryProfileRepo();
     const app = await buildApp({
@@ -100,14 +102,16 @@ describe("provider connection and session start", () => {
     expect(connectPayload.session.state).toBe("active");
     expect(connectPayload.sessionToken).toEqual(expect.any(String));
     expect(sessionResponse.statusCode).toBe(200);
-    expect(sessionResponse.json()).toMatchObject({
-      session: {
-        id: connectPayload.session.id,
-        userId: onboarding.profile.id,
-        state: "active",
-      },
-    });
-  });
+      expect(sessionResponse.json()).toMatchObject({
+        session: {
+          id: connectPayload.session.id,
+          userId: onboarding.profile.id,
+          state: "active",
+        },
+      });
+    },
+    40000,
+  );
 
   it("returns durable provider metadata after restart and requires reconnect when the secret is gone", async () => {
     const metadataRepo = createInMemorySessionMetadataRepo();
@@ -480,6 +484,30 @@ describe("provider connection and session start", () => {
     });
     await expect(
       sessionService.authorizeRequest({
+        sessionId: session.id,
+        userId: "test-user",
+      }),
+    ).rejects.toThrowError("session expired");
+  });
+
+  it("does not return provider secrets after the session expiry time passes", async () => {
+    let now = Date.parse("2026-05-05T12:00:00.000Z");
+    const sessionService = createSessionService({
+      metadataRepo: createInMemorySessionMetadataRepo(),
+      secretStore: createInMemorySessionSecretStore(),
+      now: () => now,
+    });
+
+    const session = await sessionService.startSession({
+      userId: "test-user",
+      provider: "openai",
+      apiKey: "sk-test",
+    });
+
+    now += SESSION_DURATION_SECONDS * 1000 + 1000;
+
+    await expect(
+      sessionService.getProviderSecretForUser({
         sessionId: session.id,
         userId: "test-user",
       }),

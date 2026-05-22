@@ -2,7 +2,11 @@ export type ArtifactListItem = {
   id: string;
   artifactType: "pdf";
   botName: string;
+  createdAt?: string;
+  downloadUrl?: string | null;
   fileName: string;
+  failureReason?: string | null;
+  generatedAt?: string;
   status: "queued" | "ready" | "failed";
   originalFilename: string;
 };
@@ -29,6 +33,16 @@ export function ArtifactList({ artifacts }: ArtifactListProps) {
                 {artifact.botName} - {artifact.status}
               </p>
               <p className="artifact-source">Source: {artifact.originalFilename}</p>
+              {artifact.failureReason ? (
+                <p className="alert-banner">{artifact.failureReason}</p>
+              ) : null}
+              {artifact.downloadUrl ? (
+                <p className="artifact-actions">
+                  <a className="secondary-button" href={artifact.downloadUrl}>
+                    Download PDF
+                  </a>
+                </p>
+              ) : null}
             </li>
           ))}
         </ul>

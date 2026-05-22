@@ -2,8 +2,8 @@
 
 ## Active
 
-- [ ] **Push the branch to GitHub** - publish `codex/phase-0-foundation` when the remote is ready
-- [ ] **Choose the post-v1 milestone** - decide between deployment hardening, richer bot workflows, or conversion polish
+- [ ] **Prepare Cursive v2 rollout package** - finish Phase E docs, review deployment order, and prepare the branch for GitHub/VPS correction without starting the VPS rollout yet
+- [ ] **Start remaining bot workflow layers** - replace scaffolded replies for the non-Cursive bots after Cursive v2 rollout is packaged
 
 ## Waiting On
 
@@ -11,10 +11,12 @@
 
 ## Someday
 
-- [ ] **Deployment checklist** - add VPS and Supabase release runbooks before production rollout
+- [ ] **Broader production runbooks** - add VPS and Supabase release notes for future non-Cursive rollout work
 
 ## Done
 
+- [x] ~~Complete Cursive v2 manual and upload/report-analysis lanes~~ (2026-05-22)
+- [x] ~~Retire Cursive v1 plan in favor of Cursive v2 workflow rollout~~ (2026-05-22)
 - [x] ~~Execute Phase 5~~ (2026-05-06)
 - [x] ~~Run Phase 5 reviews~~ (2026-05-06)
 - [x] ~~Commit Phase 4~~ (2026-05-06)

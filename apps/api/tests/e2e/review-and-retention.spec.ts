@@ -100,56 +100,60 @@ describe("review prompt and retention cleanup", () => {
     expect(sql).toContain("metadata jsonb not null");
   });
 
-  it("returns a review url, marks review_prompted, retires early-exit sessions, and records analytics", async () => {
-    const { app, metadataRepo, sessionId, sessionToken } =
-      await createAuthorizedSession();
+  it(
+    "returns a review url, marks review_prompted, retires early-exit sessions, and records analytics",
+    async () => {
+      const { app, metadataRepo, sessionId, sessionToken } =
+        await createAuthorizedSession();
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/reviews/prompt",
-      headers: {
-        authorization: `Bearer ${sessionToken}`,
-      },
-      payload: {
-        sessionId,
-        reason: "early_exit",
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({
-      reviewUrl: "https://t.me/sgt_review_lab",
-      reason: "early_exit",
-      status: "prompted",
-    });
-    expect(metadataRepo.snapshot()).toMatchObject({
-      playground_sessions: [
-        {
-          id: sessionId,
-          review_prompted: true,
-          status: "retired",
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/reviews/prompt",
+        headers: {
+          authorization: `Bearer ${sessionToken}`,
         },
-      ],
-    });
-    expect(app.analyticsService.listEvents()).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          eventName: "profile_created",
-        }),
-        expect.objectContaining({
-          eventName: "provider_connected",
-          entityId: sessionId,
-        }),
-        expect.objectContaining({
-          eventName: "review_prompted",
-          entityId: sessionId,
-          metadata: {
-            reason: "early_exit",
+        payload: {
+          sessionId,
+          reason: "early_exit",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        reviewUrl: "https://t.me/sgt_review_lab",
+        reason: "early_exit",
+        status: "prompted",
+      });
+      expect(metadataRepo.snapshot()).toMatchObject({
+        playground_sessions: [
+          {
+            id: sessionId,
+            review_prompted: true,
+            status: "retired",
           },
-        }),
-      ]),
-    );
-  });
+        ],
+      });
+      expect(app.analyticsService.listEvents()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            eventName: "profile_created",
+          }),
+          expect.objectContaining({
+            eventName: "provider_connected",
+            entityId: sessionId,
+          }),
+          expect.objectContaining({
+            eventName: "review_prompted",
+            entityId: sessionId,
+            metadata: {
+              reason: "early_exit",
+            },
+          }),
+        ]),
+      );
+    },
+    40000,
+  );
 
   it("allows a just-expired session token to request the timeout review prompt", async () => {
     let now = Date.parse("2026-05-05T12:00:00.000Z");

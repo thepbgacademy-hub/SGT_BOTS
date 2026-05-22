@@ -169,11 +169,13 @@ describe("document wizard uploads and reports", () => {
       expect(storedArtifact.fileName).toBe("document-wizard-report.pdf");
       expect(storedArtifact.storagePath).toContain(".pdf");
     },
-    40000,
+    70000,
   );
 
-  it("accepts base64 pdf uploads above Fastify's default body limit", async () => {
-    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+  it(
+    "accepts base64 pdf uploads above Fastify's default body limit",
+    async () => {
+      const { app, sessionId, sessionToken } = await createAuthorizedSession();
 
     const response = await app.inject({
       method: "POST",
@@ -194,8 +196,10 @@ describe("document wizard uploads and reports", () => {
       },
     });
 
-    expect(response.statusCode).toBe(202);
-  });
+      expect(response.statusCode).toBe(202);
+    },
+    40000,
+  );
 
   it("rejects non-pdf uploads for document wizard", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();

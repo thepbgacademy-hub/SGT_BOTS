@@ -15,6 +15,9 @@ import { registerBotRoutes } from "./modules/bots/bot.route";
 import { createBotService } from "./modules/bots/bot.service";
 import { registerChatRoutes } from "./modules/chat/chat.route";
 import { createChatService } from "./modules/chat/chat.service";
+import { createCursiveConfigService, type CursiveConfigService } from "./modules/cursive/cursive-live-config.service";
+import { registerCursiveRoutes } from "./modules/cursive/cursive.route";
+import { createCursiveService } from "./modules/cursive/cursive.service";
 import {
   createInMemoryProfileRepo,
   createSupabaseProfileRepo,
@@ -60,8 +63,10 @@ declare module "fastify" {
     uploadService: ReturnType<typeof createUploadService>;
     reportService: ReturnType<typeof createReportService>;
     chatService: ReturnType<typeof createChatService>;
+    cursiveService: Pick<ReturnType<typeof createCursiveService>, "getWorkflowEntry">;
     reviewService: ReturnType<typeof createReviewService>;
     sessionService: ReturnType<typeof createSessionService>;
+    cursiveConfigService: CursiveConfigService;
   }
 }
 
@@ -122,6 +127,8 @@ export async function buildApp(options?: {
   );
   app.decorate("botService", createBotService({ registryRepo: botRegistryRepo }));
   app.decorate("chatService", createChatService({ now: options?.now }));
+  app.decorate("cursiveService", createCursiveService());
+  app.decorate("cursiveConfigService", createCursiveConfigService(appEnv));
   app.decorate("uploadService", createUploadService({ now: options?.now }));
   let reportService!: ReturnType<typeof createReportService>;
   const reportQueue = createInMemoryReportQueue({
@@ -183,6 +190,7 @@ export async function buildApp(options?: {
   await registerSessionRoutes(app);
   await registerBotRoutes(app);
   await registerChatRoutes(app);
+  await registerCursiveRoutes(app);
   await registerReportRoutes(app);
   await registerReviewRoutes(app);
   return app;

@@ -17,7 +17,10 @@ function replyForChatRuntimeError(message: string) {
     return 404;
   }
 
-  if (message === "conversation belongs to a different bot") {
+  if (
+    message === "conversation belongs to a different bot" ||
+    message === "cursive workflow only"
+  ) {
     return 409;
   }
 

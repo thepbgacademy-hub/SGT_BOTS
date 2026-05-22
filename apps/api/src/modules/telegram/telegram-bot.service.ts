@@ -43,6 +43,14 @@ export type TelegramSendMessageInput = {
 
 type SendMessage = (input: TelegramSendMessageInput) => Promise<void>;
 
+function isInteractiveGroupChat(chat: TelegramChat | undefined) {
+  return (
+    chat?.type === "group" ||
+    chat?.type === "supergroup" ||
+    chat?.type === "channel"
+  );
+}
+
 function buildWelcomeReply(env: AppEnv): Omit<TelegramSendMessageInput, "chatId"> {
   const button = buildWelcomeButton(env);
 
@@ -115,8 +123,12 @@ export async function handleTelegramUpdate(input: {
   update: TelegramUpdate;
 }) {
   const message = input.update.message;
+  const membershipChat = input.update.my_chat_member?.chat;
 
-  if (botMembershipWasUpdated(input.update, input.env.telegramBotUsername)) {
+  if (
+    isInteractiveGroupChat(membershipChat) &&
+    botMembershipWasUpdated(input.update, input.env.telegramBotUsername)
+  ) {
     await input.sendMessage({
       chatId: input.update.my_chat_member!.chat.id,
       ...buildWelcomeReply(input.env),
@@ -125,6 +137,10 @@ export async function handleTelegramUpdate(input: {
   }
 
   if (!message) {
+    return;
+  }
+
+  if (!isInteractiveGroupChat(message.chat)) {
     return;
   }
 

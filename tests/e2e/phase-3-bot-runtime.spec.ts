@@ -42,15 +42,20 @@ test("provider session unlocks the menu and selected bots stay in their own lane
 
   await page.getByRole("button", { name: "Back to Menu" }).click();
   await page.getByRole("button", { name: "Cursive" }).click();
+  await expect(page.getByLabel("Chat input")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Upload PDF" })).toHaveCount(0);
+  await expect(page.getByLabel("Client name")).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Upload PDF" }),
+    page.getByRole("button", { name: "Generate report" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Choose how to begin" }),
   ).toBeVisible();
-
-  await page.getByLabel("Chat input").fill("Draft a launch brief for tomorrow.");
-  await page.getByRole("button", { name: "Send message" }).click();
-
   await expect(
-    page.getByText("Upload a PDF or paste your notes and I will shape the final report flow for you."),
+    page.getByRole("button", { name: "Manual dispute" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Analyze uploaded report" }),
   ).toBeVisible();
   await expect(page.getByText("Release Review Runbook")).not.toBeVisible();
 });
@@ -173,6 +178,15 @@ test("switching bots clears composer draft and chat errors", async ({ page }) =>
 
   await page.getByRole("button", { name: "Back to Menu" }).click();
   await page.getByRole("button", { name: "Cursive" }).click();
+
+  await expect(page.getByRole("alert")).not.toBeVisible();
+  await expect(page.getByLabel("Chat input")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Choose how to begin" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Back to Menu" }).click();
+  await page.getByRole("button", { name: "Rori" }).click();
 
   await expect(page.getByRole("alert")).not.toBeVisible();
   await expect(page.getByLabel("Chat input")).toHaveValue("");

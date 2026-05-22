@@ -38,6 +38,16 @@ export function BotSupportPanel({
                 {artifact.botName} - {artifact.status}
               </p>
               <p className="artifact-source">Source: {artifact.originalFilename}</p>
+              {artifact.failureReason ? (
+                <p className="alert-banner">{artifact.failureReason}</p>
+              ) : null}
+              {artifact.downloadUrl ? (
+                <p className="artifact-actions">
+                  <a className="secondary-button" href={artifact.downloadUrl}>
+                    Download PDF
+                  </a>
+                </p>
+              ) : null}
             </li>
           ))}
         </ul>

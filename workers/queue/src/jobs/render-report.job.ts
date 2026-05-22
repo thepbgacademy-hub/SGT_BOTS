@@ -4,18 +4,28 @@ export type RenderReportJobInput = {
   artifactId: string;
   artifactFileName: string;
   templateId: string;
-  templatePath: string;
   generatedAt: string;
-  upload: {
-    originalFilename: string;
-    mimeType: string;
-    byteSize: number;
-  };
-  formData: {
-    clientName: string;
-    objective: string;
-  };
-};
+} & (
+  | {
+      html: string;
+      templatePath?: never;
+      upload?: never;
+      formData?: never;
+    }
+  | {
+      templatePath: string;
+      html?: never;
+      upload: {
+        originalFilename: string;
+        mimeType: string;
+        byteSize: number;
+      };
+      formData: {
+        clientName: string;
+        objective: string;
+      };
+    }
+);
 
 export type RenderReportJobResult = {
   artifactId: string;
@@ -62,7 +72,31 @@ async function renderPdfFromHtml(html: string) {
 
     return Buffer.from(
       await page.pdf({
-        format: "A4",
+        displayHeaderFooter: false,
+        format: "Letter",
+        preferCSSPageSize: true,
+        printBackground: true,
+      }),
+    );
+  } finally {
+    await browser.close();
+  }
+}
+
+async function renderPdfFromTemplateHtml(html: string) {
+  const { chromium } = await import("playwright");
+  const browser = await chromium.launch();
+
+  try {
+    const page = await browser.newPage();
+
+    await page.setContent(html, { waitUntil: "networkidle" });
+
+    return Buffer.from(
+      await page.pdf({
+        displayHeaderFooter: false,
+        format: "Letter",
+        preferCSSPageSize: true,
         printBackground: true,
         margin: {
           top: "18mm",
@@ -80,25 +114,30 @@ async function renderPdfFromHtml(html: string) {
 export const runRenderReportJob: RenderReportJobRunner = async (
   input: RenderReportJobInput,
 ) => {
-  const template = await readFile(input.templatePath, "utf8");
-  const html = fillTemplate(template, {
-    clientName: escapeHtml(input.formData.clientName),
-    objective: escapeHtml(input.formData.objective),
-    originalFilename: escapeHtml(input.upload.originalFilename),
-    mimeType: escapeHtml(input.upload.mimeType),
-    generatedDate: escapeHtml(
-      new Date(input.generatedAt).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
-    ),
-    fileSizeLabel: escapeHtml(formatFileSize(input.upload.byteSize)),
-  });
+  const html =
+    input.html !== undefined
+      ? input.html
+      : fillTemplate(await readFile(input.templatePath, "utf8"), {
+          clientName: escapeHtml(input.formData.clientName),
+          objective: escapeHtml(input.formData.objective),
+          originalFilename: escapeHtml(input.upload.originalFilename),
+          mimeType: escapeHtml(input.upload.mimeType),
+          generatedDate: escapeHtml(
+            new Date(input.generatedAt).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }),
+          ),
+          fileSizeLabel: escapeHtml(formatFileSize(input.upload.byteSize)),
+        });
 
   return {
     artifactId: input.artifactId,
     fileName: input.artifactFileName,
-    bytes: await renderPdfFromHtml(html),
+    bytes:
+      input.html !== undefined
+        ? await renderPdfFromHtml(html)
+        : await renderPdfFromTemplateHtml(html),
   };
 };

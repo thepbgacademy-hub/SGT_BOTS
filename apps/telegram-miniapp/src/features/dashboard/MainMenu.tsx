@@ -30,19 +30,34 @@ export function MainMenu({
         </div>
       </div>
       <div className="menu-artboard">
-        <img
-          alt="Playground bot selection menu"
-          className="menu-artboard-image"
-          src="/images/main-menu.png"
-        />
+        <picture>
+          <source
+            media="(max-width: 760px)"
+            srcSet="/images/main-menu-mobile-labeled.jpg"
+            type="image/jpeg"
+          />
+          <source
+            srcSet="/images/main-menu-desktop-labeled.jpg"
+            type="image/jpeg"
+          />
+          <img
+            alt="Playground bot selection menu"
+            className="menu-artboard-image"
+            decoding="async"
+            fetchPriority="high"
+            loading="eager"
+            src="/images/main-menu-desktop-labeled.jpg"
+          />
+        </picture>
         {menuItems.map((item) => (
           <button
             className={`hex-menu-button hex-menu-button--${item.position}`}
             key={item.id}
             onClick={() => onSelect(item.id)}
             type="button"
+            aria-label={`Open ${item.displayName}`}
           >
-            <span className="hex-menu-button__name">{item.displayName}</span>
+            <span className="sr-only">{item.displayName}</span>
           </button>
         ))}
       </div>

@@ -3,81 +3,125 @@
 ## Current Repo
 
 - Working repo: `E:\REPOS\SGT_BOTS`
-- Active branch: `main`
-- GitHub remotes:
-  - source repo: `thepbgacademy-hub/SGT_BOTS`
-  - deployment repo push target used in this session: `thepbgacademy-hub/SGT_BOTS_APP`
+- Active branch: `codex/cursive-phase-a`
+- Source repo: `https://github.com/thepbgacademy-hub/SGT_BOTS`
+- Current branch is the source of truth for the resumed Cursive build
 
-## Current Build State
+## Read These First
 
-- MVP backend is working
-- local browser preview is working
-- the mini app opens to the approved hex-image `MainMenu`
-- the bot workspace uses the approved gold dashboard frame
-- the menu is data-driven from the authenticated bot catalog
-- bot-aware side panels and motion polish are in place
+1. `E:\REPOS\SGT_BOTS\HANDOFF.md`
+2. `E:\REPOS\SGT_BOTS\TASKS.md`
+3. `E:\REPOS\SGT_BOTS\docs\superpowers\specs\2026-05-19-cursive-v2-redesign.md`
+4. `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-redesign-implementation.md`
+5. `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-error-log.md`
+6. `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-rollout-notes.md`
 
-## Supabase
+## What This Build Is
 
-- table: `public.playground_bot_registry`
-- local migration: `supabase/migrations/006_playground_bot_registry.sql`
-- remote RLS: enabled
-- remote policy: `Authenticated users can read the playground bot registry`
+- `SGT_BOTS` is the Telegram playground for the Academy's try-before-you-buy experience.
+- Users enter provider/BYOK info before launching a bot.
+- Each playground session is limited to 3 hours.
+- Each bot should feel like its own tool, not just a cosmetic skin over one shared chat shell.
 
-## Published Images
+## What Cursive Does
 
-- frontend: `ghcr.io/thepbgacademy-hub/sgt-bots-app-frontend:latest`
-- backend: `ghcr.io/thepbgacademy-hub/sgt-bots-app-backend:latest`
+- `Cursive` is the first serious workflow bot inside the six-bot playground.
+- It is no longer a chat assistant.
+- It is a guided dispute workflow engine focused on bureau-targeted removal-demand letters.
+- It supports:
+  - `Manual dispute`
+  - `Analyze uploaded report`
+- Manual disputes branch into:
+  - `Inconsistent reporting across bureaus`
+  - `One bureau is reporting the item inaccurately and I have proof`
+- Uploaded report analysis branches into:
+  - `Tri-merge report`
+  - `Single-bureau report`
 
-## VPS Deployment Reality
+## End Goal
 
-- the VPS already has an existing proxy container: `supabase-caddy`
-- do **not** deploy a second Caddy container on this VPS
-- ports `80/443` must remain with the existing proxy
+- Ship a clean, mobile-first, full-screen Cursive workspace inside the playground.
+- Keep the mini app utility-first and menu-driven.
+- Generate bureau-specific removal-demand letters from controlled inputs and evidence.
+- Never expose internal prompts, skills, or LLM workflow to the user.
+- Keep the other playground bots/pages intact while making Cursive the first fully operational lane.
 
-## VPS Deployment Files
+## Current Implemented State
 
-- app-only compose file: `docker-compose.vps.yml`
-- frontend container: `Dockerfile.frontend`
-- backend container: `Dockerfile.backend`
-- existing-proxy site block reference: `Caddyfile`
-- frontend nginx config: `apps/telegram-miniapp/nginx.conf`
+- Shared Cursive v2 workflow contracts are in place in `packages\shared\src\contracts\cursive.ts`.
+- The API workflow seam has been reset for workflow-only Cursive under `apps\api\src\modules\cursive\`.
+- `document_wizard` chat is blocked from acting like a conversational bot in `apps\api\src\modules\chat\chat.service.ts`.
+- The mini app routes Cursive into a dedicated full-screen workflow shell:
+  - `apps\telegram-miniapp\src\features\cursive\CursiveWorkspace.tsx`
+  - `apps\telegram-miniapp\src\features\cursive\CursiveStepper.tsx`
+  - `apps\telegram-miniapp\src\features\cursive\CursiveFooter.tsx`
+  - `apps\telegram-miniapp\src\features\dashboard\DashboardShell.tsx`
+- The old Cursive category/chat-first mini app flow has been removed.
+- The manual lane generates bureau removal-demand PDF artifacts.
+- The uploaded-report lane generates bureau removal-demand PDF artifacts for:
+  - tri-merge balance inconsistency
+  - single-bureau closed-account-reported-open proof
+- Upload report fixtures under `tests\e2e\fixtures\` are valid viewer-friendly PDFs, not fake `%PDF-` stubs.
 
-## Correct VPS Deployment Model
+## Phase Just Completed
 
-- deploy only `2` app containers:
-  - `telegram-playground-frontend`
-  - `telegram-playground-backend`
-- both must join the shared external Docker network:
-  - `proxy`
-- the existing `supabase-caddy` instance should be updated with the site block from `Caddyfile`
-- routes in the existing proxy should be:
-  - `/` -> `telegram-playground-frontend:8080`
-  - `/api/*` -> `telegram-playground-backend:3000`
-  - `/health` -> `telegram-playground-backend:3000`
+- Phase D finished the Cursive v2 template, artifact, output, and upload/report-analysis lanes.
+- The manual lane is workflow-only and passes end-to-end.
+- The tri-merge upload lane is workflow-only and passes end-to-end.
+- The single-bureau upload lane is workflow-only and passes end-to-end.
+- The Cursive output posture is removal-demand only:
+  - no helper chat
+  - no generic verification request
+  - no "correct if needed" fallback
+  - no bureau validation request
 
-## Important Deployment Notes
+## Verified Green So Far
 
-- backend binds to `0.0.0.0` in `apps/api/src/index.ts`
-- backend runs from source with `tsx` in `Dockerfile.backend`; there is no compiled API `dist` output yet
-- backend requires `TELEGRAM_BOT_TOKEN` at runtime; `TELEGRAM_BOT_USERNAME` should also be set for the live bot identity
-- the welcome deep link also depends on `TELEGRAM_BOT_APP_SHORT_NAME`, which must match the Mini App short name configured in BotFather
-- Telegram chat handling is now opt-in with `TELEGRAM_BOT_RUNTIME_MODE=polling` on the backend container
-- do **not** commit the live Telegram token into the repo; set it only in the VPS/container environment
-- if the VPS does not already have the shared network, create it first:
-  - `docker network create proxy`
+Fresh gates from the completed upload/report-analysis phase:
 
-## Immediate Next Step
+- `corepack pnpm --filter ./apps/api exec vitest run tests/e2e/cursive-upload-analysis.spec.ts` passed, 8/8.
+- `corepack pnpm --filter ./apps/telegram-miniapp exec vitest run src/features/dashboard/DashboardShell.spec.tsx` passed, 9/9.
+- `corepack pnpm -r test` passed, including API 116/116.
+- `corepack pnpm -r lint` passed.
+- `corepack pnpm --filter ./apps/telegram-miniapp build` passed.
+- `corepack pnpm test:e2e` passed, 18/18.
 
-1. Ask the VPS portal to deploy only the frontend and backend containers from GHCR.
-2. Ask it to attach both containers to the existing shared `proxy` network.
-3. Ask it to add the `playground.spyderbyte.cloud` site block from `Caddyfile` to the existing `supabase-caddy`.
-4. Smoke test:
-  - `https://playground.spyderbyte.cloud/`
-  - `https://playground.spyderbyte.cloud/health`
-  - Telegram mini app launch flow
+## Exact Next Pickup
 
-## Verification Baseline
+- Continue Phase E: deployment correction and rollout readiness.
+- Do not start the next bot yet.
+- Do not deploy to the VPS until the Cursive v2 branch is reviewed, committed, pushed, and explicitly selected for rollout.
+- Use `docs\superpowers\plans\2026-05-19-cursive-v2-rollout-notes.md` as the rollout checklist.
+- Before any deployment, rerun:
+  - `git diff --check`
+  - `corepack pnpm --filter ./workers/queue exec vitest run src/jobs/render-report.job.spec.ts`
+  - `corepack pnpm -r test`
+  - `corepack pnpm -r lint`
+  - `corepack pnpm -r build`
+  - `corepack pnpm --filter ./apps/telegram-miniapp build`
+  - `corepack pnpm test:e2e`
 
-- `corepack pnpm --filter ./apps/api lint`
-- `corepack pnpm --filter ./apps/telegram-miniapp build`
+## Known Current Gaps
+
+- Uploaded-report parsing is deterministic and fixture-oriented. It scans readable PDF bytes and simple uncompressed PDF text strings; it is not real OCR or full PDF extraction.
+- Single-bureau upload support is intentionally narrow: it detects `closed account reported as open` when proof text is present. Unsupported single-bureau proof text returns no issue rather than guessing a violation type.
+- The `resume-next-session-sgt-bots.md` file remains untracked and should be ignored unless explicitly requested.
+
+## Non-Negotiable Cursive Rules
+
+- no chat inside Cursive
+- no generic `verify this account` language
+- no bureau validation requests
+- no `please correct if needed` fallback language
+- no arguing which bureau is right or wrong
+- no surfacing prompts, skills, or internal LLM workflow
+- keep intake menu-driven wherever practical
+- collect only the minimum facts needed for the chosen violation
+- do not ask the user for replacement data that helps a bureau repair the tradeline
+- do not infer a target bureau or serious violation type from unsupported upload text
+
+## Error Log Discipline
+
+- Before repeating a fix attempt, read:
+  - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-error-log.md`
+- Keep appending real mistakes and recovery notes there so the same errors are not repeated.
