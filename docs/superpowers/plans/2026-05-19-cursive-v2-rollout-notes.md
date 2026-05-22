@@ -41,7 +41,7 @@ The latest completed Cursive verification covered:
    - Confirm the VPS checkout points at the intended branch/commit.
    - Confirm `.env` exists on the VPS and is not replaced by `.env.example`.
    - Confirm Supabase migration `007_cursive_category_engine.sql` and seed `supabase/seed/007_cursive_seed.sql` have been applied before relying on live Cursive config.
-   - Confirm the external Docker network named `proxy` exists, because `docker-compose.vps.yml` joins that network.
+   - Confirm the external Docker networks named `web-proxy` and `supabase_default` exist, because `docker-compose.vps.yml` joins those networks on VPS 2.
    - Confirm the existing Caddy instance owns ports 80/443 and includes the site block from `Caddyfile`.
    - Confirm the backend image can support Playwright Chromium before calling the deploy healthy. `Dockerfile.backend` installs Playwright Chromium and its system dependencies for the report renderer; if Chromium cannot launch, fix the image before proceeding.
 
@@ -107,7 +107,17 @@ Before packaging or sharing the branch broadly, review ignored local env files f
   - `/api/reports/cursive/upload-analysis/analyze`
   - `/api/reports/cursive/upload-analysis/generate`
   - `/api/reports/artifacts`
-  - `/api/reports/artifacts/:id/download`
+- `/api/reports/artifacts/:id/download`
+
+## VPS 2 Topology Notes
+
+- The live SGT app stack is named `sgt-bots-app`.
+- The live Caddy container is `supabase-caddy`.
+- Caddy routes `playground.spyderbyte.cloud` to `sgt-bots-backend:3000` and `sgt-bots-frontend:8080`.
+- The app services must join the external `web-proxy` network for Caddy routing.
+- The backend must also join the external `supabase_default` network so `SUPABASE_URL=http://kong:8000` resolves inside Docker.
+- The old public health check currently passes, but `/api/cursive/workflow/entry` returns `404` until the Cursive v2 backend image is deployed.
+- The existing VPS 2 compose file under `/docker/sgt-bots-app` has had secrets embedded inline. Do not print that file in logs or chat. Prefer moving runtime secrets into `/docker/sgt-bots-app/.env` during a later cleanup.
 
 ## Artifact And PDF Checks
 

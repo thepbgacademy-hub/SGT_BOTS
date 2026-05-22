@@ -2,19 +2,20 @@ playground.spyderbyte.cloud {
   encode gzip zstd
 
   handle /health {
-    reverse_proxy telegram-playground-backend:3000
+    reverse_proxy sgt-bots-backend:3000
   }
 
   handle /api/* {
-    reverse_proxy telegram-playground-backend:3000
+    reverse_proxy sgt-bots-backend:3000
   }
 
   handle {
-    reverse_proxy telegram-playground-frontend:8080
+    reverse_proxy sgt-bots-frontend:8080
   }
 }
 
 # Note:
 # This site block is intended to be added to the existing VPS Caddy instance
 # (for example `supabase-caddy`), not run as a second Caddy container on the
-# same host. The VPS already has ports 80/443 claimed by the existing proxy.
+# same host. The VPS already has ports 80/443 claimed by the existing proxy,
+# and the SGT app services must join the external `web-proxy` network.
