@@ -8,8 +8,19 @@ import {
   type CreditBureauDisputeOfficialIntake,
 } from "../cursive/cursive.service";
 import { createCursiveDraftService } from "../cursive/cursive-draft.service";
+import {
+  validateBureauRemovalDemandInput,
+  type BureauRemovalDemandTemplateInput,
+} from "../cursive/templates/bureau-removal-demand.html";
+import {
+  analyzeCursiveUploadedReport,
+  buildRemovalDemandInputFromUploadIssue,
+} from "../cursive/cursive-upload-analysis.service";
 import type { CreditBureauDisputeTemplateInput } from "../cursive/templates/credit-bureau-dispute.html";
-import type { CursiveCreditBureauDisputeSnapshot } from "./report.service";
+import type {
+  CursiveBureauRemovalDemandSnapshot,
+  CursiveCreditBureauDisputeSnapshot,
+} from "./report.service";
 
 const ARTIFACT_DOWNLOAD_URL_TTL_MS = 5 * 60 * 1000;
 
@@ -37,6 +48,10 @@ function replyForReportRuntimeError(message: string) {
     return 400;
   }
 
+  if (message === "confirmed issues are required" || message === "invalid upload") {
+    return 400;
+  }
+
   if (message === "artifact not found") {
     return 404;
   }
@@ -46,6 +61,10 @@ function replyForReportRuntimeError(message: string) {
   }
 
   if (isCursiveReviewFailure(message)) {
+    return 422;
+  }
+
+  if (isCursiveRemovalDemandValidationError(message)) {
     return 422;
   }
 
@@ -66,6 +85,21 @@ function isCursiveProviderDraftError(message: string) {
 
 function isCursiveReviewFailure(message: string) {
   return message.startsWith("cursive draft review failed:");
+}
+
+function isCursiveRemovalDemandValidationError(message: string) {
+  return (
+    message === "forbidden bureau-removal-demand language" ||
+    message.endsWith(" is required") ||
+    message === "conflict facts are required" ||
+    message === "proof facts are required" ||
+    message === "prior verification facts are required" ||
+    message === "approved statute mapping is required" ||
+    message === "approved violation type is required" ||
+    message === "approved doctrine is required" ||
+    message === "enclosure labels is required" ||
+    message === "doctrine and statute mapping must match violation type"
+  );
 }
 
 function getReportRuntimeErrorMessage(message: string) {
@@ -282,6 +316,262 @@ export async function registerReportRoutes(app: FastifyInstance) {
   });
 
   app.post(
+    "/api/reports/cursive/bureau-removal-demand/preview",
+    async (request, reply) => {
+      try {
+        const { input: templateInput, manifest, sessionId } =
+          await parseBureauRemovalDemandRequest({
+            app,
+            request,
+          });
+
+        validateBureauRemovalDemandInput(templateInput);
+        const html =
+          app.reportService.renderCursiveBureauRemovalDemandPreviewHtml(
+            templateInput,
+          );
+        const portalText =
+          app.reportService.renderCursiveBureauRemovalDemandPortalText(
+            templateInput,
+          );
+        const previewSnapshot = createBureauRemovalDemandPreviewSnapshot({
+          portalText,
+          templateInput,
+        });
+
+        return reply.code(200).send({
+          format: "html",
+          html,
+          portalText,
+          previewSnapshot,
+          previewToken: createPreviewToken({
+            botId: manifest.id,
+            html,
+            previewSnapshot,
+            secret: app.appEnv.telegramBotToken,
+            sessionId,
+          }),
+          templateSlug: "bureau_removal_demand",
+        });
+      } catch (error) {
+        const message = (error as Error).message;
+        return reply.code(replyForReportRuntimeError(message)).send({
+          message: getReportRuntimeErrorMessage(message),
+        });
+      }
+    },
+  );
+
+  app.post(
+    "/api/reports/cursive/bureau-removal-demand/save-pdf-draft",
+    async (request, reply) => {
+      try {
+        const { claims, manifest, payload, sessionId } =
+          await parseBureauRemovalDemandRequest({ app, request });
+        const previewHtml = String(payload.previewHtml ?? "");
+        const previewSnapshot = payload.previewSnapshot;
+        const previewToken = String(payload.previewToken ?? "");
+
+        if (!previewHtml || !previewToken || !previewSnapshot) {
+          return reply.code(400).send({
+            message: "Preview is required before saving the PDF draft.",
+          });
+        }
+
+        if (!isBureauRemovalDemandPreviewSnapshot(previewSnapshot)) {
+          return reply.code(400).send({
+            message: "Preview is required before saving the PDF draft.",
+          });
+        }
+
+        const expectedPreviewToken = createPreviewToken({
+          botId: manifest.id,
+          html: previewHtml,
+          previewSnapshot,
+          secret: app.appEnv.telegramBotToken,
+          sessionId,
+        });
+
+        if (previewToken !== expectedPreviewToken) {
+          return reply.code(400).send({
+            message: "Preview is required before saving the PDF draft.",
+          });
+        }
+
+        const result =
+          app.reportService.queueCursiveBureauRemovalDemandPdfDraft({
+            botId: manifest.id,
+            previewHtml,
+            previewSnapshot,
+            sessionId,
+            userId: claims.userId,
+          });
+
+        return reply.code(202).send({
+          artifact: {
+            id: result.artifact.id,
+            fileName: result.artifact.fileName,
+            originalFilename: result.artifact.originalFilename,
+            status: result.artifact.status,
+          },
+          artifactType: result.artifact.artifactType,
+          status: result.status,
+        });
+      } catch (error) {
+        const message = (error as Error).message;
+        return reply.code(replyForReportRuntimeError(message)).send({
+          message: getReportRuntimeErrorMessage(message),
+        });
+      }
+    },
+  );
+
+  app.post(
+    "/api/reports/cursive/upload-analysis/analyze",
+    async (request, reply) => {
+      try {
+        const { claims, manifest, payload, sessionId } =
+          await parseCursiveUploadAnalysisRequest({ app, request });
+        const result = app.reportService.analyzeCursiveUploadedReport({
+          botId: manifest.id,
+          fileBytesBase64: String(payload.fileBytesBase64 ?? ""),
+          filename: String(payload.filename ?? ""),
+          mimeType: String(payload.mimeType ?? ""),
+          reportType:
+            payload.reportType === "single_bureau" ? "single_bureau" : "tri_merge",
+          sessionId,
+        });
+
+        return reply.code(200).send({
+          consumer: result.consumer,
+          issues: result.issues,
+          reportType:
+            payload.reportType === "single_bureau" ? "single_bureau" : "tri_merge",
+          upload: {
+            id: result.upload.id,
+            mimeType: result.upload.mimeType,
+            originalFilename: result.upload.originalFilename,
+          },
+          userId: claims.userId,
+        });
+      } catch (error) {
+        const message = (error as Error).message;
+        return reply.code(replyForReportRuntimeError(message)).send({
+          message: getReportRuntimeErrorMessage(message),
+        });
+      }
+    },
+  );
+
+  app.post(
+    "/api/reports/cursive/upload-analysis/generate",
+    async (request, reply) => {
+      try {
+        const { claims, manifest, payload, sessionId } =
+          await parseCursiveUploadAnalysisRequest({ app, request });
+        const confirmedIssueIds = Array.isArray(payload.confirmedIssueIds)
+          ? payload.confirmedIssueIds.map((id) => String(id))
+          : [];
+        const consumer = payload.consumer;
+        const uploadId = String(payload.uploadId ?? "");
+
+        if (confirmedIssueIds.length === 0) {
+          throw new Error("confirmed issues are required");
+        }
+
+        const upload = app.uploadService.getUpload(uploadId);
+
+        if (
+          !upload ||
+          upload.sessionId !== sessionId ||
+          upload.botId !== manifest.id
+        ) {
+          throw new Error("invalid upload");
+        }
+
+        const detectedIssues = analyzeCursiveUploadedReport({
+          fileBytes: upload.fileBytes,
+          reportType:
+            payload.reportType === "single_bureau" ? "single_bureau" : "tri_merge",
+        });
+        const confirmedIssues = detectedIssues.filter((issue) =>
+          confirmedIssueIds.includes(issue.id),
+        );
+
+        if (confirmedIssues.length === 0) {
+          throw new Error("confirmed issues are required");
+        }
+
+        const artifacts = confirmedIssues.map((issue) => {
+          const templateInput = buildRemovalDemandInputFromUploadIssue({
+            bureauAddressLines: getBureauAddressLines(issue.targetBureau),
+            consumer: {
+              fullName:
+                typeof consumer?.fullName === "string" && consumer.fullName.trim()
+                  ? consumer.fullName.trim()
+                  : "Consumer",
+              mailingAddressLines:
+                Array.isArray(consumer?.mailingAddressLines) &&
+                consumer.mailingAddressLines.every(
+                  (line) => typeof line === "string",
+                )
+                  ? consumer.mailingAddressLines.filter(
+                      (line) => line.trim().length > 0,
+                    )
+                  : ["Mailing address on file"],
+            },
+            generatedDate: formatCursiveGeneratedDate(),
+            issue,
+          });
+
+          validateBureauRemovalDemandInput(templateInput);
+          const html =
+            app.reportService.renderCursiveBureauRemovalDemandPreviewHtml(
+              templateInput,
+            );
+          const portalText =
+            app.reportService.renderCursiveBureauRemovalDemandPortalText(
+              templateInput,
+            );
+          const previewSnapshot = createBureauRemovalDemandPreviewSnapshot({
+            portalText,
+            templateInput,
+          });
+          const queued =
+            app.reportService.queueCursiveUploadAnalysisPdfDraft({
+              botId: manifest.id,
+              previewHtml: html,
+              previewSnapshot,
+              uploadId,
+              sessionId,
+              userId: claims.userId,
+            });
+
+          return {
+            id: queued.artifact.id,
+            fileName: queued.artifact.fileName,
+            originalFilename: queued.artifact.originalFilename,
+            status: queued.artifact.status,
+            targetBureau: issue.targetBureau,
+            violationLabel: issue.violationLabel,
+          };
+        });
+
+        return reply.code(202).send({
+          artifactType: "pdf",
+          artifacts,
+          status: "queued",
+        });
+      } catch (error) {
+        const message = (error as Error).message;
+        return reply.code(replyForReportRuntimeError(message)).send({
+          message: getReportRuntimeErrorMessage(message),
+        });
+      }
+    },
+  );
+
+  app.post(
     "/api/reports/cursive/credit-bureau-dispute/save-pdf-draft",
     async (request, reply) => {
       try {
@@ -442,10 +732,81 @@ async function parseCreditBureauDisputeRequest(input: {
   };
 }
 
-function createCursivePreviewToken(input: {
+async function parseBureauRemovalDemandRequest(input: {
+  app: FastifyInstance;
+  request: FastifyRequest;
+}) {
+  const payload = input.request.body as {
+    botId?: string;
+    input?: BureauRemovalDemandTemplateInput;
+    previewHtml?: string;
+    previewSnapshot?: CursiveBureauRemovalDemandSnapshot;
+    previewToken?: string;
+    sessionId?: string;
+  };
+  const sessionId = String(payload.sessionId ?? "");
+  const claims = await authorizeBotRuntimeRequest({
+    app: input.app,
+    request: input.request,
+    sessionId,
+  });
+  const manifest = requireBotManifest(String(payload.botId ?? ""));
+
+  if (manifest.id !== "document_wizard" || !manifest.capabilities.structured_form) {
+    throw new Error("bot not found");
+  }
+
+  return {
+    claims,
+    input: payload.input as BureauRemovalDemandTemplateInput,
+    manifest,
+    payload,
+    sessionId,
+  };
+}
+
+async function parseCursiveUploadAnalysisRequest(input: {
+  app: FastifyInstance;
+  request: FastifyRequest;
+}) {
+  const payload = input.request.body as {
+    botId?: string;
+    confirmedIssueIds?: string[];
+    consumer?: {
+      fullName?: string;
+      mailingAddressLines?: string[];
+    };
+    fileBytesBase64?: string;
+    filename?: string;
+    mimeType?: string;
+    reportType?: "tri_merge" | "single_bureau";
+    sessionId?: string;
+    uploadId?: string;
+  };
+  const sessionId = String(payload.sessionId ?? "");
+  const claims = await authorizeBotRuntimeRequest({
+    app: input.app,
+    request: input.request,
+    sessionId,
+  });
+  const manifest = requireBotManifest(String(payload.botId ?? ""));
+
+  if (manifest.id !== "document_wizard" || !manifest.capabilities.structured_form) {
+    throw new Error("bot not found");
+  }
+
+  return {
+    claims,
+    manifest,
+    payload,
+    sessionId,
+  };
+}
+
+function createPreviewToken(input: {
   botId: string;
   html: string;
-  previewSnapshot: CursiveCreditBureauDisputeSnapshot;
+  previewSnapshot: unknown;
   secret: string;
   sessionId: string;
 }) {
@@ -459,6 +820,16 @@ function createCursivePreviewToken(input: {
     .update("\n")
     .update(JSON.stringify(input.previewSnapshot))
     .digest("hex");
+}
+
+function createCursivePreviewToken(input: {
+  botId: string;
+  html: string;
+  previewSnapshot: CursiveCreditBureauDisputeSnapshot;
+  secret: string;
+  sessionId: string;
+}) {
+  return createPreviewToken(input);
 }
 
 function createArtifactDownloadToken(input: {
@@ -554,10 +925,55 @@ function createCursivePreviewSnapshot(input: {
   };
 }
 
+function createBureauRemovalDemandPreviewSnapshot(input: {
+  portalText: string;
+  templateInput: BureauRemovalDemandTemplateInput;
+}): CursiveBureauRemovalDemandSnapshot {
+  return {
+    templateSlug: "bureau_removal_demand",
+    generatedDate: input.templateInput.generatedDate,
+    consumerName: input.templateInput.consumer.fullName,
+    bureauName: input.templateInput.bureau.name,
+    violationType: input.templateInput.violationType,
+    violationLabel: input.templateInput.violationLabel,
+    portalText: input.portalText,
+    templateInput: input.templateInput,
+  };
+}
+
+function isBureauRemovalDemandPreviewSnapshot(
+  value: unknown,
+): value is CursiveBureauRemovalDemandSnapshot {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as { templateSlug?: unknown }).templateSlug ===
+      "bureau_removal_demand"
+  );
+}
+
 function formatCursiveGeneratedDate() {
   return new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   }).format(new Date());
+}
+
+function getBureauAddressLines(bureauName: string) {
+  const normalizedName = bureauName.trim().toLowerCase();
+
+  if (normalizedName === "experian") {
+    return ["P.O. Box 4500", "Allen, TX 75013"];
+  }
+
+  if (normalizedName === "equifax") {
+    return ["Information Services LLC", "P.O. Box 740256", "Atlanta, GA 30374"];
+  }
+
+  if (normalizedName === "transunion") {
+    return ["Consumer Solutions", "P.O. Box 2000", "Chester, PA 19016-2000"];
+  }
+
+  return ["Consumer Dispute Department"];
 }

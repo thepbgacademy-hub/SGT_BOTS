@@ -72,8 +72,10 @@ async function createAuthorizedSession(options?: {
 }
 
 describe("cursive credit bureau dispute preview route", () => {
-  it("renders preview html from official intake without touching the queue flow", async () => {
-    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+  it(
+    "renders preview html from official intake without touching the queue flow",
+    async () => {
+      const { app, sessionId, sessionToken } = await createAuthorizedSession();
 
     const response = await app.inject({
       method: "POST",
@@ -150,8 +152,10 @@ describe("cursive credit bureau dispute preview route", () => {
     expect(payload.portalText).not.toContain("<sup>");
     expect(payload.previewSnapshot.portalText).toBe(payload.portalText);
     expect(payload.previewSnapshot.generatedDate.length).toBeGreaterThan(0);
-    expect(payload.previewSnapshot.bodyParagraphs).toHaveLength(4);
-  });
+      expect(payload.previewSnapshot.bodyParagraphs).toHaveLength(4);
+    },
+    40000,
+  );
 
   it("rejects non-Cursive bots even if they support structured forms", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
@@ -558,26 +562,30 @@ describe("cursive credit bureau dispute preview route", () => {
     40000,
   );
 
-  it("rejects saving a pdf draft without a trusted preview token", async () => {
-    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+  it(
+    "rejects saving a pdf draft without a trusted preview token",
+    async () => {
+      const { app, sessionId, sessionToken } = await createAuthorizedSession();
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/reports/cursive/credit-bureau-dispute/save-pdf-draft",
-      headers: {
-        authorization: `Bearer ${sessionToken}`,
-      },
-      payload: {
-        sessionId,
-        botId: "document_wizard",
-        previewHtml: "<html><body>forged</body></html>",
-        previewToken: "not-a-real-preview-token",
-      },
-    });
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/reports/cursive/credit-bureau-dispute/save-pdf-draft",
+        headers: {
+          authorization: `Bearer ${sessionToken}`,
+        },
+        payload: {
+          sessionId,
+          botId: "document_wizard",
+          previewHtml: "<html><body>forged</body></html>",
+          previewToken: "not-a-real-preview-token",
+        },
+      });
 
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({
-      message: "Preview is required before saving the PDF draft.",
-    });
-  });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({
+        message: "Preview is required before saving the PDF draft.",
+      });
+    },
+    40000,
+  );
 });

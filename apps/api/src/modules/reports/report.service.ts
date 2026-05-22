@@ -7,6 +7,15 @@ import {
   renderCreditBureauDisputePortalText,
   type CreditBureauDisputeTemplateInput,
 } from "../cursive/templates/credit-bureau-dispute.html";
+import {
+  renderBureauRemovalDemandHtml,
+  renderBureauRemovalDemandPortalText,
+  type BureauRemovalDemandTemplateInput,
+} from "../cursive/templates/bureau-removal-demand.html";
+import {
+  analyzeCursiveUploadedReport,
+  buildConsumerFromUploadText,
+} from "../cursive/cursive-upload-analysis.service";
 import type { createAnalyticsService } from "../analytics/analytics.service";
 import type { createUploadService, StoredUpload } from "../uploads/upload.service";
 import type { createInMemoryReportQueue } from "../../../../../workers/queue/src";
@@ -21,6 +30,7 @@ type ArtifactRecord = {
   botId: string;
   createdAt: string;
   cursiveDraftSnapshot?: CursiveCreditBureauDisputeSnapshot;
+  cursiveRemovalDemandSnapshot?: CursiveBureauRemovalDemandSnapshot;
   diskPath: string;
   failureReason?: string;
   internalFailureReason?: string;
@@ -53,6 +63,17 @@ export type CursiveCreditBureauDisputeSnapshot = {
   portalText: string;
 };
 
+export type CursiveBureauRemovalDemandSnapshot = {
+  templateSlug: "bureau_removal_demand";
+  generatedDate: string;
+  consumerName: string;
+  bureauName: string;
+  violationType: string;
+  violationLabel: string;
+  portalText: string;
+  templateInput: BureauRemovalDemandTemplateInput;
+};
+
 export function createReportService(deps: {
   analyticsService: ReturnType<typeof createAnalyticsService>;
   now?: () => number;
@@ -75,7 +96,14 @@ export function createReportService(deps: {
     return `${resolveArtifactDiskPath(storagePath)}.json`;
   }
 
-  function sanitizeArtifactFailureReason() {
+  function sanitizeArtifactFailureReason(templateId: string, reason: string) {
+    if (
+      templateId !== "credit_bureau_dispute_v1" &&
+      templateId !== "bureau_removal_demand_v2"
+    ) {
+      return reason;
+    }
+
     return "Unable to render this PDF draft right now.";
   }
 
@@ -85,6 +113,7 @@ export function createReportService(deps: {
       botId: artifact.botId,
       createdAt: artifact.createdAt,
       cursiveDraftSnapshot: artifact.cursiveDraftSnapshot,
+      cursiveRemovalDemandSnapshot: artifact.cursiveRemovalDemandSnapshot,
       diskPath: artifact.diskPath,
       failureReason: artifact.failureReason,
       fileName: artifact.fileName,
@@ -245,6 +274,96 @@ export function createReportService(deps: {
         userId: input.userId,
       });
     },
+    analyzeCursiveUploadedReport(input: {
+      botId: string;
+      fileBytesBase64: string;
+      filename: string;
+      mimeType: string;
+      reportType: "tri_merge" | "single_bureau";
+      sessionId: string;
+    }) {
+      const upload = deps.uploadService.createPdfUpload({
+        botId: input.botId,
+        fileBytesBase64: input.fileBytesBase64,
+        filename: input.filename,
+        mimeType: input.mimeType,
+        sessionId: input.sessionId,
+      });
+      const consumer = buildConsumerFromUploadText({
+        fallbackName: "Consumer",
+        fallbackAddressLines: ["Mailing address on file"],
+        fileBytes: upload.fileBytes,
+      });
+      const issues = analyzeCursiveUploadedReport({
+        fileBytes: upload.fileBytes,
+        reportType: input.reportType,
+      });
+
+      return {
+        consumer,
+        issues,
+        upload,
+      };
+    },
+    queueCursiveUploadAnalysisPdfDraft(input: {
+      botId: string;
+      previewHtml: string;
+      previewSnapshot: CursiveBureauRemovalDemandSnapshot;
+      uploadId: string;
+      sessionId: string;
+      userId: string;
+    }) {
+      const generatedAt = new Date(now()).toISOString();
+      const artifactId = crypto.randomUUID();
+      const artifact: ArtifactRecord = {
+        artifactType: "pdf",
+        botId: input.botId,
+        createdAt: generatedAt,
+        cursiveRemovalDemandSnapshot: input.previewSnapshot,
+        fileName: "bureau-removal-demand-letter.pdf",
+        generatedAt,
+        id: artifactId,
+        originalFilename: "uploaded-report-analysis.pdf",
+        sessionId: input.sessionId,
+        status: "queued",
+        storagePath: `artifacts/${input.sessionId}/${artifactId}/bureau-removal-demand-letter.pdf`,
+        templateId: "bureau_removal_demand_v2",
+        uploadId: input.uploadId,
+        userId: input.userId,
+        diskPath: resolveArtifactDiskPath(
+          `artifacts/${input.sessionId}/${artifactId}/bureau-removal-demand-letter.pdf`,
+        ),
+      };
+
+      artifacts.set(artifact.id, artifact);
+      persistArtifactMetadata(artifact);
+
+      deps.reportQueue.enqueueRenderReportJob({
+        artifactFileName: artifact.fileName,
+        artifactId: artifact.id,
+        generatedAt,
+        html: input.previewHtml,
+        templateId: artifact.templateId,
+      });
+
+      deps.analyticsService.track({
+        eventName: "report_queued",
+        entityId: artifact.id,
+        entityType: "report",
+        metadata: {
+          botId: input.botId,
+          sessionId: input.sessionId,
+          templateSlug: "bureau_removal_demand",
+          uploadId: input.uploadId,
+          userId: input.userId,
+        },
+      });
+
+      return {
+        artifact,
+        status: "queued" as const,
+      };
+    },
     queueCursiveCreditBureauDisputePdfDraft(input: {
       botId: string;
       previewHtml: string;
@@ -302,6 +421,73 @@ export function createReportService(deps: {
         status: "queued" as const,
       };
     },
+    queueCursiveBureauRemovalDemandPdfDraft(input: {
+      botId: string;
+      previewHtml: string;
+      previewSnapshot: CursiveBureauRemovalDemandSnapshot;
+      sessionId: string;
+      userId: string;
+    }) {
+      const generatedAt = new Date(now()).toISOString();
+      const artifactId = crypto.randomUUID();
+      const artifact: ArtifactRecord = {
+        artifactType: "pdf",
+        botId: input.botId,
+        createdAt: generatedAt,
+        cursiveRemovalDemandSnapshot: input.previewSnapshot,
+        fileName: "bureau-removal-demand-letter.pdf",
+        generatedAt,
+        id: artifactId,
+        originalFilename: "bureau-removal-demand-preview.html",
+        sessionId: input.sessionId,
+        status: "queued",
+        storagePath: `artifacts/${input.sessionId}/${artifactId}/bureau-removal-demand-letter.pdf`,
+        templateId: "bureau_removal_demand_v2",
+        uploadId: null,
+        userId: input.userId,
+        diskPath: resolveArtifactDiskPath(
+          `artifacts/${input.sessionId}/${artifactId}/bureau-removal-demand-letter.pdf`,
+        ),
+      };
+
+      artifacts.set(artifact.id, artifact);
+      persistArtifactMetadata(artifact);
+
+      deps.reportQueue.enqueueRenderReportJob({
+        artifactFileName: artifact.fileName,
+        artifactId: artifact.id,
+        generatedAt,
+        html: input.previewHtml,
+        templateId: artifact.templateId,
+      });
+
+      deps.analyticsService.track({
+        eventName: "report_queued",
+        entityId: artifact.id,
+        entityType: "report",
+        metadata: {
+          botId: input.botId,
+          sessionId: input.sessionId,
+          templateSlug: "bureau_removal_demand",
+          userId: input.userId,
+        },
+      });
+
+      return {
+        artifact,
+        status: "queued" as const,
+      };
+    },
+    renderCursiveBureauRemovalDemandPreviewHtml(
+      input: BureauRemovalDemandTemplateInput,
+    ) {
+      return renderBureauRemovalDemandHtml(input);
+    },
+    renderCursiveBureauRemovalDemandPortalText(
+      input: BureauRemovalDemandTemplateInput,
+    ) {
+      return renderBureauRemovalDemandPortalText(input);
+    },
     renderCursiveCreditBureauDisputePreviewHtml(
       input: CreditBureauDisputeTemplateInput,
     ) {
@@ -339,9 +525,11 @@ export function createReportService(deps: {
         return;
       }
 
-      artifact.failureReason = input.reason;
       artifact.internalFailureReason = input.reason;
-      artifact.failureReason = sanitizeArtifactFailureReason();
+      artifact.failureReason = sanitizeArtifactFailureReason(
+        artifact.templateId,
+        input.reason,
+      );
       artifact.status = "failed";
       persistArtifactMetadata(artifact);
     },

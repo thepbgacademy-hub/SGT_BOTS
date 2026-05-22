@@ -26,9 +26,10 @@ async function connectProvider(page: Parameters<typeof test>[0]["page"]) {
   await page.getByRole("button", { name: "Validate provider" }).click();
 }
 
-test("cursive opens a full-screen manual workflow shell with named steps", async ({
+test("cursive generates a manual bureau removal-demand artifact", async ({
   page,
 }) => {
+  test.setTimeout(70000);
   await connectProvider(page);
 
   await page.getByRole("button", { name: "Cursive" }).click();
@@ -91,20 +92,54 @@ test("cursive opens a full-screen manual workflow shell with named steps", async
     .click();
 
   await expect(
-    page.getByText(
-      "Violation selected. Details, review, and results steps land in the next Cursive phase.",
-    ),
+    page.getByText("Violation selected. Continue to enter the letter details"),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "Back to Menu" }).click();
-  await page.getByRole("button", { name: "Cursive" }).click();
+  await page.getByRole("button", { name: "Details next" }).click();
 
   await expect(
-    page.getByRole("heading", { name: "Choose how to begin" }),
+    page.getByRole("heading", { name: "Enter the letter details" }),
   ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Next step" })).toBeDisabled();
+  await page.getByLabel("Consumer name").fill("Jane Doe");
+  await page.getByLabel("Mailing address").fill("123 Main Street\nDallas, TX 75001");
+  await page.getByLabel("Target bureau").selectOption("TransUnion");
+  await page.getByLabel("Furnisher name").fill("Example Bank");
+  await page.getByLabel("Account identifier").fill("Account ending 1234");
+  await page.getByLabel("Reported field").fill("balance");
+  await page.getByLabel("Bureau reported value").fill("$4,812");
+  await page
+    .getByLabel("Conflicting report facts")
+    .fill("Experian reports a $0 balance while TransUnion reports $4,812.");
+  await page
+    .getByLabel("Evidence summary")
+    .fill("Tri-merge report excerpt dated May 1, 2026");
+
   await expect(
-    page.getByRole("button", {
-      name: "Inconsistent reporting across bureaus",
-    }),
-  ).toHaveCount(0);
+    page.getByRole("button", { name: "Next step" }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "Next step" }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "Review the removal demand" }),
+  ).toBeVisible();
+  await expect(page.getByText("TransUnion")).toBeVisible();
+  await expect(page.getByText("Example Bank")).toBeVisible();
+
+  await page.getByRole("button", { name: "Generate" }).click();
+
+  await expect(page.getByRole("heading", { name: "Results" })).toBeVisible({
+    timeout: 60000,
+  });
+  await expect(page.getByText("PDF draft queued.", { exact: true })).toBeVisible();
+  const generatedArtifact = page
+    .locator(".artifact-card")
+    .filter({ hasText: "bureau-removal-demand-letter.pdf" })
+    .first();
+  await expect(generatedArtifact).toBeVisible({
+    timeout: 60000,
+  });
+  await expect(
+    generatedArtifact.getByRole("link", { name: "Download PDF" }),
+  ).toBeVisible({ timeout: 60000 });
 });

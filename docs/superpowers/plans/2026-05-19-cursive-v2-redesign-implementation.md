@@ -4,6 +4,8 @@
 
 **Goal:** Replace the current chat-assisted Cursive lane with a full-screen, workflow-only dispute wizard that supports manual dispute entry and uploaded-report analysis, then generates bureau-specific removal-demand letters and evidence artifacts.
 
+**Status as of 2026-05-22:** Phases A-D are implemented and locally green. The manual lane, tri-merge upload lane, and single-bureau upload lane pass end-to-end. Phase E rollout packaging is active; VPS deployment has not started.
+
 **Architecture:** Keep `document_wizard` as the Cursive bot id inside the six-bot playground, but move Cursive into its own full-screen mobile-first workspace with no chat surface. Build a deterministic dispute engine around manual evidence posture, uploaded-report issue detection, controlled assertions, hard-coded doctrine rules, and a final HTML/PDF artifact pipeline with letter-level validation gates.
 
 **Tech Stack:** pnpm workspaces, TypeScript, React, Vite, Fastify, Zod, Vitest, Playwright, PDF rendering, existing report/artifact services
@@ -69,7 +71,7 @@
 - Phase D: letter template, artifact generation, and validation gate
 - Phase E: deployment correction and VPS rollout notes
 
-Do not start production rollout until the manual lane and at least one upload lane both pass end-to-end tests.
+The local pre-rollout E2E prerequisite is satisfied for the manual lane, tri-merge upload lane, and single-bureau upload lane. Phase E should focus on branch review, commit/push preparation, and VPS rollout readiness before any production deployment starts.
 
 ## Phase A Exit Metrics
 
@@ -1270,24 +1272,17 @@ git commit -m "feat: add cursive doctrine validation gate"
 **Files:**
 - Create: `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-rollout-notes.md`
 
-- [ ] **Step 1: Add rollout notes**
+- [x] **Step 1: Add rollout notes**
 
-```md
-# Cursive V2 Rollout Notes
+Rollout notes now live in `docs/superpowers/plans/2026-05-19-cursive-v2-rollout-notes.md`.
 
-## Order of Operations
+The current rollout checklist covers:
 
-1. Update the local repo using the 2026-05-19 redesign spec and implementation plan.
-2. Push the corrected branch to GitHub.
-3. Deploy the updated application to the VPS instance.
-
-## VPS Correction Notes
-
-- Do not deploy the obsolete helper-chat Cursive workflow.
-- Ensure the mini app bundle reflects the full-screen Cursive wizard.
-- Ensure the API exposes the new `/api/cursive/workflow/*` routes before enabling the revised front end.
-- Verify artifact generation and download on the VPS after deployment.
-```
+- local branch review and commit/push preparation before any VPS work
+- the full local gate set: `git diff --check`, render-report worker spec, workspace tests, lint, workspace build, mini app build, and Playwright E2E
+- the active Cursive workflow route, `/api/cursive/workflow/entry`
+- Supabase migration/seed checks for the category engine
+- VPS artifact/PDF smoke checks, with explicit warnings for ephemeral runtime artifacts and the in-memory render queue
 
 - [ ] **Step 2: Commit**
 

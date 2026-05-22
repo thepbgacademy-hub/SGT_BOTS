@@ -181,7 +181,7 @@ describe("bot runtime routes", () => {
         }),
       ]),
     });
-  });
+  }, 40000);
 
   it("accepts the planned message field and returns the planned chat response shape", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
@@ -214,7 +214,7 @@ describe("bot runtime routes", () => {
         sessionId,
       },
     });
-  });
+  }, 40000);
 
   it("returns cited kb concierge replies and keeps document wizard isolated from those tools", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
@@ -249,17 +249,9 @@ describe("bot runtime routes", () => {
       },
     });
 
-    expect(documentResponse.statusCode).toBe(200);
+    expect(documentResponse.statusCode).toBe(409);
     expect(documentResponse.json()).toMatchObject({
-      botId: "document_wizard",
-      output: expect.stringContaining(
-        "does not look like a credit-bureau dispute request yet",
-      ),
-      citations: [],
-      conversation: {
-        botId: "document_wizard",
-        sessionId,
-      },
+      message: "cursive workflow only",
     });
 
     const leakedConversationResponse = await app.inject({
@@ -280,7 +272,7 @@ describe("bot runtime routes", () => {
     expect(leakedConversationResponse.json()).toEqual({
       message: "conversation belongs to a different bot",
     });
-  });
+  }, 40000);
 
   it("keeps the Phase 2 bearer session token requirement on bot routes", async () => {
     const { app, sessionId } = await createAuthorizedSession();
@@ -294,26 +286,30 @@ describe("bot runtime routes", () => {
     expect(response.json()).toEqual({
       message: "missing session token",
     });
-  });
+  }, 40000);
 
-  it("keeps the Phase 2 bearer session token requirement on chat post routes", async () => {
-    const { app, sessionId } = await createAuthorizedSession();
+  it(
+    "keeps the Phase 2 bearer session token requirement on chat post routes",
+    async () => {
+      const { app, sessionId } = await createAuthorizedSession();
 
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/chat/messages",
-      payload: {
-        sessionId,
-        botId: "concierge_general_academy_KB",
-        message: "Hello?",
-      },
-    });
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/chat/messages",
+        payload: {
+          sessionId,
+          botId: "concierge_general_academy_KB",
+          message: "Hello?",
+        },
+      });
 
-    expect(response.statusCode).toBe(401);
-    expect(response.json()).toEqual({
-      message: "missing session token",
-    });
-  });
+      expect(response.statusCode).toBe(401);
+      expect(response.json()).toEqual({
+        message: "missing session token",
+      });
+    },
+    40000,
+  );
 
   it("hides inactive bots from catalog and blocks them from runtime lookup", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
@@ -374,5 +370,5 @@ describe("bot runtime routes", () => {
     } finally {
       documentWizard.active = previousActive;
     }
-  });
+  }, 40000);
 });

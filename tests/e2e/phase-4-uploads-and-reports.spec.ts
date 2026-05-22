@@ -23,50 +23,74 @@ async function completeOnboarding(page: Parameters<typeof test>[0]["page"]) {
   await page.getByRole("button", { name: "Validate provider" }).click();
 }
 
-async function unlockCursiveDocumentLane(
+async function completeManualCursiveReview(
   page: Parameters<typeof test>[0]["page"],
 ) {
-  await page.getByRole("button", { name: "Credit Bureau Dispute" }).click();
-  await page.getByRole("button", { name: "Start official letter" }).click();
+  await page.getByRole("button", { name: "Manual dispute" }).click();
+  await page
+    .getByRole("button", {
+      name: "Inconsistent reporting across bureaus",
+    })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Different balances across bureaus",
+    })
+    .click();
+  await page.getByRole("button", { name: "Details next" }).click();
   await page.getByLabel("Consumer name").fill("Ada Lovelace");
-  await page.getByLabel("Credit bureau").selectOption("experian");
-  await page.getByLabel("Mailing address").fill("123 Example Street");
-  await page.getByLabel("Account reference").fill("ACCT-42");
-  await page.getByLabel("Dispute reason").fill(
-    "This account is being reported inaccurately.",
-  );
-  await page.getByRole("button", { name: "Generate dispute letter" }).click();
+  await page.getByLabel("Mailing address").fill("123 Example Street\nDallas, TX 75001");
+  await page.getByLabel("Target bureau").selectOption("Experian");
+  await page.getByLabel("Furnisher name").fill("Example Bank");
+  await page.getByLabel("Account identifier").fill("Account ending 4242");
+  await page.getByLabel("Reported field").fill("balance");
+  await page.getByLabel("Bureau reported value").fill("$4,812");
+  await page
+    .getByLabel("Conflicting report facts")
+    .fill("TransUnion reports a $0 balance while Experian reports $4,812.");
+  await page
+    .getByLabel("Evidence summary")
+    .fill("Tri-merge report excerpt dated May 1, 2026.");
+  await page.getByRole("button", { name: "Next step" }).click();
   await expect(
-    page.getByRole("button", { name: "Refresh preview" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Credit Bureau Dispute Letter" }),
+    page.getByRole("heading", { name: "Review the removal demand" }),
   ).toBeVisible();
 }
 
-test("cursive saves a pdf draft directly from the preview card", async ({
+test("cursive generates a pdf draft from the manual workflow", async ({
   page,
 }) => {
+  test.setTimeout(70000);
   await completeOnboarding(page);
 
   await page.getByRole("button", { name: "Cursive" }).click();
   await expect(page.getByRole("button", { name: "Upload PDF" })).toHaveCount(0);
   await expect(page.getByLabel("Client name")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Generate report" })).toHaveCount(0);
-  await unlockCursiveDocumentLane(page);
-  await page.getByRole("button", { name: "Save PDF draft" }).click();
-
-  await expect(page.getByText("PDF draft queued")).toBeVisible();
   await expect(
-    page.getByText("credit-bureau-dispute-letter.pdf").first(),
-  ).toBeVisible();
-  const downloadLink = page.getByRole("link", { name: "Download PDF" }).first();
-  await expect(downloadLink).toBeVisible();
+    page.getByRole("button", { name: "Generate report" }),
+  ).toHaveCount(0);
+  await completeManualCursiveReview(page);
+  await page.getByRole("button", { name: "Generate" }).click();
+
+  await expect(page.getByText("PDF draft queued.", { exact: true })).toBeVisible({
+    timeout: 60000,
+  });
+  await expect(
+    page.getByText("bureau-removal-demand-letter.pdf").first(),
+  ).toBeVisible({ timeout: 60000 });
+  const generatedArtifact = page
+    .locator(".artifact-card")
+    .filter({ hasText: "bureau-removal-demand-letter.pdf" })
+    .first();
+  const downloadLink = generatedArtifact.getByRole("link", { name: "Download PDF" });
+  await expect(downloadLink).toBeVisible({
+    timeout: 60000,
+  });
   const downloadPromise = page.waitForEvent("download");
   await downloadLink.click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe(
-    "credit-bureau-dispute-letter.pdf",
+    "bureau-removal-demand-letter.pdf",
   );
 });
 
@@ -131,41 +155,38 @@ test("bots without the full document wizard capability set do not show the repor
 
 test("cursive pdf draft failures stay recoverable in the UI", async ({ page }) => {
   await page.route(
-    "**/api/reports/cursive/credit-bureau-dispute/save-pdf-draft",
+    "**/api/reports/cursive/bureau-removal-demand/save-pdf-draft",
     async (route) => {
-    await route.fulfill({
-      contentType: "application/json",
-      status: 500,
-      body: JSON.stringify({
-        message: "Unable to render report right now.",
-      }),
-    });
+      await route.fulfill({
+        contentType: "application/json",
+        status: 500,
+        body: JSON.stringify({
+          message: "Unable to render report right now.",
+        }),
+      });
     },
   );
 
   await completeOnboarding(page);
 
   await page.getByRole("button", { name: "Cursive" }).click();
-  await unlockCursiveDocumentLane(page);
-  await page.getByRole("button", { name: "Save PDF draft" }).click();
+  await completeManualCursiveReview(page);
+  await page.getByRole("button", { name: "Generate" }).click();
 
-  await expect(page.getByRole("alert")).toContainText(
-    "Unable to render report right now.",
-  );
   await expect(
-    page.getByRole("heading", { name: "Credit Bureau Dispute Letter" }),
+    page.getByText("Unable to render report right now."),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save PDF draft" })).toBeVisible();
-  await expect(page.getByText("PDF draft queued")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Review the removal demand" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Generate" })).toBeVisible();
+  await expect(page.getByText("PDF draft queued.")).toHaveCount(0);
 });
 
 test("cursive artifact polling failures fail loudly without hiding the current workspace", async ({
   page,
 }) => {
   await completeOnboarding(page);
-
-  await page.getByRole("button", { name: "Cursive" }).click();
-  await unlockCursiveDocumentLane(page);
 
   await page.route("**/api/reports/artifacts?sessionId=*", async (route) => {
     await route.fulfill({
@@ -177,11 +198,13 @@ test("cursive artifact polling failures fail loudly without hiding the current w
     });
   });
 
+  await page.getByRole("button", { name: "Cursive" }).click();
+
   await expect(page.getByRole("alert")).toContainText(
     "Unable to refresh artifact status.",
   );
   await expect(
-    page.getByRole("heading", { name: "Credit Bureau Dispute Letter" }),
+    page.getByRole("heading", { name: "Choose how to begin" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save PDF draft" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Manual dispute" })).toBeVisible();
 });

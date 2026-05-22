@@ -12,27 +12,6 @@ const VALID_INIT_DATA = createSignedTelegramInitData({
   },
 });
 
-async function unlockCursiveDocumentLane(
-  page: Parameters<typeof test>[0]["page"],
-) {
-  await page.getByRole("button", { name: "Credit Bureau Dispute" }).click();
-  await page.getByRole("button", { name: "Start official letter" }).click();
-  await page.getByLabel("Consumer name").fill("Ada Lovelace");
-  await page.getByLabel("Credit bureau").selectOption("experian");
-  await page.getByLabel("Mailing address").fill("123 Example Street");
-  await page.getByLabel("Account reference").fill("ACCT-42");
-  await page.getByLabel("Dispute reason").fill(
-    "This account is being reported inaccurately.",
-  );
-  await page.getByRole("button", { name: "Generate dispute letter" }).click();
-  await expect(
-    page.getByRole("button", { name: "Refresh preview" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Credit Bureau Dispute Letter" }),
-  ).toBeVisible();
-}
-
 test("provider session unlocks the menu and selected bots stay in their own lanes", async ({
   page,
 }) => {
@@ -63,23 +42,20 @@ test("provider session unlocks the menu and selected bots stay in their own lane
 
   await page.getByRole("button", { name: "Back to Menu" }).click();
   await page.getByRole("button", { name: "Cursive" }).click();
+  await expect(page.getByLabel("Chat input")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Upload PDF" })).toHaveCount(0);
+  await expect(page.getByLabel("Client name")).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Upload PDF" }),
+    page.getByRole("button", { name: "Generate report" }),
   ).toHaveCount(0);
-
-  await unlockCursiveDocumentLane(page);
-
   await expect(
-    page.getByRole("button", { name: "Save PDF draft" }),
+    page.getByRole("heading", { name: "Choose how to begin" }),
   ).toBeVisible();
-
-  await page.getByLabel("Chat input").fill("Draft a launch brief for tomorrow.");
-  await page.getByRole("button", { name: "Send message" }).click();
-
   await expect(
-    page.getByText(
-      "does not look like a credit-bureau dispute request yet",
-    ),
+    page.getByRole("button", { name: "Manual dispute" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Analyze uploaded report" }),
   ).toBeVisible();
   await expect(page.getByText("Release Review Runbook")).not.toBeVisible();
 });
@@ -202,6 +178,15 @@ test("switching bots clears composer draft and chat errors", async ({ page }) =>
 
   await page.getByRole("button", { name: "Back to Menu" }).click();
   await page.getByRole("button", { name: "Cursive" }).click();
+
+  await expect(page.getByRole("alert")).not.toBeVisible();
+  await expect(page.getByLabel("Chat input")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Choose how to begin" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Back to Menu" }).click();
+  await page.getByRole("button", { name: "Rori" }).click();
 
   await expect(page.getByRole("alert")).not.toBeVisible();
   await expect(page.getByLabel("Chat input")).toHaveValue("");

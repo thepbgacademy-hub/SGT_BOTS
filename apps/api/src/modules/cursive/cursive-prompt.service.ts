@@ -1,4 +1,3 @@
-import { type CursiveCategory } from "../../../../../packages/shared/src/contracts/cursive";
 import type {
   CursiveCategoryConfig,
   CursiveRepoAddress,
@@ -25,8 +24,8 @@ export type CursivePromptAddress = {
 export type CursivePromptIntake = string | Record<string, string>;
 
 export type CursivePromptPackage = {
-  categorySlug: CursiveCategory["slug"];
-  categoryDisplayName: CursiveCategory["displayName"];
+  categorySlug: string;
+  categoryDisplayName: string;
   helperMode: "helper-only";
   promptVersion: string;
   systemPrompt: string;

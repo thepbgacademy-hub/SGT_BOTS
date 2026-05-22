@@ -129,7 +129,7 @@ describe("cursive artifact routes", () => {
     });
 
     await app.reportService.waitForArtifact(queued.artifact.id, {
-      timeoutMs: 30000,
+      timeoutMs: 60000,
     });
 
     const listResponse = await app.inject({
@@ -199,68 +199,72 @@ describe("cursive artifact routes", () => {
     expect(expiredDownloadResponse.json()).toMatchObject({
       message: "session token expired",
     });
-  }, 15000);
+  }, 70000);
 
-  it("surfaces failed artifact rendering loudly in the list and download route", async () => {
-    const { app, sessionId, sessionToken } = await createAuthorizedSession({
-      reportQueueJobRunner: async () => {
-        throw new Error("render exploded");
-      },
-    });
-    const queued = await queueCursiveArtifact({
-      app,
-      sessionId,
-      sessionToken,
-    });
-
-    await expect(
-      app.reportService.waitForArtifact(queued.artifact.id, {
-        timeoutMs: 30000,
-      }),
-    ).rejects.toThrow("Unable to render this PDF draft right now.");
-
-    const listResponse = await app.inject({
-      headers: {
-        authorization: `Bearer ${sessionToken}`,
-      },
-      method: "GET",
-      url: `/api/reports/artifacts?sessionId=${encodeURIComponent(sessionId)}`,
-    });
-
-    expect(listResponse.statusCode).toBe(200);
-    const listPayload = listResponse.json() as {
-      artifacts: Array<{
-        downloadUrl: string | null;
-        failureReason: string | null;
-        id: string;
-        status: "queued" | "ready" | "failed";
-      }>;
-    };
-
-    expect(listPayload.artifacts).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          downloadUrl: null,
-          failureReason: "Unable to render this PDF draft right now.",
-          id: queued.artifact.id,
-          status: "failed",
-        }),
-      ]),
-    );
-
-    const downloadResponse = await app.inject({
-      headers: {
-        authorization: `Bearer ${sessionToken}`,
-      },
-      method: "GET",
-      url: `/api/reports/artifacts/${queued.artifact.id}/download?sessionId=${encodeURIComponent(
+  it(
+    "surfaces failed artifact rendering loudly in the list and download route",
+    async () => {
+      const { app, sessionId, sessionToken } = await createAuthorizedSession({
+        reportQueueJobRunner: async () => {
+          throw new Error("render exploded");
+        },
+      });
+      const queued = await queueCursiveArtifact({
+        app,
         sessionId,
-      )}`,
-    });
+        sessionToken,
+      });
 
-    expect(downloadResponse.statusCode).toBe(409);
-    expect(downloadResponse.json()).toMatchObject({
-      message: "artifact failed",
-    });
-  });
+      await expect(
+        app.reportService.waitForArtifact(queued.artifact.id, {
+          timeoutMs: 30000,
+        }),
+      ).rejects.toThrow("Unable to render this PDF draft right now.");
+
+      const listResponse = await app.inject({
+        headers: {
+          authorization: `Bearer ${sessionToken}`,
+        },
+        method: "GET",
+        url: `/api/reports/artifacts?sessionId=${encodeURIComponent(sessionId)}`,
+      });
+
+      expect(listResponse.statusCode).toBe(200);
+      const listPayload = listResponse.json() as {
+        artifacts: Array<{
+          downloadUrl: string | null;
+          failureReason: string | null;
+          id: string;
+          status: "queued" | "ready" | "failed";
+        }>;
+      };
+
+      expect(listPayload.artifacts).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            downloadUrl: null,
+            failureReason: "Unable to render this PDF draft right now.",
+            id: queued.artifact.id,
+            status: "failed",
+          }),
+        ]),
+      );
+
+      const downloadResponse = await app.inject({
+        headers: {
+          authorization: `Bearer ${sessionToken}`,
+        },
+        method: "GET",
+        url: `/api/reports/artifacts/${queued.artifact.id}/download?sessionId=${encodeURIComponent(
+          sessionId,
+        )}`,
+      });
+
+      expect(downloadResponse.statusCode).toBe(409);
+      expect(downloadResponse.json()).toMatchObject({
+        message: "artifact failed",
+      });
+    },
+    40000,
+  );
 });

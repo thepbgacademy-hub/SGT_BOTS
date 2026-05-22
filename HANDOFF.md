@@ -14,88 +14,98 @@
 3. `E:\REPOS\SGT_BOTS\docs\superpowers\specs\2026-05-19-cursive-v2-redesign.md`
 4. `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-redesign-implementation.md`
 5. `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-error-log.md`
+6. `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-rollout-notes.md`
 
 ## What This Build Is
 
-- `SGT_BOTS` is the Telegram playground for the Academy's try-before-you-buy experience
-- users enter their provider/BYOK info before launching a bot
-- each playground session is limited to 3 hours
-- each bot should feel like its own tool, not just a cosmetic skin over one shared chat shell
+- `SGT_BOTS` is the Telegram playground for the Academy's try-before-you-buy experience.
+- Users enter provider/BYOK info before launching a bot.
+- Each playground session is limited to 3 hours.
+- Each bot should feel like its own tool, not just a cosmetic skin over one shared chat shell.
 
 ## What Cursive Does
 
-- `Cursive` is the first serious workflow bot inside the six-bot playground
-- it is no longer a chat assistant
-- it is now a guided dispute workflow engine focused on bureau-targeted removal-demand letters
-- it supports:
+- `Cursive` is the first serious workflow bot inside the six-bot playground.
+- It is no longer a chat assistant.
+- It is a guided dispute workflow engine focused on bureau-targeted removal-demand letters.
+- It supports:
   - `Manual dispute`
   - `Analyze uploaded report`
-- manual disputes branch into:
+- Manual disputes branch into:
   - `Inconsistent reporting across bureaus`
   - `One bureau is reporting the item inaccurately and I have proof`
-- uploaded report analysis branches into:
+- Uploaded report analysis branches into:
   - `Tri-merge report`
   - `Single-bureau report`
 
 ## End Goal
 
-- ship a clean, mobile-first, full-screen Cursive workspace inside the playground
-- keep the mini app utility-first and menu-driven
-- generate bureau-specific removal-demand letters from controlled inputs and evidence
-- never expose internal prompts, skills, or LLM workflow to the user
-- keep the other playground bots/pages intact while making Cursive the first fully operational lane
+- Ship a clean, mobile-first, full-screen Cursive workspace inside the playground.
+- Keep the mini app utility-first and menu-driven.
+- Generate bureau-specific removal-demand letters from controlled inputs and evidence.
+- Never expose internal prompts, skills, or LLM workflow to the user.
+- Keep the other playground bots/pages intact while making Cursive the first fully operational lane.
 
 ## Current Implemented State
 
-- shared Cursive v2 workflow contracts are in place in `packages\shared\src\contracts\cursive.ts`
-- the API workflow seam has been reset for workflow-only Cursive under `apps\api\src\modules\cursive\`
-- `document_wizard` chat is blocked from acting like a conversational bot in `apps\api\src\modules\chat\chat.service.ts`
-- the mini app now has a dedicated full-screen Cursive shell:
+- Shared Cursive v2 workflow contracts are in place in `packages\shared\src\contracts\cursive.ts`.
+- The API workflow seam has been reset for workflow-only Cursive under `apps\api\src\modules\cursive\`.
+- `document_wizard` chat is blocked from acting like a conversational bot in `apps\api\src\modules\chat\chat.service.ts`.
+- The mini app routes Cursive into a dedicated full-screen workflow shell:
   - `apps\telegram-miniapp\src\features\cursive\CursiveWorkspace.tsx`
   - `apps\telegram-miniapp\src\features\cursive\CursiveStepper.tsx`
   - `apps\telegram-miniapp\src\features\cursive\CursiveFooter.tsx`
-- `DashboardShell.tsx` routes Cursive into the new workflow shell
-- the old Cursive category/chat-first mini app flow has been removed
+  - `apps\telegram-miniapp\src\features\dashboard\DashboardShell.tsx`
+- The old Cursive category/chat-first mini app flow has been removed.
+- The manual lane generates bureau removal-demand PDF artifacts.
+- The uploaded-report lane generates bureau removal-demand PDF artifacts for:
+  - tri-merge balance inconsistency
+  - single-bureau closed-account-reported-open proof
+- Upload report fixtures under `tests\e2e\fixtures\` are valid viewer-friendly PDFs, not fake `%PDF-` stubs.
 
 ## Phase Just Completed
 
-- `Phase C` landed the Cursive full-screen workspace shell
-- the manual lane now starts with:
-  - `Mode`
-  - `Evidence`
-  - `Violation`
-- the persistent playground countdown now lives inside the Cursive workspace footer
-- Cursive no longer shares the old chat-first experience
+- Phase D finished the Cursive v2 template, artifact, output, and upload/report-analysis lanes.
+- The manual lane is workflow-only and passes end-to-end.
+- The tri-merge upload lane is workflow-only and passes end-to-end.
+- The single-bureau upload lane is workflow-only and passes end-to-end.
+- The Cursive output posture is removal-demand only:
+  - no helper chat
+  - no generic verification request
+  - no "correct if needed" fallback
+  - no bureau validation request
 
 ## Verified Green So Far
 
-- shared contract tests passed
-- targeted API workflow tests passed
-- Cursive mini-app tests passed
-- mini-app lint passed
-- mini-app build passed
-- browser E2E for the current Cursive shell path passed
+Fresh gates from the completed upload/report-analysis phase:
+
+- `corepack pnpm --filter ./apps/api exec vitest run tests/e2e/cursive-upload-analysis.spec.ts` passed, 8/8.
+- `corepack pnpm --filter ./apps/telegram-miniapp exec vitest run src/features/dashboard/DashboardShell.spec.tsx` passed, 9/9.
+- `corepack pnpm -r test` passed, including API 116/116.
+- `corepack pnpm -r lint` passed.
+- `corepack pnpm --filter ./apps/telegram-miniapp build` passed.
+- `corepack pnpm test:e2e` passed, 18/18.
 
 ## Exact Next Pickup
 
-- continue with the next implementation phase from the Cursive v2 implementation plan
-- the next real build target is the backend/template/artifact migration for Cursive v2
-- replace the old category-era preview/save flow with the new workflow-driven preview/artifact path
-- migrate the remaining legacy credit-dispute output flow so it matches the new Cursive doctrine:
-  - menu-driven intake
-  - no chat
-  - removal-demand letters only
-  - validation gate before delivery
-- do not start VPS rollout yet
-- do not start the next bot yet
-- finish the Cursive preview/artifact lane first
+- Continue Phase E: deployment correction and rollout readiness.
+- Do not start the next bot yet.
+- Do not deploy to the VPS until the Cursive v2 branch is reviewed, committed, pushed, and explicitly selected for rollout.
+- Use `docs\superpowers\plans\2026-05-19-cursive-v2-rollout-notes.md` as the rollout checklist.
+- Before any deployment, rerun:
+  - `git diff --check`
+  - `corepack pnpm --filter ./workers/queue exec vitest run src/jobs/render-report.job.spec.ts`
+  - `corepack pnpm -r test`
+  - `corepack pnpm -r lint`
+  - `corepack pnpm -r build`
+  - `corepack pnpm --filter ./apps/telegram-miniapp build`
+  - `corepack pnpm test:e2e`
 
-## Known Current Break / Next Test Target
+## Known Current Gaps
 
-- the older preview/artifact API tests are still the next red-to-green target:
-  - `E:\REPOS\SGT_BOTS\apps\api\tests\e2e\cursive-preview.spec.ts`
-  - `E:\REPOS\SGT_BOTS\apps\api\tests\e2e\cursive-artifacts.spec.ts`
-- these are the main indicators that the old category-era output pipeline has not been fully migrated yet
+- Uploaded-report parsing is deterministic and fixture-oriented. It scans readable PDF bytes and simple uncompressed PDF text strings; it is not real OCR or full PDF extraction.
+- Single-bureau upload support is intentionally narrow: it detects `closed account reported as open` when proof text is present. Unsupported single-bureau proof text returns no issue rather than guessing a violation type.
+- The `resume-next-session-sgt-bots.md` file remains untracked and should be ignored unless explicitly requested.
 
 ## Non-Negotiable Cursive Rules
 
@@ -108,14 +118,10 @@
 - keep intake menu-driven wherever practical
 - collect only the minimum facts needed for the chosen violation
 - do not ask the user for replacement data that helps a bureau repair the tradeline
+- do not infer a target bureau or serious violation type from unsupported upload text
 
 ## Error Log Discipline
 
-- before repeating a fix attempt, read:
+- Before repeating a fix attempt, read:
   - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-error-log.md`
-- keep appending real mistakes and recovery notes there so the same errors are not repeated
-
-## Ignore Unless Asked
-
-- `E:\REPOS\SGT_BOTS\resume-next-session-sgt-bots.md` is currently untracked
-- leave it alone unless the user explicitly asks to use or clean it up
+- Keep appending real mistakes and recovery notes there so the same errors are not repeated.

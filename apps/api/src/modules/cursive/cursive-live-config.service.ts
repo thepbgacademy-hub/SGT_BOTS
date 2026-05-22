@@ -4,7 +4,7 @@ type LegacyCursiveCategory = {
   slug: string;
   displayName: string;
   helperMode: "helper-only";
-  outputModes: string[];
+  outputModes: readonly string[];
   enabled: boolean;
   sortOrder: number;
   summary: string;
@@ -21,8 +21,8 @@ type LegacyCursiveCategoryConfig = {
   intakeSchema: {
     schemaVersion: string;
     helperMode: "helper-only";
-    intakeSchema: {
-      fields: LegacyIntakeField[];
+  intakeSchema: {
+    fields: readonly LegacyIntakeField[];
     };
   };
   promptProfile: {
@@ -30,15 +30,15 @@ type LegacyCursiveCategoryConfig = {
     helperMode: "helper-only";
     promptPayload: {
       systemPrompt: string;
-      draftInstructions: string[];
+      draftInstructions: readonly string[];
     };
   };
-  citations: Array<{
+  citations: readonly {
     citationKey: string;
     citationText: string;
     sortOrder: number;
-  }>;
-  addresses: Array<{
+  }[];
+  addresses: readonly {
     addressKey: string;
     organizationName: string;
     attentionLine: string;
@@ -49,7 +49,7 @@ type LegacyCursiveCategoryConfig = {
     postalCode: string;
     country: string;
     sortOrder: number;
-  }>;
+  }[];
   templateDefaults: {
     templateVersion: string;
     helperMode: "helper-only";

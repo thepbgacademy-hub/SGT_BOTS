@@ -8,6 +8,7 @@ import type {
   BotSourceBinding,
   BotToolPermission,
 } from "../../../../../packages/shared/src/bots/capabilities";
+import type { CursiveCategoryConfig } from "../cursive/cursive.repo";
 
 type ChatRole = "user" | "assistant";
 
@@ -157,6 +158,11 @@ function buildTaxLegalResearchReply(
 }
 
 export function createChatService(deps?: {
+  cursiveRepo?: {
+    getCategoryConfig(categorySlug: string): CursiveCategoryConfig | null;
+    listCategories(): readonly CursiveCategoryConfig["category"][];
+    getDefaultCategoryConfig(): CursiveCategoryConfig;
+  };
   now?: () => number;
   resolveManifest?: (botId: string) => BotManifest;
   buildRuntimeReply?: (

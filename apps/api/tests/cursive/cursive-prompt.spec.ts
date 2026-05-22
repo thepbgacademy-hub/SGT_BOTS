@@ -32,20 +32,18 @@ describe("buildCursivePromptPackage", () => {
     expect(promptPackage.categorySlug).toBe("credit_bureau_dispute");
     expect(promptPackage.helperMode).toBe("helper-only");
     expect(promptPackage.promptVersion).toBe("v1");
-    expect(promptPackage.systemPrompt).toContain("helper-only assistant");
+    expect(promptPackage.systemPrompt).toContain(
+      "controlled Cursive intake",
+    );
     expect(promptPackage.draftInstructions).toEqual([
-      "Draft a formal credit bureau dispute letter using a concise legal-business tone.",
-      "Keep the letter grounded in the official intake only. Do not invent facts, dates, balances, or account history.",
-      "Use the approved citation set as the legal grounding for the letter structure, with superscript references left in place for the HTML template.",
-      "Frame the requested remedy around reinvestigation, correction, deletion of unverifiable information, and written results.",
-      "When drafting the dispute summary, explain the inaccuracy and the corrective position in one or two factual sentences without repeating the bureau name, account reference, or the phrase 'the disputed reporting is inaccurate because'.",
+      "Use only the official intake supplied to the route.",
+      "Do not invent facts.",
+      "Demand removal and proof of deletion.",
     ]);
     expect(promptPackage.promptText).toContain("Credit Bureau Dispute");
     expect(promptPackage.promptText).toContain("Jane Doe");
     expect(promptPackage.promptText).toContain("15 U.S.C. Sec. 1681i");
-    expect(promptPackage.promptText).toContain(
-      "12 C.F.R. Sec. 1022.41-48 (Reg V)",
-    );
+    expect(promptPackage.promptText).toContain("15 U.S.C. Sec. 1681e(b)");
     expect(promptPackage.promptText).toContain("Experian");
     expect(promptPackage.promptText).toContain("Allen, TX 75013");
   });
@@ -147,8 +145,8 @@ describe("buildCursivePromptPackage", () => {
         citationText: "15 U.S.C. Secs. 1681 et seq. (FCRA)",
       },
       {
-        citationKey: "reg_v",
-        citationText: "12 C.F.R. Sec. 1022.41-48 (Reg V)",
+        citationKey: "fcra_1681eb",
+        citationText: "15 U.S.C. Sec. 1681e(b)",
       },
       { citationKey: "fcra_611", citationText: "15 U.S.C. Sec. 1681i" },
     ]);
@@ -398,37 +396,26 @@ describe("createChatService", () => {
       },
     });
 
-    const response = chatService.sendMessage({
-      sessionId: "session-1",
-      userId: "user-1",
-      botId: "document_wizard",
-      message: "Draft a dispute letter",
-    });
-
-    expect(response.output).toContain("Custom Credit Bureau Dispute");
-    expect(response.output).toContain(
-      "help you clarify the situation before we start the official letter",
-    );
-    expect(response.output).toContain("Custom Citation 99");
-    expect(response.output).toContain("Custom Bureau");
+    expect(() =>
+      chatService.sendMessage({
+        sessionId: "session-1",
+        userId: "user-1",
+        botId: "document_wizard",
+        message: "Draft a dispute letter",
+      }),
+    ).toThrow("cursive workflow only");
   });
 
   it("keeps unrelated document_wizard requests inside the current supported letter lane", () => {
     const chatService = createChatService();
 
-    const response = chatService.sendMessage({
-      sessionId: "session-1",
-      userId: "user-1",
-      botId: "document_wizard",
-      message: "Draft a launch brief for tomorrow.",
-    });
-
-    expect(response.output).toContain(
-      "Cursive currently supports Credit Bureau Dispute letters",
-    );
-    expect(response.output).toContain(
-      "does not look like a credit-bureau dispute request yet",
-    );
-    expect(response.output).toContain("tap Start official letter");
+    expect(() =>
+      chatService.sendMessage({
+        sessionId: "session-1",
+        userId: "user-1",
+        botId: "document_wizard",
+        message: "Draft a launch brief for tomorrow.",
+      }),
+    ).toThrow("cursive workflow only");
   });
 });

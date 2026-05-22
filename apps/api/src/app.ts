@@ -63,7 +63,7 @@ declare module "fastify" {
     uploadService: ReturnType<typeof createUploadService>;
     reportService: ReturnType<typeof createReportService>;
     chatService: ReturnType<typeof createChatService>;
-    cursiveService: ReturnType<typeof createCursiveService>;
+    cursiveService: Pick<ReturnType<typeof createCursiveService>, "getWorkflowEntry">;
     reviewService: ReturnType<typeof createReviewService>;
     sessionService: ReturnType<typeof createSessionService>;
     cursiveConfigService: CursiveConfigService;
