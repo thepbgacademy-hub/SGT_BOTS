@@ -37,9 +37,12 @@ test("user sees review CTA when the playground session ends", async ({
   await page.getByLabel("API key").fill("sk-test");
   await page.getByRole("button", { name: "Validate provider" }).click();
 
-  await expect(page.getByText("Leave a review")).toBeVisible();
+  await expect(page.getByText("Please leave a review")).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Open review group" }),
+    page.getByText("Thank you for your participation in the PBG Playground."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Leave your review" }),
   ).toBeVisible();
 });
 
@@ -56,9 +59,9 @@ test("user can end the session early and still get the review CTA", async ({
 
   await page.getByRole("button", { name: "End playground" }).click();
 
-  await expect(page.getByText("Leave a review")).toBeVisible();
+  await expect(page.getByText("Please leave a review")).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Open review group" }),
+    page.getByRole("link", { name: "Leave your review" }),
   ).toBeVisible();
   await expect(
     page.getByText("Your playground session has ended."),
