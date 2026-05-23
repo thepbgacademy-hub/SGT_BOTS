@@ -40,7 +40,7 @@ type DashboardShellProps = {
   preferredName: string;
 };
 
-const DEFAULT_REVIEW_GROUP_URL = "https://t.me/your_review_group";
+const DEFAULT_REVIEW_GROUP_URL = "https://t.me/+1wagxfyhnAcwMDJh";
 
 type CursiveStep =
   | "mode"

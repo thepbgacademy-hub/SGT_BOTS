@@ -11,6 +11,7 @@ const VALID_INIT_DATA = createSignedTelegramInitData({
     language_code: "en",
   },
 });
+const REVIEW_GROUP_URL = "https://t.me/+1wagxfyhnAcwMDJh";
 
 async function completeOnboarding(page: Parameters<typeof test>[0]["page"]) {
   await page.goto(`/?tgInitData=${encodeURIComponent(VALID_INIT_DATA)}`);
@@ -41,9 +42,9 @@ test("user sees review CTA when the playground session ends", async ({
   await expect(
     page.getByText("Thank you for your participation in the PBG Playground."),
   ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Leave your review" }),
-  ).toBeVisible();
+  const reviewLink = page.getByRole("link", { name: "Leave your review" });
+  await expect(reviewLink).toBeVisible();
+  await expect(reviewLink).toHaveAttribute("href", REVIEW_GROUP_URL);
 });
 
 test("user can end the session early and still get the review CTA", async ({
@@ -60,9 +61,9 @@ test("user can end the session early and still get the review CTA", async ({
   await page.getByRole("button", { name: "End playground" }).click();
 
   await expect(page.getByText("Please leave a review")).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Leave your review" }),
-  ).toBeVisible();
+  const reviewLink = page.getByRole("link", { name: "Leave your review" });
+  await expect(reviewLink).toBeVisible();
+  await expect(reviewLink).toHaveAttribute("href", REVIEW_GROUP_URL);
   await expect(
     page.getByText("Your playground session has ended."),
   ).toBeVisible();

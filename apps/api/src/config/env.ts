@@ -114,7 +114,7 @@ export function readEnv(env: NodeJS.ProcessEnv = process.env): AppEnv {
     telegramReviewGroupUrl:
       env.TELEGRAM_REVIEW_GROUP_URL ??
       fileEnv.TELEGRAM_REVIEW_GROUP_URL ??
-      "https://t.me/your_review_group",
+      "https://t.me/+1wagxfyhnAcwMDJh",
     profileRepoMode,
     providerValidationMode,
     supabaseUrl:
