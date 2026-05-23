@@ -450,3 +450,13 @@ The token '&&' is not a valid statement separator in this version.
 **Fix applied:** Added `botId` to mini-app artifact state, preserved it from `/api/reports/artifacts`, tagged Cursive optimistic artifacts with `document_wizard`, and filtered dashboard workspace artifacts by `botId` with a text fallback for older local entries.
 
 **Rule going forward:** Artifact ownership and visibility must key off stable ids such as `botId`, never display labels that may drift between catalog, menu, and refreshed API payloads.
+
+### 2026-05-23 - Review CTA must not ship with placeholder Telegram URLs
+
+**Context:** VPS 2 post-rollout review CTA test after the playground timer expired.
+
+**Problem:** The session-end review button opened `https://t.me/your_review_group`, producing Telegram's "Username @your_review_group not found" popup. The placeholder existed in both the mini-app fallback and the API review prompt fallback, and the live compose env did not override it.
+
+**Fix applied:** Replaced the fallback/default URL with the real invite link, updated `.env.example`, added Playwright assertions for the rendered review link href, pushed refreshed frontend/backend images, pulled them on VPS 2, and force-recreated both containers. The first remote deployment command also showed that this compose stack is image-based, so `docker compose build` on VPS 2 reports "No services to build"; future rollouts should build/push images first, then pull/recreate on VPS 2.
+
+**Rule going forward:** User-facing external links need an E2E href assertion, not only visible button text. For VPS 2, treat the SGT stack as GHCR image-driven unless the compose file is intentionally changed.
