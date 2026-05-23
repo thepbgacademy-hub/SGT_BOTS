@@ -21,8 +21,8 @@ export const BOT_WORKSPACE_PANELS: Record<BotId, BotWorkspacePanelContent> = {
       "a defined client, audience, or output target",
       "a need for a clean rendered report",
     ],
-    supportLabel: "Workflow Support",
-    supportTitle: "Inside this lane:",
+    supportLabel: "Instructions",
+    supportTitle: "3 Easy Steps:",
     supportItems: [
       "upload the source PDF first",
       "complete the guided report form",

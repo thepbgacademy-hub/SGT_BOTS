@@ -447,7 +447,6 @@ function readFileAsBase64(file: File) {
 
 type CursiveWorkspaceShellProps = {
   artifacts: ArtifactListItem[];
-  countdownValue: string;
   onDetailsChange: (details: Partial<CursiveDetailsState>) => void;
   onGenerate: () => void;
   onReportTypeSelect: (reportType: CursiveReportType) => void;
@@ -493,6 +492,8 @@ function getCursiveActiveStepContent({
   state,
   onDetailsChange,
   onChoiceSelect,
+  onBackStep,
+  onNextStep,
   onReportTypeSelect,
   onUploadAnalyze,
   onUploadFileChange,
@@ -500,8 +501,10 @@ function getCursiveActiveStepContent({
 }: Pick<
   CursiveWorkspaceShellProps,
   | "state"
+  | "onBackStep"
   | "onChoiceSelect"
   | "onDetailsChange"
+  | "onNextStep"
   | "onReportTypeSelect"
   | "onUploadAnalyze"
   | "onUploadFileChange"
@@ -548,31 +551,48 @@ function getCursiveActiveStepContent({
             <h3>Choose report type</h3>
           </div>
           <p className="panel-description">
-            This lane supports one tri-merge PDF or one single-bureau PDF per run.
+            This section supports one tri-merge PDF or one single-bureau PDF per run.
           </p>
         </div>
-        <div className="cursive-generation-lane">
+        <div className="cursive-report-type-controls">
+          <div className="cursive-report-type-actions">
+            <button
+              className={
+                state.reportType === "tri_merge"
+                  ? "primary-button"
+                  : "secondary-button"
+              }
+              onClick={() => onReportTypeSelect("tri_merge")}
+              type="button"
+            >
+              Tri-merge report
+            </button>
+            <button
+              className={
+                state.reportType === "single_bureau"
+                  ? "primary-button"
+                  : "secondary-button"
+              }
+              onClick={() => onReportTypeSelect("single_bureau")}
+              type="button"
+            >
+              Single-bureau report
+            </button>
+          </div>
           <button
-            className={
-              state.reportType === "tri_merge"
-                ? "primary-button"
-                : "secondary-button"
-            }
-            onClick={() => onReportTypeSelect("tri_merge")}
+            className="primary-button cursive-report-type-upload"
+            disabled={!state.reportType}
+            onClick={onNextStep}
             type="button"
           >
-            Tri-merge report
+            Upload next
           </button>
           <button
-            className={
-              state.reportType === "single_bureau"
-                ? "primary-button"
-                : "secondary-button"
-            }
-            onClick={() => onReportTypeSelect("single_bureau")}
+            className="secondary-button cursive-report-type-back"
+            onClick={onBackStep}
             type="button"
           >
-            Single-bureau report
+            Back
           </button>
         </div>
       </section>
@@ -972,8 +992,8 @@ function getCursiveActiveStepContent({
           </h3>
         </div>
         <p className="panel-description">
-          Keep the intake tight by selecting the exact violation lane before deeper
-          details open.
+          Keep the intake tight by selecting the exact reporting problem before
+          deeper details open.
         </p>
       </div>
       <div className="cursive-generation-lane">
@@ -1004,7 +1024,6 @@ function getCursiveActiveStepContent({
 
 export function CursiveWorkspaceShell({
   artifacts,
-  countdownValue,
   onDetailsChange,
   onGenerate,
   onBackStep,
@@ -1050,9 +1069,8 @@ export function CursiveWorkspaceShell({
     <div className="cursive-shell">
       <CursiveWorkspace
         activeStepId={state.currentStep}
-        countdownLabel="Playground time remaining"
-        countdownValue={countdownValue}
         footerSlot={footerSlot}
+        hideFooter={state.currentStep === "reportType"}
         isBackDisabled={state.currentStep === "mode" || state.isGenerating}
         isNextDisabled={!canUseNext}
         laneLabel={getCursiveModeLabel(state.mode)}
@@ -1065,13 +1083,13 @@ export function CursiveWorkspaceShell({
               ? onBackToMenu
               : onNextStep
         }
-        onTitleBack={onBackToMenu}
         steps={getCursiveSteps(state.mode)}
-        title="Cursive"
       >
         {getCursiveActiveStepContent({
+          onBackStep,
           onDetailsChange,
           onChoiceSelect,
+          onNextStep,
           onReportTypeSelect,
           onUploadAnalyze,
           onUploadFileChange,
@@ -1975,7 +1993,6 @@ export function DashboardShell({
                         selectedMenuItem.displayName,
                       ),
                   )}
-                  countdownValue={formatRemaining(remainingSeconds)}
                   onBackStep={handleCursiveBackStep}
                   onBackToMenu={handleBackToMenu}
                   onChoiceSelect={(choice) => {

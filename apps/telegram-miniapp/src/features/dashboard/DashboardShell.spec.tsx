@@ -15,7 +15,6 @@ function renderShell(state: CursiveWorkflowState) {
   return renderToStaticMarkup(
     createElement(CursiveWorkspaceShell, {
       artifacts: [],
-      countdownValue: "02:59:00",
       onBackStep: () => undefined,
       onBackToMenu: () => undefined,
       onChoiceSelect: () => undefined,
@@ -66,6 +65,20 @@ const EMPTY_STATE: CursiveWorkflowState = {
 };
 
 describe("DashboardShell Cursive workspace", () => {
+  it("renders upload report type controls without duplicate topbar chrome", () => {
+    const markup = renderShell({
+      ...EMPTY_STATE,
+      currentStep: "reportType",
+      mode: "analyze_uploaded_report",
+    });
+
+    expect(markup).not.toContain("cursive-workspace__topbar");
+    expect(markup).toContain("This section supports one tri-merge PDF");
+    expect(markup).toContain("cursive-report-type-actions");
+    expect(markup).toContain("cursive-report-type-upload");
+    expect(markup).toContain("cursive-report-type-back");
+  });
+
   it("keeps ready artifacts visible by bot id when display names drift", () => {
     expect(
       isArtifactForMenuSelection(
@@ -100,7 +113,6 @@ describe("DashboardShell Cursive workspace", () => {
             status: "ready",
           },
         ],
-        countdownValue: "02:59:00",
         onBackStep: () => undefined,
         onBackToMenu: () => undefined,
         onChoiceSelect: () => undefined,
