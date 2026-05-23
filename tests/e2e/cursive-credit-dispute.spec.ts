@@ -30,14 +30,15 @@ test("cursive generates a manual bureau removal-demand artifact", async ({
   page,
 }) => {
   test.setTimeout(70000);
+  await page.setViewportSize({ width: 545, height: 705 });
   await connectProvider(page);
 
   await page.getByRole("button", { name: "Cursive" }).click();
 
   await expect(
-    page.getByRole("heading", { name: "Cursive" }),
+    page.getByText("Cursive workspace live"),
   ).toBeVisible();
-  await expect(page.getByText("Playground time remaining")).toBeVisible();
+  await expect(page.getByText("Time remaining")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Choose how to begin" }),
   ).toBeVisible();
@@ -47,6 +48,25 @@ test("cursive generates a manual bureau removal-demand artifact", async ({
   await expect(
     page.getByRole("button", { name: "Analyze uploaded report" }),
   ).toBeVisible();
+  const manualBox = await page
+    .getByRole("button", { name: "Manual dispute" })
+    .boundingBox();
+  const uploadBox = await page
+    .getByRole("button", { name: "Analyze uploaded report" })
+    .boundingBox();
+  const nextBox = await page
+    .getByRole("button", { name: "Next step" })
+    .boundingBox();
+  const backBox = await page
+    .getByRole("button", { exact: true, name: "Back" })
+    .boundingBox();
+  expect(manualBox).not.toBeNull();
+  expect(uploadBox).not.toBeNull();
+  expect(nextBox).not.toBeNull();
+  expect(backBox).not.toBeNull();
+  expect(Math.abs(manualBox!.y - uploadBox!.y)).toBeLessThanOrEqual(2);
+  expect(nextBox!.y).toBeLessThan(backBox!.y);
+  expect(nextBox!.y - (manualBox!.y + manualBox!.height)).toBeLessThan(140);
   await expect(page.getByLabel("Chat input")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Manual dispute" }).click();

@@ -146,6 +146,7 @@ describe("DashboardShell Cursive workspace", () => {
     expect(markup).toContain("Evidence");
     expect(markup).toContain("Violation");
     expect(markup).toContain("Choose how to begin");
+    expect(markup).toContain("cursive-mode-actions");
     expect(markup).toContain("Manual dispute");
     expect(markup).toContain("Analyze uploaded report");
   });

@@ -797,9 +797,9 @@ h2 {
 }
 
 .cursive-workspace {
-  min-height: 100vh;
+  min-height: auto;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto auto;
   gap: 0.75rem;
   padding: 0.9rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom, 0px));
   background:
@@ -1086,6 +1086,14 @@ h2 {
   padding: 0.95rem 1rem;
   border: 1px solid rgba(255, 210, 110, 0.18);
   background: rgba(255, 199, 84, 0.05);
+}
+
+.cursive-mode-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 13rem));
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.85rem;
 }
 
 .cursive-generation-lane.is-ready {
@@ -1588,6 +1596,22 @@ h2 {
 
   .cursive-workspace-footer {
     grid-template-columns: 1fr;
+  }
+
+  .cursive-workspace-footer .primary-button {
+    order: 1;
+  }
+
+  .cursive-workspace-footer__slot {
+    order: 2;
+  }
+
+  .cursive-workspace-footer .secondary-button {
+    order: 3;
+  }
+
+  .cursive-mode-actions {
+    grid-template-columns: repeat(2, minmax(0, 13rem));
   }
 
   .cursive-report-type-actions {

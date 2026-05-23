@@ -522,7 +522,7 @@ function getCursiveActiveStepContent({
             Start from your own facts or move into uploaded-report analysis next.
           </p>
         </div>
-        <div className="cursive-generation-lane">
+        <div className="cursive-generation-lane cursive-mode-actions">
           <button
             className="primary-button"
             onClick={() => onChoiceSelect("manual_dispute")}
