@@ -463,6 +463,14 @@ type CursiveWorkspaceShellProps = {
   state: CursiveWorkflowState;
 };
 
+export function isArtifactForMenuSelection(
+  artifact: ArtifactListItem,
+  botId: PlaygroundMenuBotId,
+  displayName: string,
+) {
+  return artifact.botId ? artifact.botId === botId : artifact.botName === displayName;
+}
+
 function getCursiveModeLabel(mode: CursiveMode | null) {
   if (mode === "manual_dispute") {
     return "Manual dispute";
@@ -931,14 +939,14 @@ function getCursiveActiveStepContent({
           </div>
           <p className="panel-description">
             {state.mode === "analyze_uploaded_report"
-              ? "Your confirmed uploaded-report issues have been queued as PDF artifacts."
-              : "Your bureau removal-demand letter has been queued as a PDF artifact."}
+              ? "Your confirmed uploaded-report issues have been queued as PDF reports."
+              : "Your bureau removal-demand letter has been queued as a PDF report."}
           </p>
         </div>
         {state.previewHtml ? (
           <p className="success-banner">
             Preview generated and PDF draft queued. The download will appear in
-            artifacts when rendering finishes.
+            the Report section when rendering finishes.
           </p>
         ) : (
           <p className="muted-copy">Generate the preview from the review step.</p>
@@ -1357,6 +1365,7 @@ export function DashboardShell({
         setArtifacts(
           payload.artifacts.map((artifact) => ({
             artifactType: artifact.artifactType,
+            botId: artifact.botId,
             botName:
               bots.find((bot) => bot.id === artifact.botId)?.name ?? artifact.botId,
             createdAt: artifact.createdAt,
@@ -1714,6 +1723,7 @@ export function DashboardShell({
         setArtifacts((currentArtifacts) => [
           ...payload.artifacts!.map((artifact) => ({
             artifactType: payload.artifactType ?? ("pdf" as const),
+            botId: "document_wizard",
             botName: selectedMenuItem?.displayName ?? "Cursive",
             createdAt: new Date().toISOString(),
             fileName: artifact.fileName,
@@ -1877,6 +1887,7 @@ export function DashboardShell({
       setArtifacts((currentArtifacts) => [
         {
           artifactType: savePayload.artifactType ?? "pdf",
+          botId: "document_wizard",
           botName: selectedMenuItem?.displayName ?? "Cursive",
           createdAt: new Date().toISOString(),
           fileName: queuedArtifact.fileName,
@@ -1957,7 +1968,12 @@ export function DashboardShell({
               isCursiveWorkspace ? (
                 <CursiveWorkspaceShell
                   artifacts={artifacts.filter(
-                    (artifact) => artifact.botName === selectedMenuItem.displayName,
+                    (artifact) =>
+                      isArtifactForMenuSelection(
+                        artifact,
+                        selectedMenuItem.id,
+                        selectedMenuItem.displayName,
+                      ),
                   )}
                   countdownValue={formatRemaining(remainingSeconds)}
                   onBackStep={handleCursiveBackStep}
@@ -2014,7 +2030,12 @@ export function DashboardShell({
                   {selectedMenuBotId ? (
                     <BotSupportPanel
                       artifacts={artifacts.filter(
-                        (artifact) => artifact.botName === selectedMenuItem.displayName,
+                        (artifact) =>
+                          isArtifactForMenuSelection(
+                            artifact,
+                            selectedMenuItem.id,
+                            selectedMenuItem.displayName,
+                          ),
                       )}
                       botId={selectedMenuBotId}
                     />

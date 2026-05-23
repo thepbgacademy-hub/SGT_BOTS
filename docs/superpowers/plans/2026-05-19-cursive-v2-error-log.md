@@ -440,3 +440,13 @@ The token '&&' is not a valid statement separator in this version.
 **Fix applied:** Updated `docker-compose.vps.yml`, `Caddyfile`, and rollout notes to match the live VPS 2 service names and networks. Verified the public health endpoint works, the current live Cursive v2 entry route still returns `404` before deployment, and Supabase has the Cursive tables/seeded category state needed by the new backend.
 
 **Rule going forward:** Before deploying from a checked-in compose file, compare it against the running container labels and Caddy service names on the target host. Do not assume local compose network names match VPS reality.
+
+### 2026-05-23 - Production artifact existed but dashboard filtering could hide it
+
+**Context:** VPS 2 post-rollout manual Cursive test.
+
+**Problem:** The backend rendered the manual removal-demand PDF and marked the artifact `ready`, but the mini app could still show no visible output when the refreshed artifact's catalog name did not match the dashboard display label. The dashboard was filtering artifacts by `botName` text instead of the backend-owned `botId`.
+
+**Fix applied:** Added `botId` to mini-app artifact state, preserved it from `/api/reports/artifacts`, tagged Cursive optimistic artifacts with `document_wizard`, and filtered dashboard workspace artifacts by `botId` with a text fallback for older local entries.
+
+**Rule going forward:** Artifact ownership and visibility must key off stable ids such as `botId`, never display labels that may drift between catalog, menu, and refreshed API payloads.

@@ -26,7 +26,7 @@ export const BOT_WORKSPACE_PANELS: Record<BotId, BotWorkspacePanelContent> = {
     supportItems: [
       "upload the source PDF first",
       "complete the guided report form",
-      "track generated artifacts here",
+      "track generated reports here",
     ],
   },
   tutor: {

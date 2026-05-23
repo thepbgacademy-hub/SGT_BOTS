@@ -1,6 +1,7 @@
 export type ArtifactListItem = {
   id: string;
   artifactType: "pdf";
+  botId?: string;
   botName: string;
   createdAt?: string;
   downloadUrl?: string | null;
@@ -21,7 +22,7 @@ export function ArtifactList({ artifacts }: ArtifactListProps) {
       <header className="panel-header">
         <div>
           <p className="eyebrow">Output</p>
-          <h2>Artifacts</h2>
+          <h2>Reports</h2>
         </div>
       </header>
       {artifacts.length ? (
@@ -47,7 +48,7 @@ export function ArtifactList({ artifacts }: ArtifactListProps) {
           ))}
         </ul>
       ) : (
-        <p className="muted-copy">No artifacts queued yet.</p>
+        <p className="muted-copy">No reports queued yet.</p>
       )}
     </section>
   );

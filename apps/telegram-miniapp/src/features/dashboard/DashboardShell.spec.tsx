@@ -7,6 +7,7 @@ import {
   getCursiveDetailErrors,
   getNextCursiveStepState,
   getSteppedCursiveState,
+  isArtifactForMenuSelection,
   type CursiveWorkflowState,
 } from "./DashboardShell";
 
@@ -65,6 +66,65 @@ const EMPTY_STATE: CursiveWorkflowState = {
 };
 
 describe("DashboardShell Cursive workspace", () => {
+  it("keeps ready artifacts visible by bot id when display names drift", () => {
+    expect(
+      isArtifactForMenuSelection(
+        {
+          artifactType: "pdf",
+          botId: "document_wizard",
+          botName: "Document Wizard",
+          downloadUrl: "/api/reports/artifacts/artifact-1/download?token=test",
+          fileName: "bureau-removal-demand-letter.pdf",
+          id: "artifact-1",
+          originalFilename: "manual-intake",
+          status: "ready",
+        },
+        "document_wizard",
+        "Cursive",
+      ),
+    ).toBe(true);
+  });
+
+  it("labels Cursive generated output as a report instead of artifacts", () => {
+    const markup = renderToStaticMarkup(
+      createElement(CursiveWorkspaceShell, {
+        artifacts: [
+          {
+            artifactType: "pdf",
+            botId: "document_wizard",
+            botName: "Cursive",
+            downloadUrl: "/api/reports/artifacts/artifact-1/download?token=test",
+            fileName: "bureau-removal-demand-letter.pdf",
+            id: "artifact-1",
+            originalFilename: "manual-intake",
+            status: "ready",
+          },
+        ],
+        countdownValue: "02:59:00",
+        onBackStep: () => undefined,
+        onBackToMenu: () => undefined,
+        onChoiceSelect: () => undefined,
+        onDetailsChange: () => undefined,
+        onGenerate: () => undefined,
+        onNextStep: () => undefined,
+        onReportTypeSelect: () => undefined,
+        onUploadAnalyze: () => undefined,
+        onUploadFileChange: () => undefined,
+        onUploadIssueToggle: () => undefined,
+        state: {
+          ...EMPTY_STATE,
+          currentStep: "results",
+          mode: "manual_dispute",
+        },
+      }),
+    );
+
+    expect(markup).toContain("<h2>Report</h2>");
+    expect(markup).toContain("bureau-removal-demand-letter.pdf");
+    expect(markup).toContain("Download PDF");
+    expect(markup).not.toContain("track generated artifacts here");
+  });
+
   it("starts on the named Mode step and keeps later steps locked", () => {
     const markup = renderShell({
       ...EMPTY_STATE,
