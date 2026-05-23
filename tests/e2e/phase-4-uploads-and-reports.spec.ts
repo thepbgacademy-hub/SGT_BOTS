@@ -72,7 +72,7 @@ test("cursive generates a pdf draft from the manual workflow", async ({
   await completeManualCursiveReview(page);
   await page.getByRole("button", { name: "Generate" }).click();
 
-  await expect(page.getByText("PDF draft queued.", { exact: true })).toBeVisible({
+  await expect(page.getByText("Letter being created.", { exact: true })).toBeVisible({
     timeout: 60000,
   });
   await expect(
@@ -180,7 +180,7 @@ test("cursive pdf draft failures stay recoverable in the UI", async ({ page }) =
     page.getByRole("heading", { name: "Review the removal demand" }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Generate" })).toBeVisible();
-  await expect(page.getByText("PDF draft queued.")).toHaveCount(0);
+  await expect(page.getByText("Letter being created.")).toHaveCount(0);
 });
 
 test("cursive artifact polling failures fail loudly without hiding the current workspace", async ({

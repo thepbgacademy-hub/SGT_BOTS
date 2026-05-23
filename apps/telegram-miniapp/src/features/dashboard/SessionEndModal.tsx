@@ -20,12 +20,11 @@ export function SessionEndModal({ prompt }: SessionEndModalProps) {
           : "Thanks for taking the playground for a spin."}
       </p>
       <p className="modal-copy">
-        Thank you for your participation in the PBG Playground. These are just a
-        handful of the tools and gadgets available at the PBG Academy to help
-        you learn the proper way to handle business, commerce, discharge and
-        more. Please leave us a heartfelt review of the playground so others can
-        feel assured they have found the right place to be to buy back their time
-        and accomplish their goals.
+        These are just a handful of the tools and gadgets available at the PBG
+        Academy to help you learn the proper way to handle business, commerce,
+        discharge and more. Please leave us a heartfelt review of the playground
+        so others can feel assured they have found the right place to be, to buy
+        back their time and accomplish their goals.
       </p>
       <a className="primary-button primary-button--link" href={prompt.reviewUrl} rel="noreferrer" target="_blank">
         Leave your review

@@ -40,7 +40,10 @@ test("user sees review CTA when the playground session ends", async ({
 
   await expect(page.getByText("Please leave a review")).toBeVisible();
   await expect(
-    page.getByText("Thank you for your participation in the PBG Playground."),
+    page.getByText("These are just a handful of the tools and gadgets"),
+  ).toBeVisible();
+  await expect(
+    page.getByText("right place to be, to buy back their time"),
   ).toBeVisible();
   const reviewLink = page.getByRole("link", { name: "Leave your review" });
   await expect(reviewLink).toBeVisible();

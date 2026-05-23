@@ -151,7 +151,7 @@ test("cursive generates a manual bureau removal-demand artifact", async ({
   await expect(page.getByRole("heading", { name: "Results" })).toBeVisible({
     timeout: 60000,
   });
-  await expect(page.getByText("PDF draft queued.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Letter being created.", { exact: true })).toBeVisible();
   const generatedArtifact = page
     .locator(".artifact-card")
     .filter({ hasText: "bureau-removal-demand-letter.pdf" })

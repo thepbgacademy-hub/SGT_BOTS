@@ -965,8 +965,8 @@ function getCursiveActiveStepContent({
         </div>
         {state.previewHtml ? (
           <p className="success-banner">
-            Preview generated and PDF draft queued. The download will appear in
-            the Report section when rendering finishes.
+            Your letter is being created. Your letter will be available in the
+            Report section shortly.
           </p>
         ) : (
           <p className="muted-copy">Generate the preview from the review step.</p>
@@ -1050,7 +1050,7 @@ export function CursiveWorkspaceShell({
           : "Next step";
   const footerSlot =
     state.currentStep === "results" && state.previewHtml ? (
-      <span className="muted-copy">PDF draft queued.</span>
+      <span className="muted-copy">Letter being created.</span>
     ) : state.currentStep === "violation" && state.violationType ? (
       <span className="muted-copy">Details and review are next.</span>
     ) : null;

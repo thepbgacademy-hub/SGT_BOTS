@@ -711,7 +711,11 @@ h2 {
 
 .primary-button--link {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
   text-decoration: none;
+  text-align: center;
 }
 
 .secondary-button {
