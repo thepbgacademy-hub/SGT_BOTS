@@ -7,7 +7,7 @@ export async function registerProviderRoutes(app: FastifyInstance) {
     try {
       const user = await resolveAuthenticatedUser({
         initData: String(request.headers["x-telegram-init-data"] ?? ""),
-        botToken: app.appEnv.telegramBotToken,
+        botTokens: app.appEnv.telegramBotTokens,
         profileRepo: app.profileRepo,
       });
 

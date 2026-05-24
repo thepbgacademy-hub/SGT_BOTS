@@ -8,6 +8,7 @@ import {
   type CreditBureauDisputeOfficialIntake,
 } from "../cursive/cursive.service";
 import { createCursiveDraftService } from "../cursive/cursive-draft.service";
+import { TOP_SECRET_CURSIVE_DOMAIN_ERROR } from "../top-secret/top-secret-boundary.service";
 import {
   validateBureauRemovalDemandInput,
   type BureauRemovalDemandTemplateInput,
@@ -17,9 +18,14 @@ import {
   buildRemovalDemandInputFromUploadIssue,
 } from "../cursive/cursive-upload-analysis.service";
 import type { CreditBureauDisputeTemplateInput } from "../cursive/templates/credit-bureau-dispute.html";
+import {
+  createTopSecretService,
+  parseTopSecretClaims,
+} from "../top-secret/top-secret.service";
 import type {
   CursiveBureauRemovalDemandSnapshot,
   CursiveCreditBureauDisputeSnapshot,
+  TopSecretReportSnapshot,
 } from "./report.service";
 
 const ARTIFACT_DOWNLOAD_URL_TTL_MS = 5 * 60 * 1000;
@@ -52,6 +58,14 @@ function replyForReportRuntimeError(message: string) {
     return 400;
   }
 
+  if (
+    message === "top secret requires 1 to 5 claims" ||
+    message === "top secret accepts statements and how-to claims, not questions" ||
+    message === TOP_SECRET_CURSIVE_DOMAIN_ERROR
+  ) {
+    return 400;
+  }
+
   if (message === "artifact not found") {
     return 404;
   }
@@ -72,6 +86,10 @@ function replyForReportRuntimeError(message: string) {
     return 502;
   }
 
+  if (isTopSecretProviderError(message)) {
+    return 502;
+  }
+
   return 500;
 }
 
@@ -80,6 +98,13 @@ function isCursiveProviderDraftError(message: string) {
     message.startsWith("provider draft failed") ||
     message === "invalid provider draft response" ||
     message.startsWith("missing provider draft field")
+  );
+}
+
+function isTopSecretProviderError(message: string) {
+  return (
+    message.startsWith("top secret provider failed") ||
+    message === "invalid top secret provider response"
   );
 }
 
@@ -118,6 +143,10 @@ function getReportRuntimeErrorMessage(message: string) {
 
   if (isCursiveProviderDraftError(message)) {
     return "Unable to generate the Cursive draft with your connected provider right now. Please retry or reconnect your provider.";
+  }
+
+  if (isTopSecretProviderError(message)) {
+    return "Unable to complete Top Secret research with your connected provider right now. Please retry or reconnect your provider.";
   }
 
   return message;
@@ -683,6 +712,91 @@ export async function registerReportRoutes(app: FastifyInstance) {
           mimeType: result.upload.mimeType,
           originalFilename: result.upload.originalFilename,
         },
+      });
+    } catch (error) {
+      const message = (error as Error).message;
+      return reply.code(replyForReportRuntimeError(message)).send({
+        message: getReportRuntimeErrorMessage(message),
+      });
+    }
+  });
+
+  app.post("/api/reports/top-secret/claim-review", async (request, reply) => {
+    try {
+      const payload = request.body as {
+        botId?: string;
+        claims?: string[];
+        sessionId?: string;
+      };
+      const sessionId = String(payload.sessionId ?? "");
+      const claims = await authorizeBotRuntimeRequest({
+        app,
+        request,
+        sessionId,
+      });
+      const manifest = requireBotManifest(String(payload.botId ?? ""));
+
+      if (
+        manifest.id !== "verifier" ||
+        !manifest.capabilities.citations ||
+        !manifest.capabilities.html_report
+      ) {
+        throw new Error("bot not found");
+      }
+
+      const sessionSecret = await app.sessionService.getProviderSecretForUser({
+        sessionId,
+        userId: claims.userId,
+      });
+      const runtimeKnowledgeEntries =
+        await app.topSecretReviewRepo.listApprovedRuntimeEntries();
+      const topSecretService = createTopSecretService({
+        mode: app.appEnv.providerValidationMode,
+        runtimeKnowledgeEntries,
+      });
+      const rawClaims = Array.isArray(payload.claims)
+        ? payload.claims.map((claim) => String(claim))
+        : [];
+      const submittedClaims = parseTopSecretClaims({ claims: rawClaims });
+      const findings = await topSecretService.generateFindings({
+        claims: submittedClaims,
+        sessionSecret,
+      });
+      const generatedDate = formatCursiveGeneratedDate();
+      const previewSnapshot: TopSecretReportSnapshot = {
+        templateSlug: "top_secret_fact_check",
+        generatedDate,
+        findings,
+      };
+      const html = app.reportService.renderTopSecretReportHtml({
+        generatedDate,
+        findings,
+      });
+      const result = app.reportService.queueTopSecretReportPdfDraft({
+        botId: manifest.id,
+        previewHtml: html,
+        previewSnapshot,
+        sessionId,
+        userId: claims.userId,
+      });
+      await app.topSecretReviewRepo.recordSubmission({
+        artifactId: result.artifact.id,
+        claims: submittedClaims,
+        findings,
+        sessionId,
+        userId: claims.userId,
+      });
+
+      return reply.code(202).send({
+        artifact: {
+          id: result.artifact.id,
+          fileName: result.artifact.fileName,
+          originalFilename: result.artifact.originalFilename,
+          status: result.artifact.status,
+        },
+        artifactType: result.artifact.artifactType,
+        findings,
+        status: result.status,
       });
     } catch (error) {
       const message = (error as Error).message;

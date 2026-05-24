@@ -15,6 +15,7 @@ afterEach(() => {
 });
 
 const VALID_INIT_DATA = createSignedTelegramInitData();
+const TOP_SECRET_TEST_BOT_TOKEN = "123456:top-secret-test-bot-token";
 
 describe("POST /api/profiles", () => {
   it("creates a profile from validated Telegram launch data", async () => {
@@ -72,7 +73,47 @@ describe("POST /api/profiles", () => {
         },
       ],
     });
-  });
+  }, 40000);
+
+  it("accepts Telegram launch data signed by an alternate bot token", async () => {
+    const topSecretInitData = createSignedTelegramInitData({
+      botToken: TOP_SECRET_TEST_BOT_TOKEN,
+    });
+    const app = await buildApp({
+      env: readEnv({
+        APP_PORT: "3001",
+        TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+        TELEGRAM_BOT_APP_SHORT_NAME: "playground",
+        TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
+        TOP_SECRET_TELEGRAM_BOT_TOKEN: TOP_SECRET_TEST_BOT_TOKEN,
+        PROFILE_REPO_MODE: "memory",
+      }),
+      profileRepo: createInMemoryProfileRepo(),
+    });
+
+    const launchResponse = await app.inject({
+      method: "GET",
+      url: `/api/telegram/launch?initData=${encodeURIComponent(topSecretInitData)}`,
+    });
+    const prefillResponse = await app.inject({
+      method: "GET",
+      url: `/api/telegram/prefill?initData=${encodeURIComponent(topSecretInitData)}`,
+    });
+    const profileResponse = await app.inject({
+      method: "POST",
+      url: "/api/profiles",
+      payload: {
+        initData: topSecretInitData,
+        firstName: "Ada",
+        lastName: "Lovelace",
+        preferredName: "Ada",
+      },
+    });
+
+    expect(launchResponse.statusCode).toBe(200);
+    expect(prefillResponse.statusCode).toBe(200);
+    expect(profileResponse.statusCode).toBe(201);
+  }, 40000);
 
   it("builds the welcome bot button target", async () => {
     const app = await buildApp({

@@ -16,6 +16,8 @@ import {
   TEST_TELEGRAM_BOT_TOKEN,
 } from "../../../../packages/shared/src/testing/telegram-fixtures";
 
+const TOP_SECRET_TEST_BOT_TOKEN = "123456:top-secret-test-bot-token";
+
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
@@ -46,6 +48,44 @@ async function onboardProfile(
 }
 
 describe("provider connection and session start", () => {
+  it("connects a provider after onboarding through an alternate bot token", async () => {
+    const initData = createSignedTelegramInitData({
+      botToken: TOP_SECRET_TEST_BOT_TOKEN,
+    });
+    const app = await buildApp({
+      env: readEnv({
+        APP_PORT: "3001",
+        TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+        TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
+        TOP_SECRET_TELEGRAM_BOT_TOKEN: TOP_SECRET_TEST_BOT_TOKEN,
+        PROFILE_REPO_MODE: "memory",
+        PROVIDER_VALIDATION_MODE: "stub",
+      }),
+      profileRepo: createInMemoryProfileRepo(),
+      sessionMetadataRepo: createInMemorySessionMetadataRepo(),
+      sessionSecretStore: createInMemorySessionSecretStore(),
+    });
+
+    await onboardProfile(app, initData);
+    const connectResponse = await app.inject({
+      method: "POST",
+      url: "/api/providers/connect",
+      headers: {
+        "x-telegram-init-data": initData,
+      },
+      payload: {
+        provider: "openai",
+        apiKey: "sk-test",
+      },
+    });
+
+    expect(connectResponse.statusCode).toBe(200);
+    expect(connectResponse.json()).toMatchObject({
+      provider: "openai",
+      sessionToken: expect.any(String),
+    });
+  }, 40000);
+
   it(
     "issues a backend session token that remains valid after telegram init data ages out",
     async () => {

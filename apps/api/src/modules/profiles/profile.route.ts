@@ -12,7 +12,7 @@ export async function registerProfileRoutes(app: FastifyInstance) {
           preferredName: string;
         },
         {
-          botToken: app.appEnv.telegramBotToken,
+          botTokens: app.appEnv.telegramBotTokens,
           profileRepo: app.profileRepo,
         },
       );

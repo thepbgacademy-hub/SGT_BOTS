@@ -12,32 +12,37 @@ export function BotSupportPanel({
   botId,
 }: BotSupportPanelProps) {
   const panel = getBotWorkspacePanel(botId);
-  const isCursiveReportPanel = botId === "document_wizard";
-  const showCursiveReport = isCursiveReportPanel && artifacts.length > 0;
+  const isReportPanel = botId === "document_wizard" || botId === "verifier";
+  const showReport = isReportPanel && artifacts.length > 0;
+  const isTopSecret = botId === "verifier";
 
   return (
     <section className="panel artifact-panel">
       <header className="panel-header">
         <div>
           <p className="eyebrow">
-            {showCursiveReport
-              ? "Generated Output"
-              : isCursiveReportPanel
+            {showReport
+              ? isTopSecret
+                ? "Your Report"
+                : "Generated Output"
+              : isReportPanel
                 ? "Instructions"
                 : panel.supportLabel}
           </p>
           <h2>
-            {showCursiveReport
+            {showReport
               ? "Report"
-              : isCursiveReportPanel
-                ? "3 Easy Steps:"
+              : isReportPanel
+                ? isTopSecret
+                  ? "Here is the plan:"
+                  : "3 Easy Steps:"
                 : "Workspace"}
           </h2>
         </div>
       </header>
-      {showCursiveReport ? null : (
+      {showReport ? null : (
         <div className="support-panel-copy">
-          {isCursiveReportPanel ? null : (
+          {isReportPanel ? null : (
             <p className="support-panel-title">{panel.supportTitle}</p>
           )}
           <ul className="support-panel-list">
@@ -51,16 +56,18 @@ export function BotSupportPanel({
         <ul className="artifact-list">
           {artifacts.map((artifact) => (
             <li className="artifact-card" key={artifact.id}>
-              {showCursiveReport ? (
-                <p className="artifact-label">Report name</p>
+              {showReport ? (
+                <p className="artifact-label">
+                  {isTopSecret ? "Ready for you" : "Report name"}
+                </p>
               ) : null}
               <p className="artifact-title">{artifact.fileName}</p>
               <p className="artifact-meta">
-                {showCursiveReport
+                {showReport
                   ? artifact.status
                   : `${artifact.botName} - ${artifact.status}`}
               </p>
-              {showCursiveReport ? null : (
+              {showReport ? null : (
                 <p className="artifact-source">Source: {artifact.originalFilename}</p>
               )}
               {artifact.failureReason ? (
@@ -80,7 +87,7 @@ export function BotSupportPanel({
           ))}
         </ul>
       ) : (
-        isCursiveReportPanel ? null : (
+        isReportPanel ? null : (
           <p className="muted-copy">No saved outputs in this workspace yet.</p>
         )
       )}

@@ -78,3 +78,26 @@ export function validateTelegramInitData(
     raw: initData,
   };
 }
+
+export function validateTelegramInitDataWithTokens(
+  initData: string,
+  botTokens: string[],
+): ValidatedTelegramInitData {
+  let staleError: Error | null = null;
+
+  for (const botToken of botTokens) {
+    try {
+      return validateTelegramInitData(initData, botToken);
+    } catch (error) {
+      if ((error as Error).message === "stale telegram init data") {
+        staleError = error as Error;
+      }
+    }
+  }
+
+  if (staleError) {
+    throw staleError;
+  }
+
+  throw new Error("invalid telegram init data");
+}

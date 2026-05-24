@@ -1,6 +1,7 @@
 import type { AppEnv } from "../../config/env";
 import {
   validateTelegramInitData,
+  validateTelegramInitDataWithTokens,
   type ValidatedTelegramInitData,
 } from "./init-data";
 
@@ -19,7 +20,10 @@ export function buildLaunchContext(input: {
   welcomeButton: ReturnType<typeof buildWelcomeButton>;
 } {
   return {
-    telegram: validateTelegramInitData(input.initData, input.env.telegramBotToken),
+    telegram: validateTelegramInitDataWithTokens(
+      input.initData,
+      input.env.telegramBotTokens,
+    ),
     welcomeButton: buildWelcomeButton(input.env),
   };
 }

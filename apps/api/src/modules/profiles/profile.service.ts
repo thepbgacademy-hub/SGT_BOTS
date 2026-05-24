@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import {
   validateTelegramInitData,
+  validateTelegramInitDataWithTokens,
   type ValidatedTelegramInitData,
 } from "../telegram/init-data";
 import type { ProfileRepo } from "./profile.repo";
@@ -21,11 +22,14 @@ export async function createProfile(
     preferredName: string;
   },
   deps: {
-    botToken: string;
+    botToken?: string;
+    botTokens?: string[];
     profileRepo: ProfileRepo;
   },
 ) {
-  const telegram = validateTelegramInitData(input.initData, deps.botToken);
+  const telegram = deps.botTokens
+    ? validateTelegramInitDataWithTokens(input.initData, deps.botTokens)
+    : validateTelegramInitData(input.initData, deps.botToken ?? "");
   const timestamp = toTimestamp();
   const user = await deps.profileRepo.insertUser({
     telegram_user_id: telegram.telegramUserId,
