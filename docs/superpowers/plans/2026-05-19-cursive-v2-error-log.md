@@ -522,3 +522,13 @@ The token '&&' is not a valid statement separator in this version.
 **Fix applied:** Re-ran the build with braced variables, for example `${backend}:top-secret-$commit`, and successfully built the commit-tagged images.
 
 **Rule going forward:** In PowerShell, use `${variable}:tag` when appending Docker tags or registry suffixes immediately after a variable value.
+
+### 2026-05-24 - VPS Sudo With Redirected Stdin Can Eat The Password
+
+**Context:** Applying the Top Secret review/KB Supabase migration on VPS 2.
+
+**Problem:** The first remote migration command piped the sudo password into `sudo -S docker exec -i ... < migration.sql`. The input redirection was attached to the sudo command, so sudo read the SQL file instead of the password and failed authentication.
+
+**Fix applied:** Authenticated sudo first with `sudo -S true`, then ran the redirected `docker exec -i ... < migration.sql` inside a sudo shell. The migration applied successfully and the Top Secret tables verified as present.
+
+**Rule going forward:** When a remote command needs both `sudo -S` and redirected stdin, authenticate sudo in a separate command first or run the redirected command inside `sudo sh -c`.
