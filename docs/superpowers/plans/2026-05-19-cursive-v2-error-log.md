@@ -512,3 +512,13 @@ The token '&&' is not a valid statement separator in this version.
 **Fix applied:** Documented Top Secret as blocked from broad VPS/Telegram rollout until durable queueing, renderer concurrency limits, retry/failure status, restart-safe job state, and simultaneous-user PDF isolation tests are implemented.
 
 **Rule going forward:** Do not treat a successful single-user Telegram smoke as production readiness for report-generating bots. A report bot is rollout-ready only after its queue behavior has been tested under simultaneous users and container restart/failure conditions.
+
+### 2026-05-24 - PowerShell Docker Tags Need Braced Variables
+
+**Context:** Local GHCR image build for the Top Secret smoke-test backend and frontend.
+
+**Problem:** The first Docker build command used a tag string shaped like `$backend:top-secret-$commit`. In PowerShell, the colon after a variable name can be parsed as part of a scoped variable expression, so Docker received an invalid image tag.
+
+**Fix applied:** Re-ran the build with braced variables, for example `${backend}:top-secret-$commit`, and successfully built the commit-tagged images.
+
+**Rule going forward:** In PowerShell, use `${variable}:tag` when appending Docker tags or registry suffixes immediately after a variable value.
