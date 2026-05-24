@@ -460,3 +460,55 @@ The token '&&' is not a valid statement separator in this version.
 **Fix applied:** Replaced the fallback/default URL with the real invite link, updated `.env.example`, added Playwright assertions for the rendered review link href, pushed refreshed frontend/backend images, pulled them on VPS 2, and force-recreated both containers. The first remote deployment command also showed that this compose stack is image-based, so `docker compose build` on VPS 2 reports "No services to build"; future rollouts should build/push images first, then pull/recreate on VPS 2.
 
 **Rule going forward:** User-facing external links need an E2E href assertion, not only visible button text. For VPS 2, treat the SGT stack as GHCR image-driven unless the compose file is intentionally changed.
+
+### 2026-05-24 - Top Secret source expansion increased timeout surface
+
+**Context:** Top Secret backend review-KB and source-retrieval phase.
+
+**Problem:** Adding official U.S. Code candidates beside Cornell increased the number of live retrieval candidates for a single claim. The existing slow-source test used fake timers and assumed one candidate timeout, which exposed that sequential retrieval could multiply the timeout budget as source breadth grows.
+
+**Fix applied:** Changed Top Secret live source retrieval to fetch candidate sources in parallel with per-source abort controllers, then retain successful bundles in candidate order with stable source ids. This keeps added court/currentness sources from making the route wait for every failed source sequentially.
+
+**Rule going forward:** Whenever Top Secret adds a new retrieval candidate family, keep per-source timeout tests green and make sure source expansion does not linearly increase user-facing wait time.
+
+### 2026-05-24 - Top Secret Encoding Cleanup Corrupted Nullish Coalescing
+
+**Context:** Top Secret legal-citation parsing/currentness work.
+
+**Problem:** A bulk character cleanup for section-symbol text risked changing TypeScript nullish coalescing (`??`) into a single `?`, which can break parser/runtime logic in subtle ways.
+
+**Root cause:** Editing encoded text through a shell rewrite was too broad for source files that also contain TypeScript operators.
+
+**Fix applied:** Restored the affected `??` operators, added CFR section-symbol coverage, and re-ran targeted API tests/lint.
+
+**Rule going forward:** Use narrow patches for source edits. If an encoding cleanup is unavoidable, immediately scan for `??`, optional chaining, and run focused tests plus lint before continuing.
+
+### 2026-05-24 - Top Secret PDF Copy Exposed Prompt Scaffolding
+
+**Context:** Top Secret report language polish after reviewing generated finding copy.
+
+**Problem:** Some user-visible report text could read like internal prompt machinery, including prefixes such as `Conclusion:` and `Common sense:`, plus tool narration like `Top Secret should...` or `Top Secret could...`. That makes the report sound biased or mechanical instead of evidence-led.
+
+**Fix applied:** Added renderer-level cleanup for mechanical prefixes, softened section headings, removed tool narration from fallback findings, KB notes, and statute-analysis text, and expanded tests to reject scaffold phrases in rendered reports and fail-closed findings.
+
+**Rule going forward:** Report output must read like a neutral finding for a human reader. Keep field names and JSON schema internal; never expose scaffold labels, prompt instructions, or tool self-narration in the PDF.
+
+### 2026-05-24 - Top Secret Route E2E Needed PDF Timeout Budget
+
+**Context:** Top Secret rollout gate before VPS 2 deployment prep.
+
+**Problem:** The combined Top Secret report route test timed out at Vitest's 25-second test budget while waiting on session setup plus PDF rendering. The route and surrounding tests were passing, but this E2E lacked the explicit timeout budget already used by comparable PDF queue tests.
+
+**Fix applied:** Increased the artifact wait budget to 30 seconds and the test budget to 40 seconds for `apps/api/tests/e2e/top-secret-report.spec.ts`.
+
+**Rule going forward:** Any API E2E that creates a PDF artifact should have an explicit test timeout and artifact wait budget sized like the Cursive PDF queue tests.
+
+### 2026-05-24 - Top Secret Concurrency Is A Rollout Blocker
+
+**Context:** VPS 2 readiness review for Top Secret after the mini app and report flow passed controlled smoke tests.
+
+**Problem:** Sequential Top Secret report tests pass, and artifact ids are scoped by session/user ownership, but production concurrency is not hardened. The current report queue is process-local/in-memory and PDF rendering uses Playwright/Chromium. Parallel PDF-heavy execution can contend for local renderer resources, and queued work is not restart-safe.
+
+**Fix applied:** Documented Top Secret as blocked from broad VPS/Telegram rollout until durable queueing, renderer concurrency limits, retry/failure status, restart-safe job state, and simultaneous-user PDF isolation tests are implemented.
+
+**Rule going forward:** Do not treat a successful single-user Telegram smoke as production readiness for report-generating bots. A report bot is rollout-ready only after its queue behavior has been tested under simultaneous users and container restart/failure conditions.

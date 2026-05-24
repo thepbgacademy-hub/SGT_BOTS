@@ -146,6 +146,40 @@ Current queue durability limitation:
 - Render jobs are not durable across backend process restarts.
 - Do not rely on Redis/BullMQ-style retry semantics until that queue backend exists in code.
 
+## Top Secret Rollout Blocker
+
+Top Secret must not be rolled out to broad Telegram/VPS traffic until report generation is concurrency-safe.
+
+Allowed before this is resolved:
+
+- local development tests
+- single-operator smoke tests
+- controlled Telegram smoke tests with known testers and close log monitoring
+
+Not allowed before this is resolved:
+
+- public playground rollout
+- broader Academy audience rollout
+- any test that invites multiple unknown users to generate reports at the same time
+
+Current risk:
+
+- Top Secret uses the shared report artifact/PDF pipeline.
+- The current queue is process-local/in-memory, so queued work is not durable across backend restarts.
+- PDF rendering uses Playwright/Chromium and can contend under simultaneous jobs.
+- Sequential E2E report tests pass, and artifact ownership is isolated by stable ids, but parallel PDF-heavy tests exposed local renderer contention.
+- Without a durable queue, concurrency controls, and retry/failure handling, a busy bot could delay, fail, or lose report jobs after restart.
+
+Required before rollout:
+
+- Add a durable queue or equivalent persisted job state for report rendering.
+- Run rendering in a controlled worker boundary instead of unbounded request-adjacent timers.
+- Add explicit worker concurrency limits and backpressure for Playwright/Chromium.
+- Persist job status transitions so users can see queued, rendering, ready, and failed states after refresh.
+- Add retry/failure handling that does not silently hide failed reports.
+- Add a simultaneous-user E2E/load test proving each user receives only their own PDF and no report crosses session/user boundaries.
+- Re-run the full API, mini-app, and browser gates after the queue change.
+
 ## Known Product Limits
 
 - Uploaded-report analysis is deterministic and narrow.
@@ -171,3 +205,5 @@ Only call the Cursive v2 rollout complete after:
 - the VPS is deployed from that exact commit,
 - the post-deploy checks pass on the public Telegram mini app,
 - at least one generated Cursive PDF is downloaded successfully from the public domain.
+
+Only call the Top Secret rollout complete after the concurrency blocker above is resolved and a simultaneous-user PDF generation test passes against the deployment target.

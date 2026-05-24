@@ -105,6 +105,8 @@ Fresh gates from the completed upload/report-analysis phase:
 
 - Uploaded-report parsing is deterministic and fixture-oriented. It scans readable PDF bytes and simple uncompressed PDF text strings; it is not real OCR or full PDF extraction.
 - Single-bureau upload support is intentionally narrow: it detects `closed account reported as open` when proof text is present. Unsupported single-bureau proof text returns no issue rather than guessing a violation type.
+- Top Secret is not approved for broad VPS/Telegram rollout yet. The current report queue is process-local/in-memory, and concurrent PDF rendering can contend for the same local Playwright/Chromium resources. Controlled smoke tests are acceptable, but production rollout must wait for durable queue/backpressure work.
+- Before Top Secret rollout, add a durable report queue or equivalent worker boundary, explicit renderer concurrency limits, retry/failure status handling, restart-safe artifact/job state, and an E2E/load test that proves simultaneous users receive only their own PDFs.
 - The `resume-next-session-sgt-bots.md` file remains untracked and should be ignored unless explicitly requested.
 
 ## Non-Negotiable Cursive Rules

@@ -2,6 +2,7 @@
 
 ## Active
 
+- [ ] **Block Top Secret rollout until concurrency is hardened** - replace or wrap the in-memory report queue with durable job state, renderer concurrency limits, retry/failure handling, and simultaneous-user PDF isolation tests before public VPS/Telegram rollout
 - [ ] **Prepare Cursive v2 rollout package** - finish Phase E docs, review deployment order, and prepare the branch for GitHub/VPS correction without starting the VPS rollout yet
 - [ ] **Start remaining bot workflow layers** - replace scaffolded replies for the non-Cursive bots after Cursive v2 rollout is packaged
 
