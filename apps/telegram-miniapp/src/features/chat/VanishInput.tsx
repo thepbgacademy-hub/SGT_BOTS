@@ -3,6 +3,7 @@ type VanishInputProps = {
   onChange: (value: string) => void;
   disabled?: boolean;
   isVanishing?: boolean;
+  placeholder?: string;
   vanishingText?: string;
 };
 
@@ -11,6 +12,7 @@ export function VanishInput({
   onChange,
   disabled = false,
   isVanishing = false,
+  placeholder = "Ask a question or describe the letter you need help with...",
   vanishingText = "",
 }: VanishInputProps) {
   return (
@@ -20,7 +22,7 @@ export function VanishInput({
         className="vanish-input-field"
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Ask a question or describe the letter you need help with..."
+        placeholder={placeholder}
         value={value}
       />
       {isVanishing && vanishingText ? (

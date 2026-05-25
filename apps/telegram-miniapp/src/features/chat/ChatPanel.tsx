@@ -9,6 +9,7 @@ import { UploadPanel } from "../uploads/UploadPanel";
 import { VanishInput } from "./VanishInput";
 
 const VANISH_DURATION_MS = 600;
+const DEFAULT_SEND_ERROR_COPY = "Unable to send your message.";
 
 type ChatCitation = {
   sourceId: "knowledge_base";
@@ -27,28 +28,44 @@ export type ChatMessage = {
 type ChatPanelProps = {
   bot: BotCatalogEntry | null;
   conversationId?: string;
+  emptyCopy?: string;
+  hideHeader?: boolean;
+  inputPlaceholder?: string;
   messages: ChatMessage[];
   onArtifactQueued: (artifact: ArtifactListItem) => void;
   onConversationUpdate: (result: {
     conversationId: string;
     messages: ChatMessage[];
   }) => void;
+  primarySendButtonLabel?: string;
+  sendErrorCopy?: string;
   sessionId: string;
   sessionToken: string;
+  starterPrompts?: string[];
 };
 
 function sourceLabel(sourceId: ChatCitation["sourceId"]) {
   return sourceId === "knowledge_base" ? "Knowledge Base" : sourceId;
 }
 
+export function resolveChatSendError(sendErrorCopy = DEFAULT_SEND_ERROR_COPY) {
+  return sendErrorCopy;
+}
+
 export function ChatPanel({
   bot,
   conversationId,
+  emptyCopy = "Start the conversation here. Each bot stays inside its assigned lane and only returns user-facing results.",
+  hideHeader = false,
+  inputPlaceholder,
   messages,
   onArtifactQueued,
   onConversationUpdate,
+  primarySendButtonLabel = "Send message",
+  sendErrorCopy = DEFAULT_SEND_ERROR_COPY,
   sessionId,
   sessionToken,
+  starterPrompts = [],
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const [documentFile, setDocumentFile] = useState<File | null>(null);
@@ -156,7 +173,7 @@ export function ChatPanel({
         !payload.userMessage ||
         !payload.output
       ) {
-        setChatError(payload.message ?? "Unable to send your message.");
+        setChatError(resolveChatSendError(sendErrorCopy));
         setInput(submittedMessage);
         setIsVanishing(false);
         setVanishingText("");
@@ -178,7 +195,7 @@ export function ChatPanel({
       });
       shouldDelayUnlock = true;
     } catch {
-      setChatError("Unable to send your message.");
+      setChatError(resolveChatSendError(sendErrorCopy));
       setInput(submittedMessage);
       setIsVanishing(false);
       setVanishingText("");
@@ -292,13 +309,15 @@ export function ChatPanel({
 
   return (
     <section className="panel chat-panel">
-      <header className="panel-header">
-        <div>
-          <p className="eyebrow">Active Assistant</p>
-          <h2>{bot.name}</h2>
-        </div>
-        <p className="panel-description">{bot.description}</p>
-      </header>
+      {hideHeader ? null : (
+        <header className="panel-header">
+          <div>
+            <p className="eyebrow">Active Assistant</p>
+            <h2>{bot.name}</h2>
+          </div>
+          <p className="panel-description">{bot.description}</p>
+        </header>
+      )}
       <div className="message-stack">
         {messages.map((message) => {
           const isOlderUserMessage =
@@ -345,9 +364,21 @@ export function ChatPanel({
         {!messages.length ? (
           <article className="message-card message-card--empty">
             <p className="message-role">Ready</p>
-            <p className="message-copy">
-              Start the conversation here. Each bot stays inside its assigned lane and only returns user-facing results.
-            </p>
+            <p className="message-copy">{emptyCopy}</p>
+            {starterPrompts.length ? (
+              <div className="starter-prompt-grid">
+                {starterPrompts.map((prompt) => (
+                  <button
+                    className="starter-prompt-button"
+                    key={prompt}
+                    onClick={() => setInput(prompt)}
+                    type="button"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </article>
         ) : null}
       </div>
@@ -359,6 +390,7 @@ export function ChatPanel({
             disabled={submitting || isVanishing || !bot}
             isVanishing={isVanishing}
             onChange={setInput}
+            placeholder={inputPlaceholder}
             value={input}
             vanishingText={vanishingText}
           />
@@ -368,7 +400,7 @@ export function ChatPanel({
           disabled={submitting || isVanishing || !bot}
           type="submit"
         >
-          Send message
+          {primarySendButtonLabel}
         </button>
       </form>
       {supportsDocumentWizardReportFlow ? (

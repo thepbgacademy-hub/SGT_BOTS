@@ -24,6 +24,7 @@ import {
   CursiveWorkspace,
   type CursiveWorkspaceStep,
 } from "../cursive/CursiveWorkspace";
+import { RoriWorkspace } from "../rori/RoriWorkspace";
 
 type SessionSnapshot = {
   id: string;
@@ -1189,6 +1190,7 @@ export function DashboardShell({
     ? getBotWorkspacePanel(selectedBot.id)
     : null;
   const isCursiveWorkspace = selectedBot?.id === "document_wizard";
+  const isRoriWorkspace = selectedBot?.id === "concierge_general_academy_KB";
   useEffect(() => {
     if (!activeSessionId || !sessionToken) {
       setConversations({});
@@ -1947,7 +1949,15 @@ export function DashboardShell({
   }
 
   return (
-    <main className="app-shell app-shell--dashboard">
+    <main
+      className={[
+        "app-shell",
+        "app-shell--dashboard",
+        isRoriWorkspace ? "app-shell--rori" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <header className="dashboard-topbar panel">
         <div>
           <p className="eyebrow">PBG Playground</p>
@@ -2012,6 +2022,29 @@ export function DashboardShell({
                   onUploadFileChange={handleCursiveUploadFileChange}
                   onUploadIssueToggle={handleCursiveUploadIssueToggle}
                   state={cursiveWorkflow}
+                />
+              ) : isRoriWorkspace ? (
+                <RoriWorkspace
+                  key={selectedBot?.id ?? "no-bot-selected"}
+                  bot={selectedBot}
+                  conversationId={selectedConversation?.conversationId}
+                  messages={selectedConversation?.messages ?? []}
+                  onBackToMenu={handleBackToMenu}
+                  onConversationUpdate={({ conversationId, messages }) => {
+                    if (!selectedBot) {
+                      return;
+                    }
+
+                    setConversations((currentConversations) => ({
+                      ...currentConversations,
+                      [selectedBot.id]: {
+                        conversationId,
+                        messages,
+                      },
+                    }));
+                  }}
+                  sessionId={session.id}
+                  sessionToken={sessionToken}
                 />
               ) : (
               <section className="workspace-shell workspace-shell--active">

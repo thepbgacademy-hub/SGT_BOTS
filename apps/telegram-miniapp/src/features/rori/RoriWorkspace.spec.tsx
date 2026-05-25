@@ -1,0 +1,82 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import type { BotCatalogEntry } from "../../../../../packages/shared/src/bots/manifests";
+import { RoriWorkspace } from "./RoriWorkspace";
+
+const RORI_BOT = {
+  id: "concierge_general_academy_KB",
+  name: "Rori",
+  description: "Routes knowledge-base questions across the academy domain.",
+  capabilities: {
+    chat: true,
+    citations: true,
+    html_report: false,
+    pdf_upload: false,
+    rag_query: true,
+    structured_form: false,
+  },
+} as unknown as BotCatalogEntry;
+
+describe("RoriWorkspace", () => {
+  it("renders the dedicated Rori chat workspace with academy prompts", () => {
+    const markup = renderToStaticMarkup(
+      createElement(RoriWorkspace, {
+        bot: RORI_BOT,
+        conversationId: undefined,
+        messages: [],
+        onBackToMenu: () => undefined,
+        onConversationUpdate: () => undefined,
+        sessionId: "session-1",
+        sessionToken: "token-1",
+      }),
+    );
+
+    expect(markup).toContain("<h2>Rori</h2>");
+    expect(markup).not.toContain("Active Assistant");
+    expect(markup).toContain("Ask about the Academy, workshops, enrollment, or Telegram rooms.");
+    expect(markup).toContain("Pick a prompt or type your question below.");
+    expect(markup).toContain("Ask Rori about the Academy...");
+    expect(markup).toContain("How do I enroll?");
+    expect(markup).toContain("What workshops are coming up?");
+    expect(markup).toContain("Which PBG Telegram rooms should I join?");
+    expect(markup).toContain("Which tool should I use for...?");
+  });
+
+  it("does not render upload, report, artifact, or support sections", () => {
+    const markup = renderToStaticMarkup(
+      createElement(RoriWorkspace, {
+        bot: RORI_BOT,
+        conversationId: undefined,
+        messages: [],
+        onBackToMenu: () => undefined,
+        onConversationUpdate: () => undefined,
+        sessionId: "session-1",
+        sessionToken: "token-1",
+      }),
+    );
+
+    expect(markup).not.toContain("Upload PDF");
+    expect(markup).not.toContain("Generate report");
+    expect(markup).not.toContain("Report");
+    expect(markup).not.toContain("artifact");
+    expect(markup).not.toContain("Support");
+  });
+
+  it("renders a rounded Back button for returning to the menu", () => {
+    const markup = renderToStaticMarkup(
+      createElement(RoriWorkspace, {
+        bot: RORI_BOT,
+        conversationId: undefined,
+        messages: [],
+        onBackToMenu: () => undefined,
+        onConversationUpdate: () => undefined,
+        sessionId: "session-1",
+        sessionToken: "token-1",
+      }),
+    );
+
+    expect(markup).toContain("rori-back-button");
+    expect(markup).toContain(">Back</button>");
+  });
+});

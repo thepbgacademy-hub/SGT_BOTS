@@ -183,7 +183,7 @@ describe("bot runtime routes", () => {
     });
   }, 40000);
 
-  it("accepts the planned message field and returns the planned chat response shape", async () => {
+  it("answers academy enrollment questions as Rori without report language", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
 
     const kbResponse = await app.inject({
@@ -195,28 +195,33 @@ describe("bot runtime routes", () => {
       payload: {
         sessionId,
         botId: "concierge_general_academy_KB",
-        message: "What should I read before the release review?",
+        message: "How do I enroll in the PBG Academy workshop and join the Telegram room?",
       },
     });
 
+    const body = kbResponse.json() as {
+      output: string;
+      citations: Array<{ sourceId: string; title: string }>;
+    };
+
     expect(kbResponse.statusCode).toBe(200);
-    expect(kbResponse.json()).toMatchObject({
+    expect(body).toMatchObject({
       botId: "concierge_general_academy_KB",
-      output: expect.stringContaining("Release Review Runbook"),
-      citations: [
-        {
-          sourceId: "knowledge_base",
-          title: "Release Review Runbook",
-        },
-      ],
+      output: expect.stringContaining("PBG Academy"),
+      citations: [],
       conversation: {
         botId: "concierge_general_academy_KB",
         sessionId,
       },
     });
+    expect(body.output).toContain("Telegram");
+    expect(body.output).toContain("workshop");
+    expect(body.output).not.toMatch(
+      /PDF|reports?|artifacts?|Release Review Runbook|document upload/i,
+    );
   }, 40000);
 
-  it("returns cited kb concierge replies and keeps document wizard isolated from those tools", async () => {
+  it("returns kb concierge replies and keeps document wizard isolated from those tools", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
 
     const kbResponse = await app.inject({
@@ -228,7 +233,7 @@ describe("bot runtime routes", () => {
       payload: {
         sessionId,
         botId: "concierge_general_academy_KB",
-        message: "What should I read before the release review?",
+        message: "What is the PBG Academy Telegram room for?",
       },
     });
 
@@ -272,6 +277,181 @@ describe("bot runtime routes", () => {
     expect(leakedConversationResponse.json()).toEqual({
       message: "conversation belongs to a different bot",
     });
+  }, 40000);
+
+  it.each([
+    {
+      message: "Can Rori help me dispute a credit bureau tradeline under FCRA?",
+      specialist: "Cursive",
+    },
+    {
+      message: "Can Rori help me with credit reports?",
+      specialist: "Cursive",
+    },
+    {
+      message: "Can Rori explain a consumer reporting agency reinvestigation under the Fair Credit Reporting Act?",
+      specialist: "Cursive",
+    },
+    {
+      message: "Can Rori fact check whether this online claim is true or false?",
+      specialist: "Top Secret",
+    },
+    {
+      message: "Can you check whether this is true?",
+      specialist: "Top Secret",
+    },
+    {
+      message: "Is this true or false?",
+      specialist: "Top Secret",
+    },
+    {
+      message: "Can you verify this statement?",
+      specialist: "Top Secret",
+    },
+    {
+      message: "Can Rori research the tax statute in the USC, CFR, IRS, or Treasury rules?",
+      specialist: "Condor",
+    },
+    {
+      message: "Can Rori collect answers for this intake form questionnaire?",
+      specialist: "ShAzZaM",
+    },
+  ])("routes specialized Rori requests to $specialist", async ({ message, specialist }) => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message,
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ sourceId: string; title: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain(specialist);
+    expect(body.output).toContain("Rori");
+    expect(body.output).not.toMatch(
+      /PDF|reports?|artifacts?|Release Review Runbook|document upload/i,
+    );
+    expect(body.citations).toEqual([]);
+  }, 40000);
+
+  it.each([
+    {
+      message: "Can Rori verify my enrollment for the next Academy workshop?",
+      unexpectedSpecialist: "Top Secret",
+    },
+    {
+      message: "Can Rori verify my enrollment?",
+      unexpectedSpecialist: "Top Secret",
+    },
+  ])("keeps Academy verification phrasing in Rori for $message", async ({ message, unexpectedSpecialist }) => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message,
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ sourceId: string; title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("PBG Academy");
+    expect(body.output).not.toContain(unexpectedSpecialist);
+    expect(body.citations).toEqual([]);
+  }, 40000);
+
+  it.each([
+    {
+      message: "Which tool should I use for...?",
+      expected: "Use Cursive for credit bureau and dispute work",
+    },
+    {
+      message: "Which PBG Telegram rooms should I join?",
+      expected: "PBG Telegram rooms",
+    },
+    {
+      message: "What workshops are coming up?",
+      expected: "PBG Academy workshop and event questions",
+    },
+    {
+      message: "How do I enroll?",
+      expected: "PBG Academy enrollment",
+    },
+  ])("answers Rori starter prompt: $message", async ({ message, expected }) => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message,
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ sourceId: string; title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain(expected);
+    expect(body.output).not.toMatch(
+      /PDF|reports?|artifacts?|Release Review Runbook|document upload/i,
+    );
+    expect(body.citations).toEqual([]);
+  }, 40000);
+
+  it("routes source-backed claim verification phrasing to Top Secret", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "Can Rori fact check this claim?",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ sourceId: string; title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Top Secret");
+    expect(body.citations).toEqual([]);
   }, 40000);
 
   it("keeps the Phase 2 bearer session token requirement on bot routes", async () => {

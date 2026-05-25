@@ -29,16 +29,19 @@ test("provider session unlocks the menu and selected bots stay in their own lane
   await expect(page.getByRole("button", { name: "Insight" })).toBeVisible();
 
   await page.getByRole("button", { name: "Rori" }).click();
+  await expect(page.getByRole("heading", { name: "Rori" })).toBeVisible();
+  await expect(
+    page.getByText("Ask about the Academy, workshops, enrollment, or Telegram rooms."),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Back to Menu" })).toBeVisible();
-  await page.getByLabel("Chat input").fill(
-    "What should I read before the release review?",
-  );
-  await page.getByRole("button", { name: "Send message" }).click();
+  await page.getByLabel("Chat input").fill("How do I enroll?");
+  await page.getByRole("button", { name: "Send" }).click();
 
   await expect(
-    page.getByText("Release Review Runbook", { exact: true }),
+    page.getByText("Rori can help with PBG Academy enrollment"),
   ).toBeVisible();
-  await expect(page.getByText("Knowledge Base", { exact: true })).toBeVisible();
+  await expect(page.getByText("Release Review Runbook")).not.toBeVisible();
+  await expect(page.getByText("Knowledge Base", { exact: true })).not.toBeVisible();
 
   await page.getByRole("button", { name: "Back to Menu" }).click();
   await page.getByRole("button", { name: "Cursive" }).click();
@@ -126,11 +129,11 @@ test("session refresh does not refetch the catalog on every tick", async ({
   await page.getByRole("button", { name: "Validate provider" }).click();
 
   await page.getByRole("button", { name: "Rori" }).click();
-  await page.getByLabel("Chat input").fill("What should I read before the release review?");
-  await page.getByRole("button", { name: "Send message" }).click();
+  await page.getByLabel("Chat input").fill("What workshops are coming up?");
+  await page.getByRole("button", { name: "Send" }).click();
 
   await expect(
-    page.getByText("Release Review Runbook", { exact: true }),
+    page.getByText("Rori can help with PBG Academy workshop and event questions"),
   ).toBeVisible();
 
   await page.waitForTimeout(1200);
@@ -171,9 +174,11 @@ test("switching bots clears composer draft and chat errors", async ({ page }) =>
 
   await page.getByRole("button", { name: "Rori" }).click();
   await page.getByLabel("Chat input").fill("Leaky draft");
-  await page.getByRole("button", { name: "Send message" }).click();
+  await page.getByRole("button", { name: "Send" }).click();
 
-  await expect(page.getByRole("alert")).toHaveText("upstream failure");
+  await expect(page.getByRole("alert")).toHaveText(
+    "Rori could not answer right now. Please try again.",
+  );
   await expect(page.getByLabel("Chat input")).toHaveValue("Leaky draft");
 
   await page.getByRole("button", { name: "Back to Menu" }).click();
