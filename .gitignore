@@ -45,6 +45,7 @@ tmp/
 /apps/api/.runtime-artifacts/
 /uploads/
 /reports/
+/vps-supabase-manual/rori-academy-data.generated.sql
 test-results/
 playwright-report/
 

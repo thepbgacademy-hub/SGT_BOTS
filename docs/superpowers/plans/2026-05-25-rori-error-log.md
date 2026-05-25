@@ -89,3 +89,33 @@
 **Fix applied:** Added a failing repo test for empty Supabase results and changed the Supabase wiki repo to return local fallback matches when no live published match exists.
 
 **Rule going forward:** Rori live knowledge sources may override fallback content when they have a matching published record, but an empty source should preserve local fallback behavior until production content is seeded.
+
+## 2026-05-25 - Phase 6 Had No Approved Rori Data To Load
+
+**Context:** Rori Phase 6 was supposed to add real Academy wiki pages, Telegram room records, event records, and live links to the target operations database.
+
+**Problem:** Repo and vault searches did not find approved production Rori wiki rows, Telegram room invite links, event records, or registration URLs. The fallback source packs and tests include routing copy and fixture URLs, but those are not Academy-approved production records.
+
+**Fix applied:** Did not seed any data. Added a validated admin data template and SQL generator so real records can be reviewed and converted into non-destructive upsert SQL when Academy-approved content is available.
+
+**Rule going forward:** If approved operations content is missing, stop at schema/import preflight. Do not turn fallback copy, test fixtures, or unrelated Telegram links into production Rori rows.
+
+## 2026-05-25 - Empty Rori Data Template Fails By Design
+
+**Context:** Rori Phase 6 added `vps-supabase-manual/rori-academy-data.template.json` and the `rori:data:sql` command.
+
+**Problem:** Running the generator against the untouched template exits with `At least one Rori Academy wiki page, Telegram room, or event record is required.`
+
+**Fix applied:** No code fix needed. This is the intended production guard so an empty template cannot be mistaken for approved data.
+
+**Rule going forward:** Fill the template with reviewed real records before generating SQL. Do not loosen the empty-import guard for production use.
+
+## 2026-05-25 - Rori Data Import Needed Stricter Preflight Checks
+
+**Context:** Final review for Rori Phase 6 admin data preflight.
+
+**Problem:** The first validator allowed empty optional URL strings, narrower `example.*` placeholder URLs, placeholder keywords, and duplicate import keys that Postgres would reject during one-statement upserts.
+
+**Fix applied:** Added failing tests, then tightened validation to reject empty URL strings, any `example.*` URL, placeholder keywords, and duplicate wiki page, Telegram room, or event keys before SQL generation.
+
+**Rule going forward:** Admin import tooling should fail before apply for issues that database constraints or Postgres conflict handling would reject later.

@@ -7,6 +7,7 @@
     "build": "corepack pnpm -r build",
     "format": "corepack pnpm -r format",
     "lint": "corepack pnpm -r lint",
+    "rori:data:sql": "node scripts/rori-academy-data.mjs",
     "test": "corepack pnpm -r test",
     "test:e2e": "node -e \"const { spawnSync } = require('node:child_process'); const args = process.argv.slice(1).filter((arg) => arg !== '--'); const result = spawnSync('playwright', ['test', ...args], { stdio: 'inherit', shell: true }); process.exit(result.status ?? 1);\""
   },

@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Rori Phase 6: add the real Academy-managed wiki pages, event records, Telegram room records, and live links to the target operations database, then perform a VPS/Telegram smoke test. Keep the conservative rule: no fake links, no placeholder event data, and no rollout until missing links/events remain clearly not configured.
+Rori Phase 7: collect Academy-approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008` and `009`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
 
 ## Build Doc Sources
 
@@ -14,8 +14,9 @@ Rori Phase 6: add the real Academy-managed wiki pages, event records, Telegram r
 - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-phase-3-academy-directory.md`
 - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-phase-4-operations-directory.md`
 - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-phase-5-wiki-knowledge.md`
+- `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-phase-6-admin-data-preflight.md`
 - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-error-log.md`
 
 ## Last Completed Step
 
-Rori Phase 5 completed on `codex/rori-academy-concierge`: added a wiki-backed Academy knowledge source with Supabase and local fallback repositories, created and mirrored the `009_rori_academy_wiki` migration, wired Rori chat replies to use wiki pages for general Academy/enrollment answers while keeping live rooms/events in the directory source, updated browser expectations, and verified the API, mini app, and Playwright Rori flows.
+Rori Phase 6 completed on `codex/rori-academy-concierge`: confirmed no approved production Rori wiki/event/room/link data was available to load, avoided seeding fallback or fixture data, added a validated admin JSON template and non-destructive SQL generator for future approved records, documented the rollout gate, and kept the VPS/Telegram smoke test blocked until real Academy data is provided.
