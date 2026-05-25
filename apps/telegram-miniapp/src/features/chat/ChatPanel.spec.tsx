@@ -117,6 +117,37 @@ describe("ChatPanel", () => {
     ).toBe("Rori could not answer right now. Please try again.");
   });
 
+  it("renders assistant citation titles and source labels", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ChatPanel, {
+        bot: GENERIC_BOT,
+        conversationId: "conversation-1",
+        messages: [
+          {
+            id: "message-1",
+            role: "assistant",
+            content: "Grounded reply.",
+            createdAt: "2026-05-25T00:00:00.000Z",
+            citations: [
+              {
+                sourceId: "knowledge_base",
+                title: "Rori Academy Concierge Source Pack",
+                url: "sgt-bots://docs/rori-academy-concierge-source-pack#academy",
+              },
+            ],
+          },
+        ],
+        onArtifactQueued: () => undefined,
+        onConversationUpdate: () => undefined,
+        sessionId: "session-1",
+        sessionToken: "token-1",
+      }),
+    );
+
+    expect(markup).toContain("Rori Academy Concierge Source Pack");
+    expect(markup).toContain("Knowledge Base");
+  });
+
   it("shows the upload and report workflow only for supported non-Cursive bots", () => {
     const markup = renderToStaticMarkup(
       createElement(ChatPanel, {

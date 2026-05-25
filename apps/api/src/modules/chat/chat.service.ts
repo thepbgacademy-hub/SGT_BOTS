@@ -9,6 +9,7 @@ import type {
   BotToolPermission,
 } from "../../../../../packages/shared/src/bots/capabilities";
 import type { CursiveCategoryConfig } from "../cursive/cursive.repo";
+import { buildGroundedRoriReply } from "./rori-kb";
 
 type ChatRole = "user" | "assistant";
 
@@ -78,76 +79,7 @@ function buildAcademyConciergeReply(
   requireSourceBinding(manifest, "knowledge_base");
   requireToolPermission(manifest, "knowledge_base_search");
 
-  const normalizedContent = content.toLowerCase();
-  const route = [
-    {
-      pattern:
-        /\b(credit reports?|credit-report|consumer reports?|consumer reporting agenc(?:y|ies)|reinvestigation|bureau|dispute|tradeline|fcra|fair credit reporting act)\b/i,
-      output:
-        "Rori would route that to Cursive. It is the best fit for credit bureau, dispute, tradeline, and FCRA workflows.",
-    },
-    {
-      pattern:
-        /\b(fact[- ]?check|check (?:this )?(?:claim|myth|statement|post|message)|verify (?:this )?(?:claim|myth|statement|post|message)|source-backed verification|is this true or false|whether this is true|true\/false|true-false|online claim|myth)\b/i,
-      output:
-        "Rori would route that to Top Secret. It is the right lane for checking claims, myths, and true-or-false questions.",
-    },
-    {
-      pattern: /\b(tax|legal|statute|usc|cfr|irs|treasury)\b/i,
-      output:
-        "Rori would route that to Condor. It is the right place for tax, legal, statute, USC, CFR, IRS, and Treasury research.",
-    },
-    {
-      pattern: /\b(form|intake|questionnaire|collect document answers)\b/i,
-      output:
-        "Rori would route that to ShAzZaM. It is the best fit for forms, intake flows, questionnaires, and collecting answers.",
-    },
-  ].find(({ pattern }) => pattern.test(normalizedContent));
-
-  if (route) {
-    return {
-      output: route.output,
-      citations: [],
-    };
-  }
-
-  if (/\b(which|what) (tool|bot)|tool should i use|use for\b/i.test(normalizedContent)) {
-    return {
-      output:
-        "Rori can help you choose the right tool. Use Cursive for credit bureau and dispute work, Top Secret for checking online claims, Condor for tax or legal research, and ShAzZaM for forms or guided intake.",
-      citations: [],
-    };
-  }
-
-  if (/\benroll|enrollment|join academy|sign up|signup\b/i.test(normalizedContent)) {
-    return {
-      output:
-        "Rori can help with PBG Academy enrollment. Start with the current Academy enrollment path, then ask Rori where to go next if you are unsure which Telegram room, workshop, or tool fits your goal.",
-      citations: [],
-    };
-  }
-
-  if (/\bworkshops?|events?|classes?|register|registration\b/i.test(normalizedContent)) {
-    return {
-      output:
-        "Rori can help with PBG Academy workshop and event questions. Ask what you want to attend or register for, and Rori will help you find the next step without making it sound more complicated than it is.",
-      citations: [],
-    };
-  }
-
-  if (/\btelegram|rooms?|channels?|group chat|chat room\b/i.test(normalizedContent)) {
-    return {
-      output:
-        "Rori can help you sort out the PBG Telegram rooms. Tell Rori what you are trying to do, like enrollment help, workshop updates, tech trouble, or tool support, and Rori will point you toward the right room.",
-      citations: [],
-    };
-  }
-
-  return {
-    output:
-      "Rori can help with PBG Academy enrollment, workshop details, and the Telegram room. For joining, start with the Academy enrollment path, then watch the room for workshop updates and next steps.",
-    citations: [],
-  };
+  return buildGroundedRoriReply(content);
 }
 
 function buildTutorReply(manifest: BotManifest, content: string): RuntimeReply {
@@ -188,7 +120,7 @@ function buildVerifierReply(
       {
         sourceId: "knowledge_base",
         title: "Verification Control Checklist",
-        url: "https://example.invalid/kb/research-briefing-index",
+        url: "sgt-bots://docs/top-secret/research-briefing-index",
       },
     ],
   };
@@ -210,7 +142,7 @@ function buildTaxLegalResearchReply(
       {
         sourceId: "knowledge_base",
         title: "Tax and Legal Research Index",
-        url: "https://example.invalid/kb/tax-legal-research-index",
+        url: "sgt-bots://docs/condor/tax-legal-research-index",
       },
     ],
   };

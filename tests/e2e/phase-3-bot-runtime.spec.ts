@@ -41,7 +41,8 @@ test("provider session unlocks the menu and selected bots stay in their own lane
     page.getByText("Rori can help with PBG Academy enrollment"),
   ).toBeVisible();
   await expect(page.getByText("Release Review Runbook")).not.toBeVisible();
-  await expect(page.getByText("Knowledge Base", { exact: true })).not.toBeVisible();
+  await expect(page.getByText("Rori Academy Concierge Source Pack")).toBeVisible();
+  await expect(page.getByText("Knowledge Base", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Back to Menu" }).click();
   await page.getByRole("button", { name: "Cursive" }).click();

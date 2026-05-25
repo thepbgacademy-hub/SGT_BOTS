@@ -79,4 +79,35 @@ describe("RoriWorkspace", () => {
     expect(markup).toContain("rori-back-button");
     expect(markup).toContain(">Back</button>");
   });
+
+  it("passes grounded assistant citations through the Rori chat wrapper", () => {
+    const markup = renderToStaticMarkup(
+      createElement(RoriWorkspace, {
+        bot: RORI_BOT,
+        conversationId: "conversation-1",
+        messages: [
+          {
+            id: "message-1",
+            role: "assistant",
+            content: "Rori can help with PBG Academy enrollment.",
+            createdAt: "2026-05-25T00:00:00.000Z",
+            citations: [
+              {
+                sourceId: "knowledge_base",
+                title: "Rori Academy Concierge Source Pack",
+                url: "sgt-bots://docs/rori-academy-concierge-source-pack#academy",
+              },
+            ],
+          },
+        ],
+        onBackToMenu: () => undefined,
+        onConversationUpdate: () => undefined,
+        sessionId: "session-1",
+        sessionToken: "token-1",
+      }),
+    );
+
+    expect(markup).toContain("Rori Academy Concierge Source Pack");
+    expect(markup).toContain("Knowledge Base");
+  });
 });

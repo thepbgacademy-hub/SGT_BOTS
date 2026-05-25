@@ -460,3 +460,33 @@ The token '&&' is not a valid statement separator in this version.
 **Fix applied:** Replaced the fallback/default URL with the real invite link, updated `.env.example`, added Playwright assertions for the rendered review link href, pushed refreshed frontend/backend images, pulled them on VPS 2, and force-recreated both containers. The first remote deployment command also showed that this compose stack is image-based, so `docker compose build` on VPS 2 reports "No services to build"; future rollouts should build/push images first, then pull/recreate on VPS 2.
 
 **Rule going forward:** User-facing external links need an E2E href assertion, not only visible button text. For VPS 2, treat the SGT stack as GHCR image-driven unless the compose file is intentionally changed.
+
+### 2026-05-25 - Rori Citation Tests Need Full Citation Types
+
+**Context:** Rori Phase 2 grounded source-pack citations.
+
+**Problem:** The API E2E behavior passed, but API TypeScript lint failed because a test asserted `citation.url` while the local response type only declared `sourceId` and `title`.
+
+**Fix applied:** Updated the local test response type to include `url` wherever URL guardrails are asserted.
+
+**Rule going forward:** When adding citation URL assertions, update the test's local response type at the same time. Runtime-green is not enough if the test type is narrower than the asserted shape.
+
+### 2026-05-25 - Rori Live-Link Guard Missed Invite And Sign-Up Language
+
+**Context:** Final review for Rori Phase 2 grounded Academy KB replies.
+
+**Problem:** The missing-link guard caught explicit `link` and `where do I register` wording, but not common user phrasing such as `Can I get an invite to the Telegram room?` or `How do I sign up for the next workshop?`.
+
+**Fix applied:** Expanded the live-link detector to include invite/invitation and sign-up wording, then added API E2E cases for both phrasings.
+
+**Rule going forward:** Missing-link protections should match how users ask for access, not only literal `link` wording.
+
+### 2026-05-25 - Legacy Chat Citations Still Used Placeholder URLs
+
+**Context:** Final review for Rori Phase 2 citation grounding.
+
+**Problem:** Rori citations no longer used `example.invalid`, but the older Top Secret verifier and Condor chat stubs still returned placeholder citation URLs inside the same chat runtime.
+
+**Fix applied:** Replaced those placeholder URLs with app-local `sgt-bots://` source identifiers and added API E2E coverage proving chat-runtime citation URLs do not include `example.invalid`.
+
+**Rule going forward:** Placeholder citation URLs should not survive once a bot lane is becoming user-visible. Use app-local source identifiers until real source URLs are configured.

@@ -201,14 +201,19 @@ describe("bot runtime routes", () => {
 
     const body = kbResponse.json() as {
       output: string;
-      citations: Array<{ sourceId: string; title: string }>;
+      citations: Array<{ sourceId: string; title: string; url: string }>;
     };
 
     expect(kbResponse.statusCode).toBe(200);
     expect(body).toMatchObject({
       botId: "concierge_general_academy_KB",
       output: expect.stringContaining("PBG Academy"),
-      citations: [],
+      citations: expect.arrayContaining([
+        expect.objectContaining({
+          sourceId: "knowledge_base",
+          title: "Rori Academy Concierge Source Pack",
+        }),
+      ]),
       conversation: {
         botId: "concierge_general_academy_KB",
         sessionId,
@@ -216,6 +221,7 @@ describe("bot runtime routes", () => {
     });
     expect(body.output).toContain("Telegram");
     expect(body.output).toContain("workshop");
+    expect(body.citations.every((citation) => !citation.url.includes("example.invalid"))).toBe(true);
     expect(body.output).not.toMatch(
       /PDF|reports?|artifacts?|Release Review Runbook|document upload/i,
     );
@@ -343,7 +349,13 @@ describe("bot runtime routes", () => {
     expect(body.output).not.toMatch(
       /PDF|reports?|artifacts?|Release Review Runbook|document upload/i,
     );
-    expect(body.citations).toEqual([]);
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Rori Tool Routing Source Pack",
+        }),
+      ]),
+    );
   }, 40000);
 
   it.each([
@@ -379,7 +391,13 @@ describe("bot runtime routes", () => {
     expect(response.statusCode).toBe(200);
     expect(body.output).toContain("PBG Academy");
     expect(body.output).not.toContain(unexpectedSpecialist);
-    expect(body.citations).toEqual([]);
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Rori Academy Concierge Source Pack",
+        }),
+      ]),
+    );
   }, 40000);
 
   it.each([
@@ -422,10 +440,60 @@ describe("bot runtime routes", () => {
 
     expect(response.statusCode).toBe(200);
     expect(body.output).toContain(expected);
+    expect(body.citations.length).toBeGreaterThan(0);
+    expect(body.citations.every((citation) => !citation.url.includes("example.invalid"))).toBe(true);
     expect(body.output).not.toMatch(
       /PDF|reports?|artifacts?|Release Review Runbook|document upload/i,
     );
-    expect(body.citations).toEqual([]);
+  }, 40000);
+
+  it.each([
+    {
+      message: "Where do I register for the next workshop?",
+      expected: "live workshop registration link is not configured yet",
+    },
+    {
+      message: "How do I sign up for the next workshop?",
+      expected: "live workshop registration link is not configured yet",
+    },
+    {
+      message: "Can you give me the Telegram room links?",
+      expected: "live room links are not configured yet",
+    },
+    {
+      message: "Can I get an invite to the Telegram room?",
+      expected: "live room links are not configured yet",
+    },
+  ])("does not invent live links for $message", async ({ message, expected }) => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message,
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ sourceId: string; title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain(expected);
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceId: "knowledge_base",
+        }),
+      ]),
+    );
   }, 40000);
 
   it("routes source-backed claim verification phrasing to Top Secret", async () => {
@@ -451,7 +519,47 @@ describe("bot runtime routes", () => {
 
     expect(response.statusCode).toBe(200);
     expect(body.output).toContain("Top Secret");
-    expect(body.citations).toEqual([]);
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Rori Tool Routing Source Pack",
+        }),
+      ]),
+    );
+  }, 40000);
+
+  it.each([
+    {
+      botId: "verifier",
+      message: "Please check this claim.",
+    },
+    {
+      botId: "tax_legal_research",
+      message: "Research this tax statute.",
+    },
+  ])("does not return placeholder citation URLs from $botId", async ({ botId, message }) => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId,
+        message,
+      },
+    });
+
+    const body = response.json() as {
+      citations: Array<{ url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.citations.length).toBeGreaterThan(0);
+    expect(body.citations.every((citation) => !citation.url.includes("example.invalid"))).toBe(true);
   }, 40000);
 
   it("keeps the Phase 2 bearer session token requirement on bot routes", async () => {
