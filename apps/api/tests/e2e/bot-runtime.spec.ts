@@ -6,6 +6,7 @@ import { readEnv } from "../../src/config/env";
 import { createInMemoryProfileRepo } from "../../src/modules/profiles/profile.repo";
 import { createInMemorySessionMetadataRepo } from "../../src/modules/sessions/session.repo";
 import { createInMemorySessionSecretStore } from "../../src/modules/sessions/session.service";
+import type { RoriAcademyDirectoryRepo } from "../../src/modules/chat/rori-directory.repo";
 import {
   createSignedTelegramInitData,
   TEST_TELEGRAM_BOT_TOKEN,
@@ -27,6 +28,65 @@ async function createAuthorizedSession() {
       PROVIDER_VALIDATION_MODE: "stub",
     }),
     profileRepo: createInMemoryProfileRepo(),
+    sessionMetadataRepo: createInMemorySessionMetadataRepo(),
+    sessionSecretStore: createInMemorySessionSecretStore(),
+  });
+
+  const profileResponse = await app.inject({
+    method: "POST",
+    url: "/api/profiles",
+    payload: {
+      initData,
+      firstName: "Ada",
+      lastName: "Lovelace",
+      preferredName: "Ada",
+    },
+  });
+  expect(profileResponse.statusCode).toBe(201);
+
+  const sessionResponse = await app.inject({
+    method: "POST",
+    url: "/api/providers/connect",
+    headers: {
+      "x-telegram-init-data": initData,
+    },
+    payload: {
+      provider: "openai",
+      apiKey: "sk-test",
+    },
+  });
+  expect(sessionResponse.statusCode).toBe(200);
+
+  const payload = sessionResponse.json() as {
+    session: {
+      id: string;
+      userId: string;
+    };
+    sessionToken: string;
+  };
+
+  return {
+    app,
+    sessionId: payload.session.id,
+    sessionToken: payload.sessionToken,
+    userId: payload.session.userId,
+  };
+}
+
+async function createAuthorizedSessionWithRoriDirectoryRepo(
+  roriDirectoryRepo: RoriAcademyDirectoryRepo,
+) {
+  const initData = createSignedTelegramInitData();
+  const app = await buildApp({
+    env: readEnv({
+      APP_PORT: "3001",
+      TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+      TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
+      PROFILE_REPO_MODE: "memory",
+      PROVIDER_VALIDATION_MODE: "stub",
+    }),
+    profileRepo: createInMemoryProfileRepo(),
+    roriDirectoryRepo,
     sessionMetadataRepo: createInMemorySessionMetadataRepo(),
     sessionSecretStore: createInMemorySessionSecretStore(),
   });
@@ -113,6 +173,27 @@ describe("bot runtime routes", () => {
     expect(sql).toContain("on playground_bot_registry for select");
     expect(sql).toContain("to authenticated");
     expect(sql).toContain("using (true)");
+  });
+
+  it("adds Rori Academy directory tables with authenticated read policies", async () => {
+    const sql = await readFile(
+      new URL(
+        "../../../../supabase/migrations/008_rori_academy_directory.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    expect(sql).toContain("create table if not exists rori_academy_events");
+    expect(sql).toContain("event_key text primary key");
+    expect(sql).toContain("registration_url text");
+    expect(sql).toContain("create table if not exists rori_telegram_rooms");
+    expect(sql).toContain("room_key text primary key");
+    expect(sql).toContain("invite_url text");
+    expect(sql).toContain("alter table rori_academy_events enable row level security");
+    expect(sql).toContain("alter table rori_telegram_rooms enable row level security");
+    expect(sql).toContain("Authenticated users can read active Rori Academy events");
+    expect(sql).toContain("Authenticated users can read active Rori Telegram rooms");
   });
 
   it("returns the authenticated bot catalog for an active provider session", async () => {
@@ -510,7 +591,7 @@ describe("bot runtime routes", () => {
     expect(body.output).toContain("Workshop Updates");
     expect(body.output).toContain("Technical Access Help");
     expect(body.output).toContain("Tool Support");
-    expect(body.output).toContain("live invite links are not configured");
+    expect(body.output).toContain("live invite link is not configured");
     expect(body.output).not.toMatch(/\bhttps?:\/\//i);
     expect(body.citations).toEqual(
       expect.arrayContaining([
@@ -617,6 +698,163 @@ describe("bot runtime routes", () => {
         }),
       ]),
     );
+  }, 40000);
+
+  it("uses configured Academy event data and registration URLs from the Rori directory repo", async () => {
+    const { app, sessionId, sessionToken } =
+      await createAuthorizedSessionWithRoriDirectoryRepo({
+        async listTelegramRooms() {
+          return [];
+        },
+        async listUpcomingEvents() {
+          return [
+            {
+              id: "commerce-basics",
+              label: "Commerce Basics Workshop",
+              summary: "A live Academy workshop for getting oriented.",
+              timing: "June 15, 2026 at 7:00 PM Central",
+              keywords: ["commerce", "workshop"],
+              registrationStatus: "configured",
+              registrationUrl: "https://academy.example.test/events/commerce-basics",
+            },
+          ];
+        },
+      });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "Where do I register for the next workshop?",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Commerce Basics Workshop");
+    expect(body.output).toContain("June 15, 2026 at 7:00 PM Central");
+    expect(body.output).toContain("https://academy.example.test/events/commerce-basics");
+    expect(body.output).not.toContain("live workshop registration link is not configured");
+    expect(body.output).not.toContain("No upcoming PBG Academy workshops or events");
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Rori Academy Directory Source Pack",
+        }),
+      ]),
+    );
+  }, 40000);
+
+  it("uses configured Telegram room data and invite URLs from the Rori directory repo", async () => {
+    const { app, sessionId, sessionToken } =
+      await createAuthorizedSessionWithRoriDirectoryRepo({
+        async listUpcomingEvents() {
+          return [];
+        },
+        async listTelegramRooms() {
+          return [
+            {
+              id: "tech-access",
+              label: "Live Tech Access Desk",
+              purpose: "Telegram access and login support for Academy members.",
+              keywords: ["technical", "access", "login"],
+              linkStatus: "configured",
+              inviteUrl: "https://t.me/+configuredTechDesk",
+            },
+          ];
+        },
+      });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "Which Telegram room should I use for technical access help?",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Live Tech Access Desk");
+    expect(body.output).toContain("https://t.me/+configuredTechDesk");
+    expect(body.output).not.toContain("live invite link is not configured");
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Rori Academy Directory Source Pack",
+        }),
+      ]),
+    );
+  }, 40000);
+
+  it("lists configured Telegram invite URLs for generic room link requests", async () => {
+    const { app, sessionId, sessionToken } =
+      await createAuthorizedSessionWithRoriDirectoryRepo({
+        async listUpcomingEvents() {
+          return [];
+        },
+        async listTelegramRooms() {
+          return [
+            {
+              id: "enrollment-help",
+              label: "Enrollment Help Live",
+              purpose: "Academy enrollment help.",
+              keywords: ["enrollment", "help"],
+              linkStatus: "configured",
+              inviteUrl: "https://t.me/+configuredEnrollment",
+            },
+            {
+              id: "tool-support",
+              label: "Tool Support",
+              purpose: "Tool support for Playground apps.",
+              keywords: ["tool", "support"],
+              linkStatus: "not_configured",
+            },
+          ];
+        },
+      });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "Can you give me the Telegram room links?",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Enrollment Help Live");
+    expect(body.output).toContain("https://t.me/+configuredEnrollment");
+    expect(body.output).toContain("Tool Support");
+    expect(body.output).toContain("live invite link is not configured for Tool Support");
+    expect(body.output).not.toContain("live room links are not configured yet");
   }, 40000);
 
   it.each([

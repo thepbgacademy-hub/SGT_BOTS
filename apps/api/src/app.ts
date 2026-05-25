@@ -15,6 +15,10 @@ import { registerBotRoutes } from "./modules/bots/bot.route";
 import { createBotService } from "./modules/bots/bot.service";
 import { registerChatRoutes } from "./modules/chat/chat.route";
 import { createChatService } from "./modules/chat/chat.service";
+import {
+  createRoriDirectoryRepo,
+  type RoriAcademyDirectoryRepo,
+} from "./modules/chat/rori-directory.repo";
 import { createCursiveConfigService, type CursiveConfigService } from "./modules/cursive/cursive-live-config.service";
 import { registerCursiveRoutes } from "./modules/cursive/cursive.route";
 import { createCursiveService } from "./modules/cursive/cursive.service";
@@ -78,6 +82,7 @@ export async function buildApp(options?: {
   sessionMetadataRepo?: SessionMetadataRepo;
   sessionSecretStore?: SessionSecretStore;
   reportQueueJobRunner?: RenderReportJobRunner;
+  roriDirectoryRepo?: RoriAcademyDirectoryRepo;
 }) {
   // JSON uploads include base64-encoded PDFs, so the default ~1 MiB limit is too
   // small for ordinary documents before our own validation runs.
@@ -126,7 +131,14 @@ export async function buildApp(options?: {
     }),
   );
   app.decorate("botService", createBotService({ registryRepo: botRegistryRepo }));
-  app.decorate("chatService", createChatService({ now: options?.now }));
+  app.decorate(
+    "chatService",
+    createChatService({
+      now: options?.now,
+      roriDirectoryRepo:
+        options?.roriDirectoryRepo ?? createRoriDirectoryRepo(appEnv),
+    }),
+  );
   app.decorate("cursiveService", createCursiveService());
   app.decorate("cursiveConfigService", createCursiveConfigService(appEnv));
   app.decorate("uploadService", createUploadService({ now: options?.now }));

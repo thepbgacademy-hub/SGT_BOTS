@@ -167,7 +167,7 @@ test("Rori shows Telegram room routing from the Academy directory", async ({ pag
   await expect(page.getByText("Workshop Updates")).toBeVisible();
   await expect(page.getByText("Technical Access Help")).toBeVisible();
   await expect(page.getByText("Tool Support")).toBeVisible();
-  await expect(page.getByText("live invite links are not configured")).toBeVisible();
+  await expect(page.getByText("live invite link is not configured")).toBeVisible();
   await expect(page.getByText("Rori Academy Directory Source Pack")).toBeVisible();
   await expect(page.getByText(/https?:\/\//i)).toHaveCount(0);
 });

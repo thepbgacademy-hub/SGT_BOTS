@@ -1,4 +1,4 @@
-export type RoriDirectoryLinkStatus = "configured" | "not_configured";
+export type RoriDirectoryLinkStatus = "configured" | "not_configured" | "closed";
 
 export type RoriDirectorySource = {
   id: string;
@@ -76,14 +76,27 @@ export const RORI_TELEGRAM_ROOM_DIRECTORY: RoriTelegramRoomRecord[] = [
 
 export const RORI_WORKSHOP_DIRECTORY: RoriWorkshopRecord[] = [];
 
+export type RoriAcademyDirectory = {
+  telegramRooms: RoriTelegramRoomRecord[];
+  workshops: RoriWorkshopRecord[];
+};
+
+export const FALLBACK_RORI_ACADEMY_DIRECTORY: RoriAcademyDirectory = {
+  telegramRooms: RORI_TELEGRAM_ROOM_DIRECTORY,
+  workshops: RORI_WORKSHOP_DIRECTORY,
+};
+
 function keywordScore(content: string, keywords: string[]) {
   return keywords.reduce((score, keyword) => {
     return content.includes(keyword) ? score + 1 : score;
   }, 0);
 }
 
-export function findTelegramRoomRecord(content: string) {
-  const scoredRooms = RORI_TELEGRAM_ROOM_DIRECTORY.map((room) => ({
+export function findTelegramRoomRecord(
+  content: string,
+  rooms: RoriTelegramRoomRecord[] = RORI_TELEGRAM_ROOM_DIRECTORY,
+) {
+  const scoredRooms = rooms.map((room) => ({
     room,
     score: keywordScore(content, room.keywords),
   })).filter(({ score }) => score > 0);
@@ -93,9 +106,13 @@ export function findTelegramRoomRecord(content: string) {
   return scoredRooms[0]?.room ?? null;
 }
 
-export function formatTelegramRoomList() {
-  return RORI_TELEGRAM_ROOM_DIRECTORY.map((room) => {
-    return `${room.label}: ${room.purpose}`;
+export function formatTelegramRoomList(
+  rooms: RoriTelegramRoomRecord[] = RORI_TELEGRAM_ROOM_DIRECTORY,
+) {
+  return rooms.map((room) => {
+    const linkStatus = formatTelegramRoomLinkStatus(room);
+
+    return `${room.label}: ${room.purpose} ${linkStatus}`;
   }).join(" ");
 }
 
@@ -107,16 +124,20 @@ export function formatTelegramRoomLinkStatus(room: RoriTelegramRoomRecord) {
   return `The live invite link is not configured for ${room.label} yet.`;
 }
 
-export function formatWorkshopDirectorySummary() {
-  if (RORI_WORKSHOP_DIRECTORY.length === 0) {
+export function formatWorkshopDirectorySummary(
+  workshops: RoriWorkshopRecord[] = RORI_WORKSHOP_DIRECTORY,
+) {
+  if (workshops.length === 0) {
     return "No upcoming PBG Academy workshops or events are configured in this playground build. Please ask an Academy admin for the current schedule or registration path.";
   }
 
-  return RORI_WORKSHOP_DIRECTORY.map((workshop) => {
+  return workshops.map((workshop) => {
     const registration =
       workshop.registrationStatus === "configured" && workshop.registrationUrl
         ? `Registration: ${workshop.registrationUrl}`
-        : "Registration link is not configured yet.";
+        : workshop.registrationStatus === "closed"
+          ? "Registration is closed."
+          : "Registration link is not configured yet.";
 
     return `${workshop.label}: ${workshop.summary} Timing: ${workshop.timing}. ${registration}`;
   }).join(" ");

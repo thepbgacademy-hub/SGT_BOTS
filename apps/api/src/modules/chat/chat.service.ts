@@ -9,6 +9,10 @@ import type {
   BotToolPermission,
 } from "../../../../../packages/shared/src/bots/capabilities";
 import type { CursiveCategoryConfig } from "../cursive/cursive.repo";
+import {
+  createFallbackRoriDirectoryRepo,
+  type RoriAcademyDirectoryRepo,
+} from "./rori-directory.repo";
 import { buildGroundedRoriReply } from "./rori-kb";
 
 type ChatRole = "user" | "assistant";
@@ -45,6 +49,8 @@ type RuntimeReply = {
   citations?: ChatCitation[];
 };
 
+type RuntimeReplyResult = RuntimeReply | Promise<RuntimeReply>;
+
 function requireCapability(manifest: BotManifest, capability: BotCapabilityId) {
   if (!manifest.capabilities[capability]) {
     throw new Error(`bot capability missing: ${capability}`);
@@ -72,14 +78,23 @@ function requireToolPermission(
 function buildAcademyConciergeReply(
   manifest: BotManifest,
   content: string,
-): RuntimeReply {
+  directoryRepo: RoriAcademyDirectoryRepo,
+): Promise<RuntimeReply> {
   requireCapability(manifest, "chat");
   requireCapability(manifest, "citations");
   requireCapability(manifest, "rag_query");
   requireSourceBinding(manifest, "knowledge_base");
   requireToolPermission(manifest, "knowledge_base_search");
 
-  return buildGroundedRoriReply(content);
+  return Promise.all([
+    directoryRepo.listTelegramRooms(),
+    directoryRepo.listUpcomingEvents(),
+  ]).then(([telegramRooms, workshops]) =>
+    buildGroundedRoriReply(content, {
+      telegramRooms,
+      workshops,
+    }),
+  );
 }
 
 function buildTutorReply(manifest: BotManifest, content: string): RuntimeReply {
@@ -155,21 +170,24 @@ export function createChatService(deps?: {
     getDefaultCategoryConfig(): CursiveCategoryConfig;
   };
   now?: () => number;
+  roriDirectoryRepo?: RoriAcademyDirectoryRepo;
   resolveManifest?: (botId: string) => BotManifest;
   buildRuntimeReply?: (
     manifest: BotManifest,
     trimmedContent: string,
-  ) => RuntimeReply;
+  ) => RuntimeReplyResult;
 }) {
   const conversations = new Map<string, ConversationRecord>();
   let conversationCount = 0;
   let messageCount = 0;
   const now = deps?.now ?? (() => Date.now());
+  const roriDirectoryRepo =
+    deps?.roriDirectoryRepo ?? createFallbackRoriDirectoryRepo();
   const resolveManifest = deps?.resolveManifest ?? requireBotManifest;
   const buildReply =
     deps?.buildRuntimeReply ??
     ((manifest: BotManifest, trimmedContent: string) =>
-      buildRuntimeReply(manifest, trimmedContent));
+      buildRuntimeReply(manifest, trimmedContent, roriDirectoryRepo));
 
   function nextConversationId() {
     conversationCount += 1;
@@ -182,7 +200,7 @@ export function createChatService(deps?: {
   }
 
   return {
-    sendMessage(input: {
+    async sendMessage(input: {
       sessionId: string;
       userId: string;
       botId: string;
@@ -216,7 +234,7 @@ export function createChatService(deps?: {
         throw new Error("conversation not found");
       }
 
-      const runtimeReply = buildReply(manifest, trimmedContent);
+      const runtimeReply = await buildReply(manifest, trimmedContent);
       const createdAt = new Date(now()).toISOString();
       const conversation =
         existingConversation ??
@@ -263,7 +281,8 @@ export function createChatService(deps?: {
 function buildRuntimeReply(
   manifest: BotManifest,
   trimmedContent: string,
-): RuntimeReply {
+  roriDirectoryRepo: RoriAcademyDirectoryRepo,
+): RuntimeReplyResult {
   switch (manifest.id) {
     case "document_wizard":
       throw new Error("cursive workflow only");
@@ -274,7 +293,11 @@ function buildRuntimeReply(
     case "verifier":
       return buildVerifierReply(manifest, trimmedContent);
     case "concierge_general_academy_KB":
-      return buildAcademyConciergeReply(manifest, trimmedContent);
+      return buildAcademyConciergeReply(
+        manifest,
+        trimmedContent,
+        roriDirectoryRepo,
+      );
     case "tax_legal_research":
       return buildTaxLegalResearchReply(manifest, trimmedContent);
     default: {

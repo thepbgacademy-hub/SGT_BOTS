@@ -29,3 +29,13 @@
 **Fix applied:** Added failing tests for Enrollment Help, Workshop Updates, and Tool Support room routing, moved explicit Telegram room routing before broad enrollment/workshop branches, and removed generic `telegram` and `room` keywords from Technical Access scoring.
 
 **Rule going forward:** Room-routing intent must run before broad Academy topic branches when the user asks which Telegram room fits a purpose.
+
+## 2026-05-25 - VPS Manual SQL List Referenced A Missing File
+
+**Context:** Rori Phase 4 added the manual VPS SQL mirror for the Rori directory migration.
+
+**Problem:** The manual apply README was updated to include `007_cursive_category_engine.sql`, but that file is not present in `vps-supabase-manual`. That would make the "exact order" instructions impossible to follow from the folder alone.
+
+**Fix applied:** Kept the manual apply list scoped to files present in `vps-supabase-manual` and added `008_rori_academy_directory.sql` after the existing six manual files.
+
+**Rule going forward:** Manual rollout folders should list only files that are actually present in that folder, unless the notes explicitly point to another location.

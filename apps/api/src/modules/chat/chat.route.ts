@@ -48,7 +48,7 @@ export async function registerChatRoutes(app: FastifyInstance) {
         sessionId,
       });
 
-      const result = app.chatService.sendMessage({
+      const result = await app.chatService.sendMessage({
         sessionId,
         userId: claims.userId,
         conversationId:

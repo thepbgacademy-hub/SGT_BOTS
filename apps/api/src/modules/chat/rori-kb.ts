@@ -3,6 +3,8 @@ import {
   formatTelegramRoomLinkStatus,
   formatTelegramRoomList,
   formatWorkshopDirectorySummary,
+  FALLBACK_RORI_ACADEMY_DIRECTORY,
+  type RoriAcademyDirectory,
   RORI_DIRECTORY_SOURCE,
 } from "./rori-directory";
 
@@ -65,7 +67,10 @@ function hasTelegramRoomRoutingQuestion(normalizedContent: string) {
   );
 }
 
-function buildTelegramRoomReply(normalizedContent: string): RoriReply {
+function buildTelegramRoomReply(
+  normalizedContent: string,
+  directory: RoriAcademyDirectory,
+): RoriReply {
   const hasSpecificRoomIntent =
     /\b(enroll|enrollment|workshops?|events?|classes?|technical|trouble|login|provider|api key|tool|cursive|top secret|condor|shazzam|access)\b/i.test(
       normalizedContent,
@@ -75,13 +80,18 @@ function buildTelegramRoomReply(normalizedContent: string): RoriReply {
     ((/\b(which|what|list|all)\b/i.test(normalizedContent) &&
       /\brooms?|channels?|join\b/i.test(normalizedContent)) ||
       hasLiveLinkRequest(normalizedContent));
-  const matchedRoom = shouldListRooms ? null : findTelegramRoomRecord(normalizedContent);
-  const liveLinkNote = hasLiveLinkRequest(normalizedContent)
+  const matchedRoom = shouldListRooms
+    ? null
+    : findTelegramRoomRecord(normalizedContent, directory.telegramRooms);
+  const hasConfiguredRoomLinks = directory.telegramRooms.some(
+    (room) => room.linkStatus === "configured" && room.inviteUrl,
+  );
+  const liveLinkNote = hasLiveLinkRequest(normalizedContent) && !hasConfiguredRoomLinks
     ? " The live room links are not configured yet; live invite links are not configured, so Rori should not make up Telegram room links."
     : "";
   const roomGuidance = matchedRoom
     ? `The best PBG Telegram room match is ${matchedRoom.label}. ${matchedRoom.purpose} ${formatTelegramRoomLinkStatus(matchedRoom)}`
-    : `Here are the current PBG Telegram rooms: ${formatTelegramRoomList()} The live invite links are not configured yet.`;
+    : `Here are the current PBG Telegram rooms: ${formatTelegramRoomList(directory.telegramRooms)}`;
 
   return {
     output: `${roomGuidance}${liveLinkNote}`,
@@ -124,11 +134,14 @@ function toolRoute(normalizedContent: string): RoriReply | null {
     : null;
 }
 
-export function buildGroundedRoriReply(content: string): RoriReply {
+export function buildGroundedRoriReply(
+  content: string,
+  directory: RoriAcademyDirectory = FALLBACK_RORI_ACADEMY_DIRECTORY,
+): RoriReply {
   const normalizedContent = content.toLowerCase();
 
   if (hasTelegramRoomRoutingQuestion(normalizedContent)) {
-    return buildTelegramRoomReply(normalizedContent);
+    return buildTelegramRoomReply(normalizedContent, directory);
   }
 
   const routedReply = toolRoute(normalizedContent);
@@ -149,8 +162,16 @@ export function buildGroundedRoriReply(content: string): RoriReply {
     /\bworkshops?|events?|classes?|register|registration\b/i.test(normalizedContent) &&
     hasLiveLinkRequest(normalizedContent)
   ) {
+    const hasConfiguredRegistration = directory.workshops.some(
+      (workshop) =>
+        workshop.registrationStatus === "configured" && workshop.registrationUrl,
+    );
+    const liveLinkNote = hasConfiguredRegistration
+      ? ""
+      : " The live workshop registration link is not configured yet, so Rori should not invent one.";
+
     return {
-      output: `${formatWorkshopDirectorySummary()} The live workshop registration link is not configured yet, so Rori should not invent one.`,
+      output: `${formatWorkshopDirectorySummary(directory.workshops)}${liveLinkNote}`,
       citations: [sourceCitation(RORI_DIRECTORY_SOURCE)],
     };
   }
@@ -169,13 +190,13 @@ export function buildGroundedRoriReply(content: string): RoriReply {
       : "";
 
     return {
-      output: `${formatWorkshopDirectorySummary()}${liveLinkNote}`,
+      output: `${formatWorkshopDirectorySummary(directory.workshops)}${liveLinkNote}`,
       citations: [sourceCitation(RORI_DIRECTORY_SOURCE)],
     };
   }
 
   if (/\btelegram|rooms?|channels?|group chat|chat room\b/i.test(normalizedContent)) {
-    const roomGuidance = `Here are the current PBG Telegram rooms: ${formatTelegramRoomList()} The live invite links are not configured yet.`;
+    const roomGuidance = `Here are the current PBG Telegram rooms: ${formatTelegramRoomList(directory.telegramRooms)}`;
 
     return {
       output: roomGuidance,

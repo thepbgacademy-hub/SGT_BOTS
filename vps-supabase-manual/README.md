@@ -8,6 +8,7 @@ Apply these files in the Supabase SQL editor on the VPS in this exact order:
 4. `004_uploads_and_artifacts.sql`
 5. `005_retention_and_audit.sql`
 6. `006_playground_bot_registry.sql`
+7. `008_rori_academy_directory.sql`
 
 Notes:
 
@@ -15,4 +16,4 @@ Notes:
 - If one file errors, stop there and fix that file before moving on.
 - The first file creates `public.users`, which is the table currently missing in the VPS stack.
 - `006_playground_bot_registry.sql` enables RLS for the bot registry and seeds the six current menu bots.
-
+- `008_rori_academy_directory.sql` creates Rori's Academy event and Telegram room directory tables. It does not seed fake events or invite links.

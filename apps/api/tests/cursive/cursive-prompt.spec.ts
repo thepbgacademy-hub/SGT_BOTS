@@ -304,7 +304,7 @@ describe("createChatService", () => {
     expect(reply).not.toContain("send Consumer name");
   });
 
-  it("does not leave behind a new document_wizard conversation when reply generation fails", () => {
+  it("does not leave behind a new document_wizard conversation when reply generation fails", async () => {
     const buildRuntimeReply: (
       manifest: BotManifest,
       trimmedContent: string,
@@ -321,16 +321,16 @@ describe("createChatService", () => {
       buildRuntimeReply,
     });
 
-    expect(() =>
+    await expect(
       chatService.sendMessage({
         sessionId: "session-1",
         userId: "user-1",
         botId: "document_wizard",
         message: "Draft a dispute letter",
       }),
-    ).toThrow("bot capability missing: structured_form");
+    ).rejects.toThrow("bot capability missing: structured_form");
 
-    expect(() =>
+    await expect(
       chatService.sendMessage({
         sessionId: "session-1",
         userId: "user-1",
@@ -338,9 +338,9 @@ describe("createChatService", () => {
         botId: "document_wizard",
         message: "Reuse the failed conversation",
       }),
-    ).toThrow("conversation not found");
+    ).rejects.toThrow("conversation not found");
 
-    const response = chatService.sendMessage({
+    const response = await chatService.sendMessage({
       sessionId: "session-1",
       userId: "user-1",
       botId: "document_wizard",
@@ -352,7 +352,7 @@ describe("createChatService", () => {
     expect(buildRuntimeReply).toHaveBeenCalledTimes(2);
   });
 
-  it("uses the injected cursive repo seam for document_wizard helper replies", () => {
+  it("uses the injected cursive repo seam for document_wizard helper replies", async () => {
     const customConfig = {
       ...creditBureauConfig,
       category: {
@@ -396,26 +396,26 @@ describe("createChatService", () => {
       },
     });
 
-    expect(() =>
+    await expect(
       chatService.sendMessage({
         sessionId: "session-1",
         userId: "user-1",
         botId: "document_wizard",
         message: "Draft a dispute letter",
       }),
-    ).toThrow("cursive workflow only");
+    ).rejects.toThrow("cursive workflow only");
   });
 
-  it("keeps unrelated document_wizard requests inside the current supported letter lane", () => {
+  it("keeps unrelated document_wizard requests inside the current supported letter lane", async () => {
     const chatService = createChatService();
 
-    expect(() =>
+    await expect(
       chatService.sendMessage({
         sessionId: "session-1",
         userId: "user-1",
         botId: "document_wizard",
         message: "Draft a launch brief for tomorrow.",
       }),
-    ).toThrow("cursive workflow only");
+    ).rejects.toThrow("cursive workflow only");
   });
 });
