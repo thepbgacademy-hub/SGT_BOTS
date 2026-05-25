@@ -1,3 +1,11 @@
+import {
+  findTelegramRoomRecord,
+  formatTelegramRoomLinkStatus,
+  formatTelegramRoomList,
+  formatWorkshopDirectorySummary,
+  RORI_DIRECTORY_SOURCE,
+} from "./rori-directory";
+
 type RoriCitation = {
   sourceId: "knowledge_base";
   title: string;
@@ -44,6 +52,43 @@ function hasLiveLinkRequest(normalizedContent: string) {
   );
 }
 
+function hasTelegramRoomRoutingQuestion(normalizedContent: string) {
+  return (
+    /\btelegram\b/i.test(normalizedContent) &&
+    /\b(rooms?|channels?|group chat|chat room)\b/i.test(normalizedContent) &&
+    (/\b(which|what|list|all|where|invite|invitation|link|links)\b/i.test(
+      normalizedContent,
+    ) ||
+      /\b(access|trouble|technical|cannot find|can't find)\b/i.test(normalizedContent) ||
+      /\brooms? should\b/i.test(normalizedContent) ||
+      /\brooms? (?:is|are)?\s*for\b/i.test(normalizedContent))
+  );
+}
+
+function buildTelegramRoomReply(normalizedContent: string): RoriReply {
+  const hasSpecificRoomIntent =
+    /\b(enroll|enrollment|workshops?|events?|classes?|technical|trouble|login|provider|api key|tool|cursive|top secret|condor|shazzam|access)\b/i.test(
+      normalizedContent,
+    );
+  const shouldListRooms =
+    !hasSpecificRoomIntent &&
+    ((/\b(which|what|list|all)\b/i.test(normalizedContent) &&
+      /\brooms?|channels?|join\b/i.test(normalizedContent)) ||
+      hasLiveLinkRequest(normalizedContent));
+  const matchedRoom = shouldListRooms ? null : findTelegramRoomRecord(normalizedContent);
+  const liveLinkNote = hasLiveLinkRequest(normalizedContent)
+    ? " The live room links are not configured yet; live invite links are not configured, so Rori should not make up Telegram room links."
+    : "";
+  const roomGuidance = matchedRoom
+    ? `The best PBG Telegram room match is ${matchedRoom.label}. ${matchedRoom.purpose} ${formatTelegramRoomLinkStatus(matchedRoom)}`
+    : `Here are the current PBG Telegram rooms: ${formatTelegramRoomList()} The live invite links are not configured yet.`;
+
+  return {
+    output: `${roomGuidance}${liveLinkNote}`,
+    citations: [sourceCitation(RORI_DIRECTORY_SOURCE)],
+  };
+}
+
 function toolRoute(normalizedContent: string): RoriReply | null {
   const routes = [
     {
@@ -81,6 +126,11 @@ function toolRoute(normalizedContent: string): RoriReply | null {
 
 export function buildGroundedRoriReply(content: string): RoriReply {
   const normalizedContent = content.toLowerCase();
+
+  if (hasTelegramRoomRoutingQuestion(normalizedContent)) {
+    return buildTelegramRoomReply(normalizedContent);
+  }
+
   const routedReply = toolRoute(normalizedContent);
 
   if (routedReply) {
@@ -100,9 +150,8 @@ export function buildGroundedRoriReply(content: string): RoriReply {
     hasLiveLinkRequest(normalizedContent)
   ) {
     return {
-      output:
-        "Rori can help with PBG Academy workshop and event questions. The live workshop registration link is not configured yet, so Rori can explain the next step but should not invent a link.",
-      citations: [sourceCitation(ACADEMY_SOURCE)],
+      output: `${formatWorkshopDirectorySummary()} The live workshop registration link is not configured yet, so Rori should not invent one.`,
+      citations: [sourceCitation(RORI_DIRECTORY_SOURCE)],
     };
   }
 
@@ -116,23 +165,21 @@ export function buildGroundedRoriReply(content: string): RoriReply {
 
   if (/\bworkshops?|events?|classes?|register|registration\b/i.test(normalizedContent)) {
     const liveLinkNote = hasLiveLinkRequest(normalizedContent)
-      ? " The live workshop registration link is not configured yet, so Rori can explain the next step but should not invent a link."
+      ? " The live workshop registration link is not configured yet, so Rori should not invent one."
       : "";
 
     return {
-      output: `Rori can help with PBG Academy workshop and event questions. Ask what you want to attend or register for, and Rori will help you find the next step without making it sound more complicated than it is.${liveLinkNote}`,
-      citations: [sourceCitation(ACADEMY_SOURCE)],
+      output: `${formatWorkshopDirectorySummary()}${liveLinkNote}`,
+      citations: [sourceCitation(RORI_DIRECTORY_SOURCE)],
     };
   }
 
   if (/\btelegram|rooms?|channels?|group chat|chat room\b/i.test(normalizedContent)) {
-    const liveLinkNote = hasLiveLinkRequest(normalizedContent)
-      ? " The live room links are not configured yet, so Rori can explain what to ask for without making up invite links."
-      : "";
+    const roomGuidance = `Here are the current PBG Telegram rooms: ${formatTelegramRoomList()} The live invite links are not configured yet.`;
 
     return {
-      output: `Rori can help you sort out the PBG Telegram rooms. Tell Rori what you are trying to do, like enrollment help, workshop updates, tech trouble, or tool support, and Rori will point you toward the right room.${liveLinkNote}`,
-      citations: [sourceCitation(ACADEMY_SOURCE)],
+      output: roomGuidance,
+      citations: [sourceCitation(RORI_DIRECTORY_SOURCE)],
     };
   }
 

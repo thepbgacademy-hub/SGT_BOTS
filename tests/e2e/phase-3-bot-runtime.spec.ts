@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { createSignedTelegramInitData } from "../../packages/shared/src/testing/telegram-fixtures";
 
 const VALID_INIT_DATA = createSignedTelegramInitData({
@@ -11,6 +11,18 @@ const VALID_INIT_DATA = createSignedTelegramInitData({
     language_code: "en",
   },
 });
+
+async function openRori(page: Page) {
+  await page.goto(`/?tgInitData=${encodeURIComponent(VALID_INIT_DATA)}`);
+  await page.getByLabel("First name").fill("Ada");
+  await page.getByLabel("Last name").fill("Lovelace");
+  await page.getByLabel("Preferred name").fill("Ada");
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await page.getByLabel("API key").fill("sk-test");
+  await page.getByRole("button", { name: "Validate provider" }).click();
+  await page.getByRole("button", { name: "Rori" }).click();
+}
 
 test("provider session unlocks the menu and selected bots stay in their own lanes", async ({
   page,
@@ -134,11 +146,57 @@ test("session refresh does not refetch the catalog on every tick", async ({
   await page.getByRole("button", { name: "Send" }).click();
 
   await expect(
-    page.getByText("Rori can help with PBG Academy workshop and event questions"),
+    page.getByText("No upcoming PBG Academy workshops or events are configured"),
   ).toBeVisible();
+  await expect(page.getByText("ask an Academy admin")).toBeVisible();
+  await expect(page.getByText("Rori Academy Directory Source Pack")).toBeVisible();
+  await expect(page.getByText("Knowledge Base", { exact: true })).toBeVisible();
+  await expect(page.getByText(/https?:\/\//i)).toHaveCount(0);
 
   await page.waitForTimeout(1200);
   expect(botCatalogRequests).toBe(1);
+});
+
+test("Rori shows Telegram room routing from the Academy directory", async ({ page }) => {
+  await openRori(page);
+
+  await page.getByLabel("Chat input").fill("Which PBG Telegram rooms should I join?");
+  await page.getByRole("button", { name: "Send" }).click();
+
+  await expect(page.getByText("Enrollment Help")).toBeVisible();
+  await expect(page.getByText("Workshop Updates")).toBeVisible();
+  await expect(page.getByText("Technical Access Help")).toBeVisible();
+  await expect(page.getByText("Tool Support")).toBeVisible();
+  await expect(page.getByText("live invite links are not configured")).toBeVisible();
+  await expect(page.getByText("Rori Academy Directory Source Pack")).toBeVisible();
+  await expect(page.getByText(/https?:\/\//i)).toHaveCount(0);
+});
+
+test("Rori routes specific Telegram access trouble to the matching room purpose", async ({
+  page,
+}) => {
+  await openRori(page);
+
+  await page
+    .getByLabel("Chat input")
+    .fill("I am having Telegram access trouble and cannot find the right room.");
+  await page.getByRole("button", { name: "Send" }).click();
+
+  await expect(page.getByText("Technical Access Help")).toBeVisible();
+  await expect(page.getByText("live invite link is not configured")).toBeVisible();
+  await expect(page.getByText("Rori Academy Directory Source Pack")).toBeVisible();
+});
+
+test("Rori keeps event registration links conservative when unset", async ({ page }) => {
+  await openRori(page);
+
+  await page.getByLabel("Chat input").fill("Where do I register for the next workshop?");
+  await page.getByRole("button", { name: "Send" }).click();
+
+  await expect(
+    page.getByText("live workshop registration link is not configured yet"),
+  ).toBeVisible();
+  await expect(page.getByText(/https?:\/\//i)).toHaveCount(0);
 });
 
 test("switching bots clears composer draft and chat errors", async ({ page }) => {

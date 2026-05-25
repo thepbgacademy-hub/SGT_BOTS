@@ -411,7 +411,7 @@ describe("bot runtime routes", () => {
     },
     {
       message: "What workshops are coming up?",
-      expected: "PBG Academy workshop and event questions",
+      expected: "No upcoming PBG Academy workshops or events are configured",
     },
     {
       message: "How do I enroll?",
@@ -444,6 +444,178 @@ describe("bot runtime routes", () => {
     expect(body.citations.every((citation) => !citation.url.includes("example.invalid"))).toBe(true);
     expect(body.output).not.toMatch(
       /PDF|reports?|artifacts?|Release Review Runbook|document upload/i,
+    );
+  }, 40000);
+
+  it("answers Rori workshop questions from the Academy directory without inventing events", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "What workshops are coming up?",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ sourceId: string; title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain(
+      "No upcoming PBG Academy workshops or events are configured",
+    );
+    expect(body.output).toContain("ask an Academy admin");
+    expect(body.output).not.toMatch(/\bhttps?:\/\//i);
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceId: "knowledge_base",
+          title: "Rori Academy Directory Source Pack",
+        }),
+      ]),
+    );
+  }, 40000);
+
+  it("lists admin-maintained Telegram room purposes and does not invent invite links", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "Which PBG Telegram rooms should I join?",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ sourceId: string; title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Enrollment Help");
+    expect(body.output).toContain("Workshop Updates");
+    expect(body.output).toContain("Technical Access Help");
+    expect(body.output).toContain("Tool Support");
+    expect(body.output).toContain("live invite links are not configured");
+    expect(body.output).not.toMatch(/\bhttps?:\/\//i);
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceId: "knowledge_base",
+          title: "Rori Academy Directory Source Pack",
+        }),
+      ]),
+    );
+  }, 40000);
+
+  it("routes specific Telegram access trouble to the matching room purpose", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "I am having Telegram access trouble and cannot find the right room.",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ sourceId: string; title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Technical Access Help");
+    expect(body.output).toContain("live invite link is not configured");
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceId: "knowledge_base",
+          title: "Rori Academy Directory Source Pack",
+        }),
+      ]),
+    );
+  }, 40000);
+
+  it.each([
+    {
+      message: "Which Telegram room is for enrollment help?",
+      expectedRoom: "Enrollment Help",
+    },
+    {
+      message: "Which Telegram room should I use for enrollment help?",
+      expectedRoom: "Enrollment Help",
+    },
+    {
+      message: "Which Telegram room is for workshop updates?",
+      expectedRoom: "Workshop Updates",
+    },
+    {
+      message: "Which Telegram room should I use for workshop updates?",
+      expectedRoom: "Workshop Updates",
+    },
+    {
+      message: "Which Telegram room should I use for technical access help?",
+      expectedRoom: "Technical Access Help",
+    },
+    {
+      message: "Which Telegram room is for tool support?",
+      expectedRoom: "Tool Support",
+    },
+    {
+      message: "Which Telegram room should I use for tool support?",
+      expectedRoom: "Tool Support",
+    },
+  ])("routes specific room purpose questions to $expectedRoom", async ({ message, expectedRoom }) => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message,
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ sourceId: string; title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain(expectedRoom);
+    expect(body.output).toContain("live invite link is not configured");
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceId: "knowledge_base",
+          title: "Rori Academy Directory Source Pack",
+        }),
+      ]),
     );
   }, 40000);
 

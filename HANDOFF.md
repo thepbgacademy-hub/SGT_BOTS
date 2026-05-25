@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Rori Phase 3: connect Rori to real Academy-managed data for workshops/events and Telegram room routing, including configured links or clear admin-maintained records. Keep the runtime conservative: if a link or event is not configured, Rori must say so instead of guessing.
+Rori Phase 4: connect the Phase 3 Rori directory shape to the real Academy-maintained operations source selected for workshops/events and Telegram room links. Keep the conservative rule: no fake links, no placeholder event data, and no rollout until missing links/events remain clearly not configured.
 
 ## Build Doc Sources
 
@@ -11,8 +11,9 @@ Rori Phase 3: connect Rori to real Academy-managed data for workshops/events and
 - `E:\REPOS\SGT_BOTS\docs\superpowers\specs\2026-05-25-rori-academy-concierge-design.md`
 - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-academy-concierge-implementation.md`
 - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-phase-2-grounded-kb.md`
-- `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-19-cursive-v2-error-log.md`
+- `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-phase-3-academy-directory.md`
+- `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-error-log.md`
 
 ## Last Completed Step
 
-Rori Phase 2 completed on `codex/rori-academy-concierge`: added a local grounded source pack for Rori Academy concierge answers, returned knowledge-base citations for Academy/tool-routing replies, added no-placeholder URL checks, added no-invented-link behavior for unconfigured workshop and Telegram links, and verified citations render through the mini app and Playwright flow.
+Rori Phase 3 completed on `codex/rori-academy-concierge`: added a typed local Academy directory shape for Rori workshops/events and Telegram room purposes, routed generic and specific room questions through that directory, kept unset workshop registration and room invite links explicit, added API and Playwright coverage proving no invented URLs are shown, and documented the remaining Phase 4 need for a real Academy-managed operations source.
