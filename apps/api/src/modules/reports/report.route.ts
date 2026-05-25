@@ -22,6 +22,7 @@ import {
   createTopSecretService,
   parseTopSecretClaims,
 } from "../top-secret/top-secret.service";
+import type { TopSecretRuntimeKnowledgeEntry } from "../top-secret/top-secret-kb.service";
 import type {
   CursiveBureauRemovalDemandSnapshot,
   CursiveCreditBureauDisputeSnapshot,
@@ -748,8 +749,18 @@ export async function registerReportRoutes(app: FastifyInstance) {
         sessionId,
         userId: claims.userId,
       });
-      const runtimeKnowledgeEntries =
-        await app.topSecretReviewRepo.listApprovedRuntimeEntries();
+      let runtimeKnowledgeEntries: TopSecretRuntimeKnowledgeEntry[] = [];
+
+      try {
+        runtimeKnowledgeEntries =
+          await app.topSecretReviewRepo.listApprovedRuntimeEntries();
+      } catch (error) {
+        app.log.warn(
+          { error },
+          "top secret runtime knowledge unavailable; continuing without approved entries",
+        );
+      }
+
       const topSecretService = createTopSecretService({
         mode: app.appEnv.providerValidationMode,
         runtimeKnowledgeEntries,
@@ -779,13 +790,20 @@ export async function registerReportRoutes(app: FastifyInstance) {
         sessionId,
         userId: claims.userId,
       });
-      await app.topSecretReviewRepo.recordSubmission({
-        artifactId: result.artifact.id,
-        claims: submittedClaims,
-        findings,
-        sessionId,
-        userId: claims.userId,
-      });
+      try {
+        await app.topSecretReviewRepo.recordSubmission({
+          artifactId: result.artifact.id,
+          claims: submittedClaims,
+          findings,
+          sessionId,
+          userId: claims.userId,
+        });
+      } catch (error) {
+        app.log.warn(
+          { artifactId: result.artifact.id, error },
+          "top secret review persistence failed after report queueing",
+        );
+      }
 
       return reply.code(202).send({
         artifact: {

@@ -532,3 +532,13 @@ The token '&&' is not a valid statement separator in this version.
 **Fix applied:** Authenticated sudo first with `sudo -S true`, then ran the redirected `docker exec -i ... < migration.sql` inside a sudo shell. The migration applied successfully and the Top Secret tables verified as present.
 
 **Rule going forward:** When a remote command needs both `sudo -S` and redirected stdin, authenticate sudo in a separate command first or run the redirected command inside `sudo sh -c`.
+
+### 2026-05-24 - Top Secret Review Persistence Must Not Block PDF Delivery
+
+**Context:** First live Telegram smoke test for Top Secret with three pasted messages.
+
+**Problem:** The UI showed `Unable to render report right now.` even though Top Secret PDF artifacts were being queued/rendered. The route queued the user-facing report first, then attempted to persist the submission into the review/KB tables. If that persistence step failed, the catch block returned a generic server error and hid the already-queued report from the user. Runtime `.runtime-artifacts` from local tests were also being copied into Docker images, making live artifact inspection noisy.
+
+**Fix applied:** Made approved-KB lookup and review submission persistence non-blocking for report delivery, added a regression test proving the route still returns a queued artifact when review persistence throws, and added `**/.runtime-artifacts` to `.dockerignore`.
+
+**Rule going forward:** Learning/KB capture is secondary to the user-facing report path. A persistence failure may be logged for review, but it must not prevent a successfully generated report from being returned to the user.

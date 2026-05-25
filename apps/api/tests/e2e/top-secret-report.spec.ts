@@ -63,6 +63,83 @@ async function createAuthorizedSession() {
 }
 
 describe("Top Secret report route", () => {
+  it("still queues the report when review persistence is unavailable", async () => {
+    const initData = createSignedTelegramInitData();
+    const app = await buildApp({
+      env: readEnv({
+        APP_PORT: "3001",
+        TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+        TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
+        PROFILE_REPO_MODE: "memory",
+        PROVIDER_VALIDATION_MODE: "stub",
+      }),
+      profileRepo: createInMemoryProfileRepo(),
+      sessionMetadataRepo: createInMemorySessionMetadataRepo(),
+      sessionSecretStore: createInMemorySessionSecretStore(),
+      topSecretReviewRepo: {
+        async listApprovedRuntimeEntries() {
+          return [];
+        },
+        async listReviewCandidates() {
+          return [];
+        },
+        async promoteReviewCandidate() {
+          throw new Error("review repo unavailable");
+        },
+        async recordSubmission() {
+          throw new Error("review repo unavailable");
+        },
+      },
+    });
+
+    await app.inject({
+      method: "POST",
+      url: "/api/profiles",
+      payload: {
+        initData,
+        firstName: "Ada",
+        lastName: "Lovelace",
+        preferredName: "Ada",
+      },
+    });
+    const sessionResponse = await app.inject({
+      method: "POST",
+      url: "/api/providers/connect",
+      headers: {
+        "x-telegram-init-data": initData,
+      },
+      payload: {
+        provider: "openai",
+        apiKey: "sk-test",
+      },
+    });
+    const sessionPayload = sessionResponse.json() as {
+      session: { id: string };
+      sessionToken: string;
+    };
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/reports/top-secret/claim-review",
+      headers: {
+        authorization: `Bearer ${sessionPayload.sessionToken}`,
+      },
+      payload: {
+        botId: "verifier",
+        claims: ["Income tax is voluntary."],
+        sessionId: sessionPayload.session.id,
+      },
+    });
+
+    expect(response.statusCode).toBe(202);
+    expect(response.json()).toMatchObject({
+      artifact: {
+        fileName: "top-secret-claim-review.pdf",
+      },
+      status: "queued",
+    });
+  }, 40000);
+
   it("queues one combined PDF report for pasted claims", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
 
