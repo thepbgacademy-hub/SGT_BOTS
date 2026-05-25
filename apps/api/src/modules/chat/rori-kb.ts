@@ -7,6 +7,11 @@ import {
   type RoriAcademyDirectory,
   RORI_DIRECTORY_SOURCE,
 } from "./rori-directory";
+import {
+  FALLBACK_RORI_WIKI_PAGES,
+  RORI_WIKI_SOURCE_TITLE,
+  type RoriWikiPage,
+} from "./rori-wiki";
 
 type RoriCitation = {
   sourceId: "knowledge_base";
@@ -47,6 +52,23 @@ const sourceCitation = (source: RoriSource): RoriCitation => ({
   title: source.title,
   url: source.url,
 });
+
+const wikiCitation = (page: RoriWikiPage): RoriCitation => ({
+  sourceId: "knowledge_base",
+  title: page.title,
+  url: page.sourceUrl ?? `sgt-bots://wiki/rori/${page.slug}`,
+});
+
+function findWikiPageBySlug(slug: string, pages: RoriWikiPage[]) {
+  return pages.find((page) => page.slug === slug && page.status === "published");
+}
+
+function buildWikiReply(page: RoriWikiPage): RoriReply {
+  return {
+    output: `${page.body} Source: ${RORI_WIKI_SOURCE_TITLE}.`,
+    citations: [wikiCitation(page)],
+  };
+}
 
 function hasLiveLinkRequest(normalizedContent: string) {
   return /\b(link|links|url|invite|invitation|join link|registration link|sign[- ]?up link|sign up|signup|where do i register|where to register)\b/i.test(
@@ -136,9 +158,20 @@ function toolRoute(normalizedContent: string): RoriReply | null {
 
 export function buildGroundedRoriReply(
   content: string,
-  directory: RoriAcademyDirectory = FALLBACK_RORI_ACADEMY_DIRECTORY,
+  grounding: {
+    directory?: RoriAcademyDirectory;
+    telegramRooms?: RoriAcademyDirectory["telegramRooms"];
+    workshops?: RoriAcademyDirectory["workshops"];
+    wikiPages?: RoriWikiPage[];
+  } = {},
 ): RoriReply {
   const normalizedContent = content.toLowerCase();
+  const directory: RoriAcademyDirectory = grounding.directory ?? {
+    telegramRooms:
+      grounding.telegramRooms ?? FALLBACK_RORI_ACADEMY_DIRECTORY.telegramRooms,
+    workshops: grounding.workshops ?? FALLBACK_RORI_ACADEMY_DIRECTORY.workshops,
+  };
+  const wikiPages = grounding.wikiPages ?? FALLBACK_RORI_WIKI_PAGES;
 
   if (hasTelegramRoomRoutingQuestion(normalizedContent)) {
     return buildTelegramRoomReply(normalizedContent, directory);
@@ -151,6 +184,12 @@ export function buildGroundedRoriReply(
   }
 
   if (/\b(which|what) (tool|bot)|tool should i use|use for\b/i.test(normalizedContent)) {
+    const toolGuidePage = findWikiPageBySlug("tool-guide", wikiPages);
+
+    if (toolGuidePage) {
+      return buildWikiReply(toolGuidePage);
+    }
+
     return {
       output:
         "Rori can help you choose the right tool. Use Cursive for credit bureau and dispute work, Top Secret for checking online claims, Condor for tax or legal research, and ShAzZaM for forms or guided intake.",
@@ -177,6 +216,12 @@ export function buildGroundedRoriReply(
   }
 
   if (/\benroll|enrollment|join academy|sign up|signup\b/i.test(normalizedContent)) {
+    const enrollmentPage = findWikiPageBySlug("enrollment", wikiPages);
+
+    if (enrollmentPage) {
+      return buildWikiReply(enrollmentPage);
+    }
+
     return {
       output:
         "Rori can help with PBG Academy enrollment. Start with the current Academy enrollment path, then ask Rori where to go next if you are unsure which Telegram room, workshop, or tool fits your goal. The live enrollment link is not configured yet in this playground build.",
@@ -205,8 +250,8 @@ export function buildGroundedRoriReply(
   }
 
   return {
-    output:
+    output: wikiPages[0]?.body ??
       "Rori can help with PBG Academy enrollment, workshop details, Telegram rooms, and choosing the right Playground tool. Tell Rori what you are trying to do and Rori will point you in the right direction.",
-    citations: [sourceCitation(ACADEMY_SOURCE)],
+    citations: wikiPages[0] ? [wikiCitation(wikiPages[0])] : [sourceCitation(ACADEMY_SOURCE)],
   };
 }

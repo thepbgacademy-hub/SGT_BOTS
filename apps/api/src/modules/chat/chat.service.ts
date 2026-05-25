@@ -14,6 +14,10 @@ import {
   type RoriAcademyDirectoryRepo,
 } from "./rori-directory.repo";
 import { buildGroundedRoriReply } from "./rori-kb";
+import {
+  createFallbackRoriWikiRepo,
+  type RoriWikiRepo,
+} from "./rori-wiki.repo";
 
 type ChatRole = "user" | "assistant";
 
@@ -79,6 +83,7 @@ function buildAcademyConciergeReply(
   manifest: BotManifest,
   content: string,
   directoryRepo: RoriAcademyDirectoryRepo,
+  wikiRepo: RoriWikiRepo,
 ): Promise<RuntimeReply> {
   requireCapability(manifest, "chat");
   requireCapability(manifest, "citations");
@@ -89,10 +94,12 @@ function buildAcademyConciergeReply(
   return Promise.all([
     directoryRepo.listTelegramRooms(),
     directoryRepo.listUpcomingEvents(),
-  ]).then(([telegramRooms, workshops]) =>
+    wikiRepo.searchPages(content),
+  ]).then(([telegramRooms, workshops, wikiPages]) =>
     buildGroundedRoriReply(content, {
       telegramRooms,
       workshops,
+      wikiPages,
     }),
   );
 }
@@ -171,6 +178,7 @@ export function createChatService(deps?: {
   };
   now?: () => number;
   roriDirectoryRepo?: RoriAcademyDirectoryRepo;
+  roriWikiRepo?: RoriWikiRepo;
   resolveManifest?: (botId: string) => BotManifest;
   buildRuntimeReply?: (
     manifest: BotManifest,
@@ -183,11 +191,17 @@ export function createChatService(deps?: {
   const now = deps?.now ?? (() => Date.now());
   const roriDirectoryRepo =
     deps?.roriDirectoryRepo ?? createFallbackRoriDirectoryRepo();
+  const roriWikiRepo = deps?.roriWikiRepo ?? createFallbackRoriWikiRepo();
   const resolveManifest = deps?.resolveManifest ?? requireBotManifest;
   const buildReply =
     deps?.buildRuntimeReply ??
     ((manifest: BotManifest, trimmedContent: string) =>
-      buildRuntimeReply(manifest, trimmedContent, roriDirectoryRepo));
+      buildRuntimeReply(
+        manifest,
+        trimmedContent,
+        roriDirectoryRepo,
+        roriWikiRepo,
+      ));
 
   function nextConversationId() {
     conversationCount += 1;
@@ -282,6 +296,7 @@ function buildRuntimeReply(
   manifest: BotManifest,
   trimmedContent: string,
   roriDirectoryRepo: RoriAcademyDirectoryRepo,
+  roriWikiRepo: RoriWikiRepo,
 ): RuntimeReplyResult {
   switch (manifest.id) {
     case "document_wizard":
@@ -297,6 +312,7 @@ function buildRuntimeReply(
         manifest,
         trimmedContent,
         roriDirectoryRepo,
+        roriWikiRepo,
       );
     case "tax_legal_research":
       return buildTaxLegalResearchReply(manifest, trimmedContent);

@@ -39,3 +39,53 @@
 **Fix applied:** Kept the manual apply list scoped to files present in `vps-supabase-manual` and added `008_rori_academy_directory.sql` after the existing six manual files.
 
 **Rule going forward:** Manual rollout folders should list only files that are actually present in that folder, unless the notes explicitly point to another location.
+
+## 2026-05-25 - Wiki Source Migration Test Looked For Unescaped Regex Text
+
+**Context:** Rori Phase 5 added `rori_academy_wiki_pages` with a SQL regex guard against placeholder URLs.
+
+**Problem:** The first migration test looked for `example.invalid`, but the SQL regex stores the dot as `example\.invalid` so the assertion failed even though the guard was present.
+
+**Fix applied:** Updated the contract test to assert the escaped SQL regex text.
+
+**Rule going forward:** SQL contract tests should match the literal SQL text, including regex escaping, instead of the human-readable version of a pattern.
+
+## 2026-05-25 - Wiki Enrollment Reply Broke Existing Rori Coverage Words
+
+**Context:** Rori Phase 5 moved enrollment answers from the static concierge source into the wiki source.
+
+**Problem:** Existing Rori E2E coverage still expected enrollment answers to mention PBG Academy, Telegram, and workshop context. The first wiki fallback body only mentioned generic support-room guidance, so useful context disappeared.
+
+**Fix applied:** Updated the fallback enrollment wiki page to preserve `PBG Academy`, `Telegram`, and `workshop` language while still citing the wiki source.
+
+**Rule going forward:** When replacing static support copy with wiki-backed copy, preserve established user-facing routing words unless the phase intentionally changes that behavior.
+
+## 2026-05-25 - Browser Citation Check Needed Exact Text
+
+**Context:** Rori Phase 5 updated Playwright E2E expectations from the old concierge citation to the new wiki page citation.
+
+**Problem:** `page.getByText("Academy Enrollment")` matched both the assistant reply text and the citation label, causing a strict-mode Playwright failure.
+
+**Fix applied:** Updated the locator to `getByText("Academy Enrollment", { exact: true })`.
+
+**Rule going forward:** When checking citation labels in chat output, use exact text or a citation-specific locator so body copy does not collide with citation text.
+
+## 2026-05-25 - Playwright Navigation Timeout Was Transient
+
+**Context:** Rori Phase 5 browser E2E rerun after updating wiki citation expectations.
+
+**Problem:** One `phase-3-bot-runtime.spec.ts` run timed out during `page.goto` for a later Rori directory test after the first test had already passed. The failure did not reach a Rori assertion.
+
+**Fix applied:** Reran the same Playwright spec without code changes; all seven tests passed.
+
+**Rule going forward:** If Playwright fails at navigation before app assertions, rerun once and only change code when the failure is reproducible or points to a real app condition.
+
+## 2026-05-25 - Empty Live Wiki Source Dropped Local Rori Fallback
+
+**Context:** Final review for Rori Phase 5 wiki-backed Academy knowledge.
+
+**Problem:** When Supabase was configured and reachable but returned no matching published wiki page, the wiki repo returned an empty array. That could make a deployed Rori lose the wiki-backed fallback answers before real Academy wiki rows are seeded.
+
+**Fix applied:** Added a failing repo test for empty Supabase results and changed the Supabase wiki repo to return local fallback matches when no live published match exists.
+
+**Rule going forward:** Rori live knowledge sources may override fallback content when they have a matching published record, but an empty source should preserve local fallback behavior until production content is seeded.

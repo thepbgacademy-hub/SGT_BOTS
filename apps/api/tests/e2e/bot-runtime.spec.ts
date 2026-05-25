@@ -7,6 +7,7 @@ import { createInMemoryProfileRepo } from "../../src/modules/profiles/profile.re
 import { createInMemorySessionMetadataRepo } from "../../src/modules/sessions/session.repo";
 import { createInMemorySessionSecretStore } from "../../src/modules/sessions/session.service";
 import type { RoriAcademyDirectoryRepo } from "../../src/modules/chat/rori-directory.repo";
+import type { RoriWikiRepo } from "../../src/modules/chat/rori-wiki.repo";
 import {
   createSignedTelegramInitData,
   TEST_TELEGRAM_BOT_TOKEN,
@@ -132,6 +133,63 @@ async function createAuthorizedSessionWithRoriDirectoryRepo(
   };
 }
 
+async function createAuthorizedSessionWithRoriWikiRepo(roriWikiRepo: RoriWikiRepo) {
+  const initData = createSignedTelegramInitData();
+  const app = await buildApp({
+    env: readEnv({
+      APP_PORT: "3001",
+      TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+      TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
+      PROFILE_REPO_MODE: "memory",
+      PROVIDER_VALIDATION_MODE: "stub",
+    }),
+    profileRepo: createInMemoryProfileRepo(),
+    roriWikiRepo,
+    sessionMetadataRepo: createInMemorySessionMetadataRepo(),
+    sessionSecretStore: createInMemorySessionSecretStore(),
+  });
+
+  const profileResponse = await app.inject({
+    method: "POST",
+    url: "/api/profiles",
+    payload: {
+      initData,
+      firstName: "Ada",
+      lastName: "Lovelace",
+      preferredName: "Ada",
+    },
+  });
+  expect(profileResponse.statusCode).toBe(201);
+
+  const sessionResponse = await app.inject({
+    method: "POST",
+    url: "/api/providers/connect",
+    headers: {
+      "x-telegram-init-data": initData,
+    },
+    payload: {
+      provider: "openai",
+      apiKey: "sk-test",
+    },
+  });
+  expect(sessionResponse.statusCode).toBe(200);
+
+  const payload = sessionResponse.json() as {
+    session: {
+      id: string;
+      userId: string;
+    };
+    sessionToken: string;
+  };
+
+  return {
+    app,
+    sessionId: payload.session.id,
+    sessionToken: payload.sessionToken,
+    userId: payload.session.userId,
+  };
+}
+
 describe("bot runtime routes", () => {
   it("matches the planned phase 3 persistence schema contract", async () => {
     const sql = await readFile(
@@ -194,6 +252,25 @@ describe("bot runtime routes", () => {
     expect(sql).toContain("alter table rori_telegram_rooms enable row level security");
     expect(sql).toContain("Authenticated users can read active Rori Academy events");
     expect(sql).toContain("Authenticated users can read active Rori Telegram rooms");
+  });
+
+  it("adds Rori Academy wiki pages with authenticated published-page reads", async () => {
+    const sql = await readFile(
+      new URL(
+        "../../../../supabase/migrations/009_rori_academy_wiki.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    expect(sql).toContain("create table if not exists rori_academy_wiki_pages");
+    expect(sql).toContain("page_key text primary key");
+    expect(sql).toContain("status text not null default 'draft'");
+    expect(sql).toContain("source_url text");
+    expect(sql).toContain("alter table rori_academy_wiki_pages enable row level security");
+    expect(sql).toContain("Authenticated users can read published Rori Academy wiki pages");
+    expect(sql).toContain("status = 'published'");
+    expect(sql).toContain("example\\.invalid");
   });
 
   it("returns the authenticated bot catalog for an active provider session", async () => {
@@ -292,7 +369,7 @@ describe("bot runtime routes", () => {
       citations: expect.arrayContaining([
         expect.objectContaining({
           sourceId: "knowledge_base",
-          title: "Rori Academy Concierge Source Pack",
+          title: "Academy Enrollment",
         }),
       ]),
       conversation: {
@@ -475,7 +552,7 @@ describe("bot runtime routes", () => {
     expect(body.citations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          title: "Rori Academy Concierge Source Pack",
+          title: "Academy Enrollment",
         }),
       ]),
     );
@@ -800,6 +877,57 @@ describe("bot runtime routes", () => {
       expect.arrayContaining([
         expect.objectContaining({
           title: "Rori Academy Directory Source Pack",
+        }),
+      ]),
+    );
+  }, 40000);
+
+  it("answers Academy questions from injected wiki pages without using fake links", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSessionWithRoriWikiRepo({
+      async searchPages() {
+        return [
+          {
+            body:
+              "Enrollment starts with the Academy enrollment path. If access is unclear, ask the Academy support room for the current next step.",
+            keywords: ["enrollment", "academy", "join"],
+            slug: "enrollment",
+            sourceUrl: "sgt-bots://wiki/rori/enrollment",
+            status: "published",
+            summary: "Current Academy enrollment guidance.",
+            title: "Academy Enrollment Wiki",
+            updatedAt: "2026-05-25T00:00:00.000Z",
+          },
+        ];
+      },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "How do I enroll in the PBG Academy?",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Enrollment starts with the Academy enrollment path");
+    expect(body.output).toContain("Academy support room");
+    expect(body.output).not.toMatch(/\bhttps?:\/\/example/i);
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Academy Enrollment Wiki",
+          url: "sgt-bots://wiki/rori/enrollment",
         }),
       ]),
     );

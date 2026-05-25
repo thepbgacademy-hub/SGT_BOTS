@@ -19,6 +19,10 @@ import {
   createRoriDirectoryRepo,
   type RoriAcademyDirectoryRepo,
 } from "./modules/chat/rori-directory.repo";
+import {
+  createRoriWikiRepo,
+  type RoriWikiRepo,
+} from "./modules/chat/rori-wiki.repo";
 import { createCursiveConfigService, type CursiveConfigService } from "./modules/cursive/cursive-live-config.service";
 import { registerCursiveRoutes } from "./modules/cursive/cursive.route";
 import { createCursiveService } from "./modules/cursive/cursive.service";
@@ -83,6 +87,7 @@ export async function buildApp(options?: {
   sessionSecretStore?: SessionSecretStore;
   reportQueueJobRunner?: RenderReportJobRunner;
   roriDirectoryRepo?: RoriAcademyDirectoryRepo;
+  roriWikiRepo?: RoriWikiRepo;
 }) {
   // JSON uploads include base64-encoded PDFs, so the default ~1 MiB limit is too
   // small for ordinary documents before our own validation runs.
@@ -137,6 +142,7 @@ export async function buildApp(options?: {
       now: options?.now,
       roriDirectoryRepo:
         options?.roriDirectoryRepo ?? createRoriDirectoryRepo(appEnv),
+      roriWikiRepo: options?.roriWikiRepo ?? createRoriWikiRepo(appEnv),
     }),
   );
   app.decorate("cursiveService", createCursiveService());
