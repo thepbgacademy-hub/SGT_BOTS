@@ -16,6 +16,7 @@
 ## Done
 
 - [x] ~~Polish Rori mini app chat workspace and preserve provider login fix~~ (2026-05-26)
+- [x] ~~Simplify Rori visible chat by removing redundant buttons, centering the chat panel, hiding source labels, and showing only the latest exchange~~ (2026-05-26)
 - [x] ~~Complete Cursive v2 manual and upload/report-analysis lanes~~ (2026-05-22)
 - [x] ~~Retire Cursive v1 plan in favor of Cursive v2 workflow rollout~~ (2026-05-22)
 - [x] ~~Execute Phase 5~~ (2026-05-06)

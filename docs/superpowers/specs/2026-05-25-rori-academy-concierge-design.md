@@ -8,7 +8,7 @@ Rori is a chat-only mini app experience. It does not accept document uploads, pr
 
 ## Bot Role
 
-Rori acts like the Academy front desk. The tone should be warm, informal, clear, and practical. Rori should answer directly when the question is about the Academy, enrollment, workshops, events, Telegram rooms, or general navigation.
+Rori acts like the Academy front desk. The tone should be warm, informal, clear, and practical. Rori should answer directly when the question is about the Academy, enrollment, workshops, events, PBG Telegram rooms, Playground tools, or general navigation.
 
 When the user asks for work outside Rori's role, Rori should route them to the right tool instead of attempting the work.
 
@@ -62,7 +62,10 @@ The UI should borrow the Top Secret layout family:
 - A quiet instruction section.
 - A large chat viewer.
 - A message composer at the bottom.
-- A small, non-technical capability row may be shown for orientation, using plain labels such as `Enrollment`, `Workshops`, `Telegram rooms`, and `Tool routing`.
+- Avoid redundant orientation buttons or decorative quick-label rows unless they perform a clear action.
+- The chat window should be centered inside the Rori card area for a uniform, intentional layout.
+- User and Rori messages should show only the latest exchange instead of stacking the full visible history.
+- Rori should not print wiki source names or citation pills in the user-facing chat. Source grounding may remain internal to the API response.
 
 Rori uses purple accents instead of Top Secret scarlet:
 
@@ -76,7 +79,7 @@ Rori uses purple accents instead of Top Secret scarlet:
 Header:
 
 - Title: `Rori`
-- Helper text: `Ask about the Academy, workshops, enrollment, or Telegram rooms.`
+- Helper text: `Ask about the Academy, workshops, enrollment, PBG Telegram rooms, or what tools do what.`
 
 Starter prompts:
 
@@ -109,7 +112,7 @@ V1 may use a bounded local response policy if a live Academy knowledge source is
 3. User types or taps a starter prompt.
 4. The existing chat endpoint receives `botId: "concierge_general_academy_KB"`.
 5. The chat service returns a Rori-specific response.
-6. The mini app appends the user message and assistant response to the Rori conversation.
+6. The mini app replaces the visible exchange with the latest user message and Rori response.
 
 Rori does not create artifacts. It does not write report files. It does not use the Top Secret or Cursive report routes.
 

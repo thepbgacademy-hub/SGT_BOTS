@@ -148,6 +148,61 @@ describe("ChatPanel", () => {
     expect(markup).toContain("Knowledge Base");
   });
 
+  it("can hide citations and keep only the latest exchange for concierge chat", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ChatPanel, {
+        bot: GENERIC_BOT,
+        conversationId: "conversation-1",
+        hideCitations: true,
+        latestExchangeOnly: true,
+        messages: [
+          {
+            id: "message-1",
+            role: "user",
+            content: "Old question",
+            createdAt: "2026-05-25T00:00:00.000Z",
+          },
+          {
+            id: "message-2",
+            role: "assistant",
+            content: "Old answer.",
+            createdAt: "2026-05-25T00:00:01.000Z",
+          },
+          {
+            id: "message-3",
+            role: "user",
+            content: "Latest question",
+            createdAt: "2026-05-25T00:00:02.000Z",
+          },
+          {
+            id: "message-4",
+            role: "assistant",
+            content: "Latest grounded reply.",
+            createdAt: "2026-05-25T00:00:03.000Z",
+            citations: [
+              {
+                sourceId: "knowledge_base",
+                title: "Academy Enrollment",
+                url: "sgt-bots://docs/rori-academy-concierge-source-pack#academy",
+              },
+            ],
+          },
+        ],
+        onArtifactQueued: () => undefined,
+        onConversationUpdate: () => undefined,
+        sessionId: "session-1",
+        sessionToken: "token-1",
+      }),
+    );
+
+    expect(markup).toContain("Latest question");
+    expect(markup).toContain("Latest grounded reply.");
+    expect(markup).not.toContain("Old question");
+    expect(markup).not.toContain("Old answer.");
+    expect(markup).not.toContain("Academy Enrollment");
+    expect(markup).not.toContain("Knowledge Base");
+  });
+
   it("shows the upload and report workflow only for supported non-Cursive bots", () => {
     const markup = renderToStaticMarkup(
       createElement(ChatPanel, {

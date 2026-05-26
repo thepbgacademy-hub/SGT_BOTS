@@ -35,8 +35,11 @@ describe("RoriWorkspace", () => {
     expect(markup).toContain("<h2>Rori</h2>");
     expect(markup).toContain("Academy concierge");
     expect(markup).not.toContain("Active Assistant");
-    expect(markup).toContain("Ask about the Academy, workshops, enrollment, or Telegram rooms.");
-    expect(markup).toContain("Tool routing");
+    expect(markup).toContain(
+      "Ask about the Academy, workshops, enrollment, PBG Telegram rooms, or what tools do what.",
+    );
+    expect(markup).not.toContain("Tool routing");
+    expect(markup).not.toContain("Telegram rooms</span>");
     expect(markup).toContain("Pick a prompt or type your question below.");
     expect(markup).toContain("Ask Rori about the Academy...");
     expect(markup).toContain("How do I enroll?");
@@ -82,7 +85,7 @@ describe("RoriWorkspace", () => {
     expect(markup).toContain(">Back</button>");
   });
 
-  it("passes grounded assistant citations through the Rori chat wrapper", () => {
+  it("shows only the latest exchange and hides source labels in the Rori chat wrapper", () => {
     const markup = renderToStaticMarkup(
       createElement(RoriWorkspace, {
         bot: RORI_BOT,
@@ -90,13 +93,31 @@ describe("RoriWorkspace", () => {
         messages: [
           {
             id: "message-1",
+            role: "user",
+            content: "Old question",
+            createdAt: "2026-05-25T00:00:00.000Z",
+          },
+          {
+            id: "message-2",
+            role: "assistant",
+            content: "Old answer",
+            createdAt: "2026-05-25T00:00:01.000Z",
+          },
+          {
+            id: "message-3",
+            role: "user",
+            content: "How do I enroll?",
+            createdAt: "2026-05-25T00:00:02.000Z",
+          },
+          {
+            id: "message-4",
             role: "assistant",
             content: "Rori can help with PBG Academy enrollment.",
-            createdAt: "2026-05-25T00:00:00.000Z",
+            createdAt: "2026-05-25T00:00:03.000Z",
             citations: [
               {
                 sourceId: "knowledge_base",
-                title: "Rori Academy Concierge Source Pack",
+                title: "Academy Enrollment",
                 url: "sgt-bots://docs/rori-academy-concierge-source-pack#academy",
               },
             ],
@@ -109,7 +130,11 @@ describe("RoriWorkspace", () => {
       }),
     );
 
-    expect(markup).toContain("Rori Academy Concierge Source Pack");
-    expect(markup).toContain("Knowledge Base");
+    expect(markup).toContain("How do I enroll?");
+    expect(markup).toContain("Rori can help with PBG Academy enrollment.");
+    expect(markup).not.toContain("Old question");
+    expect(markup).not.toContain("Old answer");
+    expect(markup).not.toContain("Academy Enrollment");
+    expect(markup).not.toContain("Knowledge Base");
   });
 });

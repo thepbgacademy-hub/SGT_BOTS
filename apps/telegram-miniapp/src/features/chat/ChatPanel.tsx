@@ -30,7 +30,9 @@ type ChatPanelProps = {
   conversationId?: string;
   emptyCopy?: string;
   hideHeader?: boolean;
+  hideCitations?: boolean;
   inputPlaceholder?: string;
+  latestExchangeOnly?: boolean;
   messages: ChatMessage[];
   onArtifactQueued: (artifact: ArtifactListItem) => void;
   onConversationUpdate: (result: {
@@ -57,7 +59,9 @@ export function ChatPanel({
   conversationId,
   emptyCopy = "Start the conversation here. Each bot stays inside its assigned lane and only returns user-facing results.",
   hideHeader = false,
+  hideCitations = false,
   inputPlaceholder,
+  latestExchangeOnly = false,
   messages,
   onArtifactQueued,
   onConversationUpdate,
@@ -116,11 +120,24 @@ export function ChatPanel({
       bot.capabilities.structured_form &&
       bot.capabilities.html_report,
   );
-  let latestVisibleUserMessageId: string | null = null;
+  let latestUserMessageIndex = -1;
 
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     if (messages[index]?.role === "user") {
-      latestVisibleUserMessageId = messages[index].id;
+      latestUserMessageIndex = index;
+      break;
+    }
+  }
+
+  const visibleMessages =
+    latestExchangeOnly && latestUserMessageIndex >= 0
+      ? messages.slice(latestUserMessageIndex)
+      : messages;
+  let latestVisibleUserMessageId: string | null = null;
+
+  for (let index = visibleMessages.length - 1; index >= 0; index -= 1) {
+    if (visibleMessages[index]?.role === "user") {
+      latestVisibleUserMessageId = visibleMessages[index].id;
       break;
     }
   }
@@ -319,7 +336,7 @@ export function ChatPanel({
         </header>
       )}
       <div className="message-stack">
-        {messages.map((message) => {
+        {visibleMessages.map((message) => {
           const isOlderUserMessage =
             message.role === "user" && message.id !== latestVisibleUserMessageId;
           const isExpandedOlderUserMessage =
@@ -348,7 +365,7 @@ export function ChatPanel({
                 {isExpandedOlderUserMessage ? "Collapse earlier prompt" : "Show earlier prompt"}
               </button>
             ) : null}
-            {message.citations?.length ? (
+            {!hideCitations && message.citations?.length ? (
               <ul aria-label="Citations" className="citation-list">
                 {message.citations.map((citation) => (
                   <li className="citation-pill" key={`${message.id}:${citation.title}`}>
@@ -361,7 +378,7 @@ export function ChatPanel({
             </article>
           );
         })}
-        {!messages.length ? (
+        {!visibleMessages.length ? (
           <article className="message-card message-card--empty">
             <p className="message-role">Ready</p>
             <p className="message-copy">{emptyCopy}</p>

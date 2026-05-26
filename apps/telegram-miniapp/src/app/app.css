@@ -1431,7 +1431,7 @@ h2 {
   --rori-purple: #6f42c1;
   --rori-purple-bright: #b995ff;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 0.85rem;
   min-height: min(720px, calc(100vh - 11rem));
   padding: clamp(1rem, 2vw, 1.5rem);
@@ -1471,12 +1471,14 @@ h2 {
 .rori-chat-window {
   display: grid;
   min-height: 0;
+  place-items: stretch center;
 }
 
 .rori-shell .chat-panel {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  width: min(100%, 36rem);
   border-color: var(--rori-line);
   border-radius: 18px;
   background: linear-gradient(180deg, var(--rori-surface), var(--rori-surface-deep));
@@ -1517,25 +1519,6 @@ h2 {
 .rori-back-button {
   flex: 0 0 auto;
   border-radius: 999px;
-}
-
-.rori-guidance-row {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.55rem;
-}
-
-.rori-guidance-row span {
-  min-height: 2.45rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(169, 129, 232, 0.22);
-  border-radius: 999px;
-  background: rgba(247, 234, 210, 0.04);
-  color: var(--rori-muted);
-  font-size: 0.82rem;
-  text-align: center;
 }
 
 .rori-shell .message-stack {
@@ -1638,7 +1621,6 @@ h2 {
     width: 100%;
   }
 
-  .rori-guidance-row,
   .starter-prompt-grid {
     grid-template-columns: 1fr;
   }

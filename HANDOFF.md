@@ -19,4 +19,4 @@ Rori Phase 7 remains blocked on Academy-approved wiki content: after the user fi
 
 ## Last Completed Step
 
-Rori mini app polish completed on `codex/rori-academy-concierge`: the dedicated Rori chat workspace now uses the dark brown Top Secret layout family with cream text, rounded sections, and purple accents, adds a small concierge capability row, preserves the approved starter prompts, and remains chat-only with no upload/report/artifact surface. The shared Codex provider fix was also preserved on this branch so Rori deployment does not regress the main playground provider login.
+Rori mini app polish completed on `codex/rori-academy-concierge`: the dedicated Rori chat workspace now uses the dark brown Top Secret layout family with cream text, rounded sections, centered chat, and purple accents. The redundant capability row was removed, helper copy now says `PBG Telegram rooms` and `what tools do what`, source labels are hidden from the Rori chat UI, and only the latest user/Rori exchange is shown. The shared Codex provider fix was also preserved on this branch so Rori deployment does not regress the main playground provider login.

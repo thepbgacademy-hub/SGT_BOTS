@@ -65,7 +65,7 @@ function findWikiPageBySlug(slug: string, pages: RoriWikiPage[]) {
 
 function buildWikiReply(page: RoriWikiPage): RoriReply {
   return {
-    output: `${page.body} Source: ${RORI_WIKI_SOURCE_TITLE}.`,
+    output: page.body,
     citations: [wikiCitation(page)],
   };
 }

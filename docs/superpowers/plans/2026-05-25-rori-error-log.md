@@ -139,3 +139,23 @@
 **Fix applied:** Rebalanced Rori CSS to use a dark brown base, cream text, rounded panels, restrained purple borders/buttons, and a small plain-language capability row. Removed the radial purple background treatment.
 
 **Rule going forward:** For Rori, purple is an accent over the Academy brown shell. Do not let the page read as a purple-themed product or use decorative purple orbs.
+
+## 2026-05-26 - Rori Chat UI Looked Too Much Like A Source Report
+
+**Context:** Rori mini app UI polish after the first deployed chat layout.
+
+**Problem:** The Rori workspace showed a redundant capability pill row, the chat panel was not visually centered, wiki source labels appeared in the answer card, and prior messages stacked in the visible chat area. That made a concierge chat feel more like a report viewer.
+
+**Fix applied:** Removed the redundant capability row, centered the chat panel inside the Rori card, hid citation/source labels in the Rori UI, stripped the wiki `Source:` sentence from Rori answers, and configured Rori to display only the latest user/Rori exchange.
+
+**Rule going forward:** Rori should feel like a simple concierge conversation. Keep source grounding internal unless a future design adds a user-facing source drawer, and do not stack visible history in the V1 mini app.
+
+## 2026-05-26 - ChatPanel Used ES2023 Array API Outside The Mini App TS Target
+
+**Context:** Rori latest-exchange-only chat rendering.
+
+**Problem:** The first implementation used `messages.findLastIndex(...)`, which passed Vitest but failed `tsc --project tsconfig.json --noEmit` because the mini app TypeScript lib target does not include that ES2023 Array API.
+
+**Fix applied:** Replaced `findLastIndex` with a small reverse `for` loop that works under the current TypeScript target.
+
+**Rule going forward:** Shared mini app components should avoid newer built-in APIs unless the app TS lib target already supports them, especially when Vitest can pass before `tsc` checks the target library.
