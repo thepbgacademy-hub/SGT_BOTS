@@ -97,6 +97,7 @@ export function ProviderConnectPanel({
           "content-type": "application/json",
           "x-telegram-init-data": initData,
         },
+        body: JSON.stringify({}),
       });
       const payload = (await response.json()) as {
         message?: string;
@@ -256,15 +257,6 @@ export function ProviderConnectPanel({
               </button>
             </div>
           ) : null}
-          <div className="form-actions provider-api-fallback">
-            <button
-              className="inline-link"
-              onClick={() => handleProviderChange("openai")}
-              type="button"
-            >
-              Use an API key instead
-            </button>
-          </div>
         </div>
       ) : (
         <>

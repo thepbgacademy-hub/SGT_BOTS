@@ -33,8 +33,10 @@ describe("RoriWorkspace", () => {
     );
 
     expect(markup).toContain("<h2>Rori</h2>");
+    expect(markup).toContain("Academy concierge");
     expect(markup).not.toContain("Active Assistant");
     expect(markup).toContain("Ask about the Academy, workshops, enrollment, or Telegram rooms.");
+    expect(markup).toContain("Tool routing");
     expect(markup).toContain("Pick a prompt or type your question below.");
     expect(markup).toContain("Ask Rori about the Academy...");
     expect(markup).toContain("How do I enroll?");

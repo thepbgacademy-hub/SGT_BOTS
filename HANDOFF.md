@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Rori Phase 7: collect Academy-approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008` and `009`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
+Rori Phase 7 remains blocked on Academy-approved wiki content: after the user finishes the Rori wiki with `E:\REPOS\wiki-architect`, collect the approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008` and `009`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
 
 ## Build Doc Sources
 
@@ -19,4 +19,4 @@ Rori Phase 7: collect Academy-approved Rori wiki pages, Telegram room records, e
 
 ## Last Completed Step
 
-Rori Phase 6 completed on `codex/rori-academy-concierge`: confirmed no approved production Rori wiki/event/room/link data was available to load, avoided seeding fallback or fixture data, added a validated admin JSON template and non-destructive SQL generator for future approved records, documented the rollout gate, and kept the VPS/Telegram smoke test blocked until real Academy data is provided.
+Rori mini app polish completed on `codex/rori-academy-concierge`: the dedicated Rori chat workspace now uses the dark brown Top Secret layout family with cream text, rounded sections, and purple accents, adds a small concierge capability row, preserves the approved starter prompts, and remains chat-only with no upload/report/artifact surface. The shared Codex provider fix was also preserved on this branch so Rori deployment does not regress the main playground provider login.

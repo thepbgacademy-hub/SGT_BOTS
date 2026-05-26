@@ -62,12 +62,14 @@ The UI should borrow the Top Secret layout family:
 - A quiet instruction section.
 - A large chat viewer.
 - A message composer at the bottom.
+- A small, non-technical capability row may be shown for orientation, using plain labels such as `Enrollment`, `Workshops`, `Telegram rooms`, and `Tool routing`.
 
 Rori uses purple accents instead of Top Secret scarlet:
 
 - Dark purple for borders and inactive outlines.
 - Lighter purple for primary buttons and active states.
 - The purple palette should feel calm and Academy-support oriented, not neon.
+- Purple should be an accent over the brown Academy background, not the dominant page color.
 
 ## Screen Content
 

@@ -2,8 +2,8 @@
 
 ## Active
 
-- [ ] **Prepare Cursive v2 rollout package** - finish Phase E docs, review deployment order, and prepare the branch for GitHub/VPS correction without starting the VPS rollout yet
-- [ ] **Start remaining bot workflow layers** - replace scaffolded replies for the non-Cursive bots after Cursive v2 rollout is packaged
+- [ ] **Load approved Rori wiki data** - wait for Academy-approved wiki pages from `E:\REPOS\wiki-architect`, generate reviewed Rori upsert SQL, apply after migrations `008` and `009`, then smoke test Rori in Telegram
+- [ ] **Prepare remaining bot workflow layers** - continue non-Cursive bot polish after Rori wiki data is ready
 
 ## Waiting On
 
@@ -15,6 +15,7 @@
 
 ## Done
 
+- [x] ~~Polish Rori mini app chat workspace and preserve provider login fix~~ (2026-05-26)
 - [x] ~~Complete Cursive v2 manual and upload/report-analysis lanes~~ (2026-05-22)
 - [x] ~~Retire Cursive v1 plan in favor of Cursive v2 workflow rollout~~ (2026-05-22)
 - [x] ~~Execute Phase 5~~ (2026-05-06)

@@ -34,6 +34,7 @@ export function RoriWorkspace({
     <section className="rori-shell">
       <header className="rori-workspace-header">
         <div>
+          <p className="rori-kicker">Academy concierge</p>
           <h2>Rori</h2>
           <p className="rori-helper-text">
             Ask about the Academy, workshops, enrollment, or Telegram rooms.
@@ -47,13 +48,19 @@ export function RoriWorkspace({
           Back
         </button>
       </header>
+      <div className="rori-guidance-row" aria-label="Rori can help with">
+        <span>Enrollment</span>
+        <span>Workshops</span>
+        <span>Telegram rooms</span>
+        <span>Tool routing</span>
+      </div>
       <div className="rori-chat-window">
-          <ChatPanel
-            bot={bot}
-            conversationId={conversationId}
-            emptyCopy="Pick a prompt or type your question below."
-            hideHeader
-            inputPlaceholder="Ask Rori about the Academy..."
+        <ChatPanel
+          bot={bot}
+          conversationId={conversationId}
+          emptyCopy="Pick a prompt or type your question below."
+          hideHeader
+          inputPlaceholder="Ask Rori about the Academy..."
           messages={messages}
           onArtifactQueued={() => undefined}
           onConversationUpdate={onConversationUpdate}

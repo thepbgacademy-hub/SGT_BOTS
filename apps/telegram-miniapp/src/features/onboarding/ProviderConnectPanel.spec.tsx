@@ -15,6 +15,6 @@ describe("ProviderConnectPanel", () => {
     expect(markup).toContain("OpenAI Codex");
     expect(markup).toContain("Connect once here to unlock the whole playground session.");
     expect(markup).toContain("Connect OpenAI Codex");
-    expect(markup).toContain("Use an API key instead");
+    expect(markup).not.toContain("Use an API key instead");
   });
 });

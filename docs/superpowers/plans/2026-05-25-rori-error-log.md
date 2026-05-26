@@ -119,3 +119,23 @@
 **Fix applied:** Added failing tests, then tightened validation to reject empty URL strings, any `example.*` URL, placeholder keywords, and duplicate wiki page, Telegram room, or event keys before SQL generation.
 
 **Rule going forward:** Admin import tooling should fail before apply for issues that database constraints or Postgres conflict handling would reject later.
+
+## 2026-05-26 - Rori Deployment Branch Must Preserve Shared Provider Fixes
+
+**Context:** Rori mini app polish was prepared after the shared `@PBGbigkitty_bot` provider screen received OpenAI Codex subscription login.
+
+**Problem:** The Rori branch predated the final Codex start-request fix. Deploying it as-is would have reintroduced the Fastify error `Body cannot be empty when content-type is set to 'application/json'` and restored the redundant API-key fallback pill.
+
+**Fix applied:** Brought the shared provider panel behavior forward on the Rori branch: Codex start requests send `JSON.stringify({})`, API-key fallback remains only in the provider dropdown, and focused provider tests were updated.
+
+**Rule going forward:** Before deploying a bot-lane branch, compare it against the latest shared playground shell fixes. Bot-lane deployment must not regress onboarding, provider login, timers, or review CTA behavior.
+
+## 2026-05-26 - Rori Purple Theme Was Too Dominant
+
+**Context:** Rori mini app layout polish while Academy wiki content is being prepared.
+
+**Problem:** The first Rori theme leaned into a purple page background and purple gradient treatment. The intended direction was the Top Secret dark brown family with cream text and purple accents only.
+
+**Fix applied:** Rebalanced Rori CSS to use a dark brown base, cream text, rounded panels, restrained purple borders/buttons, and a small plain-language capability row. Removed the radial purple background treatment.
+
+**Rule going forward:** For Rori, purple is an accent over the Academy brown shell. Do not let the page read as a purple-themed product or use decorative purple orbs.
