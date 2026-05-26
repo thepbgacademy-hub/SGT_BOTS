@@ -6,9 +6,9 @@ export type ProviderConnectionRow = {
   id: string;
   user_id: string;
   provider_name: SupportedProvider;
-  auth_method: "api_key";
+  auth_method: "api_key" | "oauth";
   validation_status: "validated";
-  metadata: Record<string, never>;
+  metadata: Record<string, unknown>;
   connected_at: string;
   expires_at: string | null;
   last_validated_at: string;

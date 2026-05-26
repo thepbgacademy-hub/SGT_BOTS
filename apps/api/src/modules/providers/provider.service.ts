@@ -20,6 +20,8 @@ export async function connectProvider(
       userId: string;
       provider: SupportedProvider;
       apiKey: string;
+      authMethod?: "api_key" | "oauth";
+      metadata?: Record<string, unknown>;
     }) => Promise<{
       id: string;
       userId: string;

@@ -27,7 +27,7 @@ import {
 
 type SessionSnapshot = {
   id: string;
-  provider: "openai" | "anthropic";
+  provider: "openai" | "anthropic" | "openai_codex";
   startedAt: string;
   expiresAt: string;
   durationSeconds: number;

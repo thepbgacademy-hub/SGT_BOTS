@@ -294,6 +294,105 @@ describe("provider connection and session start", () => {
     );
   });
 
+  it("starts an OpenAI Codex device login and returns a playground session after approval", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            device_auth_id: "device-auth-1",
+            interval: 1,
+            user_code: "ABCD-EFGH",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            authorization_code: "authorization-code-1",
+            code_verifier: "code-verifier-1",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            access_token: "codex-access-token",
+            refresh_token: "codex-refresh-token",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const validInitData = createSignedTelegramInitData();
+    const profileRepo = createInMemoryProfileRepo();
+    const metadataRepo = createInMemorySessionMetadataRepo();
+    const app = await buildApp({
+      env: readEnv({
+        APP_PORT: "3001",
+        TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+        TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
+        PROFILE_REPO_MODE: "memory",
+        PROVIDER_VALIDATION_MODE: "stub",
+      }),
+      profileRepo,
+      sessionMetadataRepo: metadataRepo,
+      sessionSecretStore: createInMemorySessionSecretStore(),
+    });
+
+    await onboardProfile(app, validInitData);
+
+    const startResponse = await app.inject({
+      method: "POST",
+      url: "/api/providers/openai-codex/oauth/start",
+      headers: {
+        "x-telegram-init-data": validInitData,
+      },
+    });
+    const startPayload = startResponse.json() as {
+      oauthSessionId: string;
+      userCode: string;
+      verificationUrl: string;
+    };
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1100);
+    });
+
+    const statusResponse = await app.inject({
+      method: "GET",
+      url: `/api/providers/openai-codex/oauth/${startPayload.oauthSessionId}/status`,
+      headers: {
+        "x-telegram-init-data": validInitData,
+      },
+    });
+    const statusPayload = statusResponse.json() as {
+      session: { provider: string; state: string };
+      sessionToken: string;
+      status: string;
+    };
+
+    expect(startResponse.statusCode).toBe(202);
+    expect(startPayload.userCode).toBe("ABCD-EFGH");
+    expect(startPayload.verificationUrl).toBe(
+      "https://auth.openai.com/codex/device",
+    );
+    expect(statusResponse.statusCode).toBe(200);
+    expect(statusPayload.status).toBe("connected");
+    expect(statusPayload.session).toMatchObject({
+      provider: "openai_codex",
+      state: "active",
+    });
+    expect(statusPayload.sessionToken).toEqual(expect.any(String));
+    expect(metadataRepo.snapshot().provider_connections[0]).toMatchObject({
+      auth_method: "oauth",
+      provider_name: "openai_codex",
+    });
+  }, 10000);
+
   it("persists provider and session metadata without storing raw api keys durably", async () => {
     const validInitData = createSignedTelegramInitData();
     const fetchMock = vi

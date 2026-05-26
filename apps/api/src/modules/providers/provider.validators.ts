@@ -1,4 +1,4 @@
-export const SUPPORTED_PROVIDERS = ["openai", "anthropic"] as const;
+export const SUPPORTED_PROVIDERS = ["openai", "anthropic", "openai_codex"] as const;
 
 export type SupportedProvider = (typeof SUPPORTED_PROVIDERS)[number];
 
@@ -42,6 +42,10 @@ export async function validateProviderKey(input: {
   apiKey: string;
   mode: "live" | "stub";
 }) {
+  if (input.provider === "openai_codex") {
+    throw new Error("unsupported provider");
+  }
+
   if (input.mode === "stub") {
     const valid =
       input.provider === "openai"
