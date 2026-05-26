@@ -2,6 +2,7 @@
 
 ## Active
 
+- [ ] **Validate playground Codex subscription login on VPS 2** - deploy the clean `codex/playground-codex-provider` branch to the shared `@PBGbigkitty_bot` mini app, confirm the Codex code appears, and confirm `Check login` unlocks the shared playground session
 - [ ] **Prepare Cursive v2 rollout package** - finish Phase E docs, review deployment order, and prepare the branch for GitHub/VPS correction without starting the VPS rollout yet
 - [ ] **Start remaining bot workflow layers** - replace scaffolded replies for the non-Cursive bots after Cursive v2 rollout is packaged
 
@@ -15,6 +16,7 @@
 
 ## Done
 
+- [x] ~~Split Codex subscription provider work onto a clean shared playground branch~~ (2026-05-25)
 - [x] ~~Complete Cursive v2 manual and upload/report-analysis lanes~~ (2026-05-22)
 - [x] ~~Retire Cursive v1 plan in favor of Cursive v2 workflow rollout~~ (2026-05-22)
 - [x] ~~Execute Phase 5~~ (2026-05-06)

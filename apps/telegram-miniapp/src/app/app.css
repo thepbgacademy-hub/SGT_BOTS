@@ -720,10 +720,6 @@ h2 {
   padding: 0.8rem 1rem;
 }
 
-.provider-api-fallback {
-  margin-top: -0.35rem;
-}
-
 @media (max-width: 520px) {
   .oauth-code-row {
     grid-template-columns: 1fr;

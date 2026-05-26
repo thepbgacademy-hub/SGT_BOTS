@@ -93,6 +93,8 @@ Each bot is a configured "persona + policy + source-of-truth + allowed-actions" 
 - Support both:
   - OAuth providers where technically available and appropriate
   - API key entry fallback
+- The shared `@PBGbigkitty_bot` playground provider panel should present OpenAI Codex subscription login as the default OpenAI path where available. The device-code flow must show a clear `Connect OpenAI Codex` action, then an `Open login` action, the user code, and a `Check login` action after the device code is issued.
+- API-key fallback belongs in the provider dropdown as `OpenAI API key` or another supported API-key provider. Do not add a redundant secondary "use API key" pill when the dropdown already exposes that route.
 - Validate the credential before enabling any bot.
 - Keep credentials in memory or another short-lived session store only for the active playground session.
 - Show clear provider status:
