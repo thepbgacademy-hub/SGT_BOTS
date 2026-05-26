@@ -1516,11 +1516,6 @@ h2 {
   line-height: 1.5;
 }
 
-.rori-back-button {
-  flex: 0 0 auto;
-  border-radius: 999px;
-}
-
 .rori-shell .message-stack {
   flex: 1 1 auto;
   min-height: min(390px, 48vh);
@@ -1572,12 +1567,18 @@ h2 {
 }
 
 .rori-shell .primary-button,
+.rori-shell .rori-back-button,
 .rori-shell .starter-prompt-button {
   border-color: var(--rori-line-strong);
   border-radius: 16px;
   background: linear-gradient(135deg, #4d2d8a, var(--rori-purple));
   color: var(--rori-cream);
   box-shadow: 0 12px 28px rgba(31, 13, 66, 0.28);
+}
+
+.rori-shell .rori-back-button {
+  flex: 0 0 auto;
+  border-radius: 999px;
 }
 
 .rori-shell .vanish-input-shell,
