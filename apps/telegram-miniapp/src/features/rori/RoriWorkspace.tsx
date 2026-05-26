@@ -18,7 +18,6 @@ export function RoriWorkspace({
   bot,
   conversationId,
   messages,
-  onBackToMenu,
   onConversationUpdate,
   sessionId,
   sessionToken,
@@ -33,13 +32,6 @@ export function RoriWorkspace({
             Ask about the Academy, workshops, enrollment, PBG Telegram rooms, or what tools do what.
           </p>
         </div>
-        <button
-          className="secondary-button rori-back-button"
-          onClick={onBackToMenu}
-          type="button"
-        >
-          Back
-        </button>
       </header>
       <div className="rori-chat-window">
         <ChatPanel

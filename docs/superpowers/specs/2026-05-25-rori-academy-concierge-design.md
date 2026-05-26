@@ -67,6 +67,7 @@ The UI should borrow the Top Secret layout family:
 - User and Rori messages should show only the latest exchange instead of stacking the full visible history.
 - Rori should not print wiki source names or citation pills in the user-facing chat. Source grounding may remain internal to the API response.
 - Do not show the shared empty-state starter prompt card in Rori. The header instructions already explain what to ask, so the chat area should stay uncluttered until the user sends a message.
+- Do not show a workspace-level Back button in Rori. The top menu already provides Back navigation.
 
 Rori uses purple accents instead of Top Secret scarlet:
 
@@ -86,10 +87,6 @@ Chat composer:
 
 - Placeholder: `Ask Rori about the Academy...`
 - Primary button: `Send`
-
-Back control:
-
-- A rounded `Back` button returns the user to the main Playground menu.
 
 ## Backend Behavior
 

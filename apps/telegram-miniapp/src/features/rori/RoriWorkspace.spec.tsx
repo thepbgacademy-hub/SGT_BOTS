@@ -69,7 +69,7 @@ describe("RoriWorkspace", () => {
     expect(markup).not.toContain("Support");
   });
 
-  it("renders a rounded Back button for returning to the menu", () => {
+  it("does not render a duplicate workspace Back button", () => {
     const markup = renderToStaticMarkup(
       createElement(RoriWorkspace, {
         bot: RORI_BOT,
@@ -82,8 +82,8 @@ describe("RoriWorkspace", () => {
       }),
     );
 
-    expect(markup).toContain("rori-back-button");
-    expect(markup).toContain(">Back</button>");
+    expect(markup).not.toContain("rori-back-button");
+    expect(markup).not.toContain(">Back</button>");
   });
 
   it("shows only the latest exchange and hides source labels in the Rori chat wrapper", () => {

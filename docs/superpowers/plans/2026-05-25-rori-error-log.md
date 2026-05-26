@@ -169,3 +169,13 @@
 **Fix applied:** Added a `hideEmptyState` option to the shared `ChatPanel`, enabled it only for Rori, and stopped passing starter prompts into the Rori workspace.
 
 **Rule going forward:** Rori should not show redundant starter cards or decorative prompt buttons unless they are part of a newly approved interaction design.
+
+## 2026-05-26 - Rori Workspace Back Button Duplicated Top Navigation
+
+**Context:** Rori mini app visual cleanup after the empty starter-prompt card was removed.
+
+**Problem:** The Rori workspace still rendered its own Back button even though the main Playground top menu already provides Back navigation. The duplicate control added visual weight without adding a new path.
+
+**Fix applied:** Removed the Rori workspace Back button, its dedicated styling, and updated tests to assert that no duplicate workspace Back button renders.
+
+**Rule going forward:** Rori should rely on the top menu for Back navigation unless a future flow adds a nested step that needs an in-workspace back action.
