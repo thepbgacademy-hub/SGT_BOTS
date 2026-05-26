@@ -66,21 +66,21 @@ export const BOT_WORKSPACE_PANELS: Record<BotId, BotWorkspacePanelContent> = {
     ],
   },
   verifier: {
-    focusLabel: "Verification Lane",
+    focusLabel: "Top Secret",
     mission:
-      "Pressure-test claims, compare evidence, and call out weak spots before decisions are made.",
-    workflowTitle: "Best when the user needs:",
+      "Paste a claim you saw online, then get a plain answer with sources you can check.",
+    workflowTitle: "Good for:",
     workflowSteps: [
-      "fact-checking or review",
-      "discrepancy detection",
-      "higher scrutiny before acting",
+      "checking internet claims",
+      "sorting out what is true, false, or misunderstood",
+      "making one clean PDF to read later",
     ],
-    supportLabel: "Review Support",
-    supportTitle: "Use this panel for:",
+    supportLabel: "Instructions",
+    supportTitle: "Here is the plan:",
     supportItems: [
-      "checking what has already been produced",
-      "staying focused on verification requests",
-      "keeping evidence-oriented tasks organized",
+      "paste 1 to 5 statements or how-to posts",
+      "look them over before we check them",
+      "come back here for your report",
     ],
   },
   concierge_general_academy_KB: {

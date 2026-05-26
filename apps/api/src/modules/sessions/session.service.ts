@@ -79,6 +79,8 @@ export function createSessionService(deps: {
       userId: string;
       provider: SupportedProvider;
       apiKey: string;
+      authMethod?: "api_key" | "oauth";
+      metadata?: Record<string, unknown>;
     }) {
       const startedAtMs = now();
       const startedAt = new Date(startedAtMs).toISOString();
@@ -92,11 +94,11 @@ export function createSessionService(deps: {
       });
 
       const providerConnection = await deps.metadataRepo.insertProviderConnection({
-        auth_method: "api_key",
+        auth_method: input.authMethod ?? "api_key",
         connected_at: startedAt,
         expires_at: expiresAt,
         last_validated_at: startedAt,
-        metadata: {},
+        metadata: input.metadata ?? {},
         provider_name: input.provider,
         user_id: input.userId,
         validation_status: "validated",

@@ -5,9 +5,11 @@ export type AppEnv = {
   appPort: number;
   telegramBotUsername: string;
   telegramBotToken: string;
+  telegramBotTokens: string[];
   telegramBotAppShortName: string;
   telegramBotRuntimeMode: "off" | "polling";
   telegramReviewGroupUrl: string;
+  topSecretAdminToken?: string;
   profileRepoMode: "supabase" | "memory";
   providerValidationMode: "live" | "stub";
   supabaseUrl?: string;
@@ -71,6 +73,17 @@ function requireEnv(name: string, value: string | undefined) {
   return value;
 }
 
+function parseTokenList(value: string | undefined) {
+  return (value ?? "")
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function uniqueValues(values: string[]) {
+  return [...new Set(values)];
+}
+
 export function readEnv(env: NodeJS.ProcessEnv = process.env): AppEnv {
   const fileEnv = loadRootEnvFile(process.cwd());
   const profileRepoMode =
@@ -92,6 +105,18 @@ export function readEnv(env: NodeJS.ProcessEnv = process.env): AppEnv {
     env.BOT_TOKEN ??
     fileEnv.TELEGRAM_BOT_TOKEN ??
     fileEnv.BOT_TOKEN;
+  const requiredTelegramBotToken = requireEnv(
+    "TELEGRAM_BOT_TOKEN",
+    telegramBotToken,
+  );
+  const telegramBotTokens = uniqueValues([
+    requiredTelegramBotToken,
+    ...parseTokenList(env.TELEGRAM_BOT_TOKENS ?? fileEnv.TELEGRAM_BOT_TOKENS),
+    ...parseTokenList(
+      env.TOP_SECRET_TELEGRAM_BOT_TOKEN ??
+        fileEnv.TOP_SECRET_TELEGRAM_BOT_TOKEN,
+    ),
+  ]);
   const telegramBotRuntimeMode =
     (env.TELEGRAM_BOT_RUNTIME_MODE ??
       fileEnv.TELEGRAM_BOT_RUNTIME_MODE ??
@@ -105,7 +130,8 @@ export function readEnv(env: NodeJS.ProcessEnv = process.env): AppEnv {
       env.TELEGRAM_BOT_USERNAME ??
       fileEnv.TELEGRAM_BOT_USERNAME ??
       "sgt_playground_bot",
-    telegramBotToken: requireEnv("TELEGRAM_BOT_TOKEN", telegramBotToken),
+    telegramBotToken: requiredTelegramBotToken,
+    telegramBotTokens,
     telegramBotAppShortName:
       env.TELEGRAM_BOT_APP_SHORT_NAME ??
       fileEnv.TELEGRAM_BOT_APP_SHORT_NAME ??
@@ -115,6 +141,8 @@ export function readEnv(env: NodeJS.ProcessEnv = process.env): AppEnv {
       env.TELEGRAM_REVIEW_GROUP_URL ??
       fileEnv.TELEGRAM_REVIEW_GROUP_URL ??
       "https://t.me/+1wagxfyhnAcwMDJh",
+    topSecretAdminToken:
+      env.TOP_SECRET_ADMIN_TOKEN ?? fileEnv.TOP_SECRET_ADMIN_TOKEN,
     profileRepoMode,
     providerValidationMode,
     supabaseUrl:

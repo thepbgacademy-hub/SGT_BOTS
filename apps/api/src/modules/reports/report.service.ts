@@ -13,6 +13,10 @@ import {
   type BureauRemovalDemandTemplateInput,
 } from "../cursive/templates/bureau-removal-demand.html";
 import {
+  renderTopSecretReportHtml,
+  type TopSecretReportTemplateInput,
+} from "../top-secret/templates/top-secret-report.html";
+import {
   analyzeCursiveUploadedReport,
   buildConsumerFromUploadText,
 } from "../cursive/cursive-upload-analysis.service";
@@ -43,6 +47,7 @@ type ArtifactRecord = {
   status: "queued" | "ready" | "failed";
   storagePath: string;
   templateId: string;
+  topSecretSnapshot?: TopSecretReportSnapshot;
   uploadId: string | null;
   userId: string;
 };
@@ -72,6 +77,12 @@ export type CursiveBureauRemovalDemandSnapshot = {
   violationLabel: string;
   portalText: string;
   templateInput: BureauRemovalDemandTemplateInput;
+};
+
+export type TopSecretReportSnapshot = {
+  templateSlug: "top_secret_fact_check";
+  generatedDate: string;
+  findings: TopSecretReportTemplateInput["findings"];
 };
 
 export function createReportService(deps: {
@@ -125,6 +136,7 @@ export function createReportService(deps: {
       status: artifact.status,
       storagePath: artifact.storagePath,
       templateId: artifact.templateId,
+      topSecretSnapshot: artifact.topSecretSnapshot,
       uploadId: artifact.uploadId,
       userId: artifact.userId,
     } satisfies Omit<ArtifactRecord, "fileBytes">;
@@ -497,6 +509,66 @@ export function createReportService(deps: {
       input: CreditBureauDisputeTemplateInput,
     ) {
       return renderCreditBureauDisputePortalText(input);
+    },
+    renderTopSecretReportHtml(input: TopSecretReportTemplateInput) {
+      return renderTopSecretReportHtml(input);
+    },
+    queueTopSecretReportPdfDraft(input: {
+      botId: string;
+      previewHtml: string;
+      previewSnapshot: TopSecretReportSnapshot;
+      sessionId: string;
+      userId: string;
+    }) {
+      const generatedAt = new Date(now()).toISOString();
+      const artifactId = crypto.randomUUID();
+      const artifact: ArtifactRecord = {
+        artifactType: "pdf",
+        botId: input.botId,
+        createdAt: generatedAt,
+        fileName: "top-secret-claim-review.pdf",
+        generatedAt,
+        id: artifactId,
+        originalFilename: "top-secret-claim-review.html",
+        sessionId: input.sessionId,
+        status: "queued",
+        storagePath: `artifacts/${input.sessionId}/${artifactId}/top-secret-claim-review.pdf`,
+        templateId: "top_secret_fact_check_v1",
+        topSecretSnapshot: input.previewSnapshot,
+        uploadId: null,
+        userId: input.userId,
+        diskPath: resolveArtifactDiskPath(
+          `artifacts/${input.sessionId}/${artifactId}/top-secret-claim-review.pdf`,
+        ),
+      };
+
+      artifacts.set(artifact.id, artifact);
+      persistArtifactMetadata(artifact);
+
+      deps.reportQueue.enqueueRenderReportJob({
+        artifactFileName: artifact.fileName,
+        artifactId: artifact.id,
+        generatedAt,
+        html: input.previewHtml,
+        templateId: artifact.templateId,
+      });
+
+      deps.analyticsService.track({
+        eventName: "report_queued",
+        entityId: artifact.id,
+        entityType: "report",
+        metadata: {
+          botId: input.botId,
+          sessionId: input.sessionId,
+          templateSlug: "top_secret_fact_check",
+          userId: input.userId,
+        },
+      });
+
+      return {
+        artifact,
+        status: "queued" as const,
+      };
     },
     markArtifactRendered(input: {
       artifactId: string;

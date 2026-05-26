@@ -15,6 +15,208 @@
   font-family: "Segoe UI", "Trebuchet MS", sans-serif;
 }
 
+.top-secret-claim-input {
+  display: grid;
+  gap: 0.55rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.top-secret-claim-input textarea {
+  min-height: 15rem;
+  resize: vertical;
+  text-transform: none;
+}
+
+.top-secret-review-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding-left: 1.35rem;
+}
+
+.top-secret-review-list li {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(255, 210, 110, 0.14);
+  background: rgba(255, 199, 84, 0.04);
+  line-height: 1.45;
+}
+
+.top-secret-review-list li p {
+  margin: 0;
+}
+
+.top-secret-message-label {
+  color: #ffc1ca;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.top-secret-add-message-button {
+  width: 100%;
+}
+
+.top-secret-findings {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.top-secret-shell {
+  --top-secret-bg: #130b08;
+  --top-secret-surface: rgba(39, 22, 17, 0.92);
+  --top-secret-line: rgba(247, 219, 179, 0.2);
+  --top-secret-line-strong: rgba(186, 31, 54, 0.76);
+  --top-secret-cream: #f7ead2;
+  --top-secret-muted: #dcc7a8;
+  --top-secret-crimson: #b61f35;
+  --top-secret-crimson-bright: #e0475d;
+  color: var(--top-secret-cream);
+}
+
+.app-shell--top-secret .dashboard-topbar,
+.app-shell--top-secret .session-banner {
+  border-color: rgba(247, 219, 179, 0.18);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top left, rgba(182, 31, 53, 0.1), transparent 32%),
+    linear-gradient(180deg, rgba(30, 18, 12, 0.98), rgba(12, 7, 5, 0.98));
+}
+
+.app-shell--top-secret .dashboard-topbar h1,
+.app-shell--top-secret .session-status,
+.app-shell--top-secret .timer-value {
+  color: #f7ead2;
+}
+
+.app-shell--top-secret .dashboard-topbar .eyebrow,
+.app-shell--top-secret .session-banner .eyebrow,
+.app-shell--top-secret .timer-label {
+  color: #ffc1ca;
+}
+
+.app-shell--top-secret .session-banner .secondary-button {
+  border-color: rgba(255, 193, 202, 0.35);
+  border-radius: 16px;
+  background: rgba(182, 31, 53, 0.12);
+  color: #f7ead2;
+}
+
+.top-secret-shell .cursive-workspace,
+.top-secret-shell .artifact-panel {
+  border-color: var(--top-secret-line);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(182, 31, 53, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(35, 19, 14, 0.98), var(--top-secret-bg));
+}
+
+.top-secret-shell .cursive-workspace__lane-row,
+.top-secret-shell .cursive-workspace-stepper,
+.top-secret-shell .cursive-workspace__content,
+.top-secret-shell .cursive-workspace-footer,
+.top-secret-card,
+.top-secret-shell .artifact-card,
+.top-secret-review-list li,
+.top-secret-finding-card {
+  border-color: var(--top-secret-line);
+  border-radius: 16px;
+  background: var(--top-secret-surface);
+}
+
+.top-secret-shell .cursive-workspace__lane-label,
+.top-secret-shell .cursive-workspace-stepper__index,
+.top-secret-shell .eyebrow,
+.top-secret-shell .artifact-label {
+  color: #ffc1ca;
+  letter-spacing: 0.1em;
+}
+
+.top-secret-shell h2,
+.top-secret-shell h3,
+.top-secret-shell h4,
+.top-secret-shell p,
+.top-secret-shell li,
+.top-secret-shell label,
+.top-secret-shell dd,
+.top-secret-shell .artifact-title {
+  color: var(--top-secret-cream);
+}
+
+.top-secret-shell .panel-description,
+.top-secret-shell .muted-copy,
+.top-secret-shell .artifact-meta,
+.top-secret-shell .artifact-source,
+.top-secret-shell .support-panel-list,
+.top-secret-shell .support-panel-title {
+  color: var(--top-secret-muted);
+}
+
+.top-secret-shell .cursive-workspace-stepper__pill {
+  border-color: var(--top-secret-line);
+  border-radius: 999px;
+  background: rgba(247, 234, 210, 0.06);
+  color: var(--top-secret-cream);
+}
+
+.top-secret-shell .cursive-workspace-stepper__pill.is-active {
+  border-color: var(--top-secret-line-strong);
+  background: rgba(182, 31, 53, 0.28);
+}
+
+.top-secret-shell .primary-button,
+.top-secret-shell .secondary-button,
+.top-secret-shell .artifact-download-button {
+  min-height: 3.1rem;
+  border-radius: 16px;
+  color: var(--top-secret-cream);
+}
+
+.top-secret-shell .cursive-workspace-footer {
+  position: static;
+}
+
+.top-secret-shell .primary-button {
+  border-color: rgba(255, 193, 202, 0.5);
+  background: linear-gradient(135deg, #881629, var(--top-secret-crimson), var(--top-secret-crimson-bright));
+  box-shadow: 0 12px 28px rgba(96, 9, 23, 0.3);
+}
+
+.top-secret-shell .secondary-button,
+.top-secret-shell .artifact-download-button {
+  border-color: rgba(255, 193, 202, 0.35);
+  background: rgba(182, 31, 53, 0.12);
+}
+
+.top-secret-shell input,
+.top-secret-shell textarea,
+.top-secret-shell select {
+  border-color: rgba(247, 234, 210, 0.2);
+  border-radius: 16px;
+  background: rgba(17, 9, 7, 0.88);
+  color: var(--top-secret-cream);
+}
+
+.top-secret-shell textarea::placeholder {
+  color: rgba(247, 234, 210, 0.56);
+}
+
+.top-secret-card {
+  padding: 1.05rem;
+}
+
+.top-secret-claim-input {
+  color: var(--top-secret-muted);
+  font-size: 0.95rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -686,7 +888,48 @@ h2 {
 
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   justify-content: flex-start;
+}
+
+.provider-oauth-panel {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.provider-oauth-panel > .primary-button {
+  width: 100%;
+}
+
+.oauth-code-row {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, 1fr) auto minmax(7.5rem, 1fr);
+  align-items: stretch;
+  gap: 0.65rem;
+}
+
+.oauth-code-chip {
+  display: inline-flex;
+  min-height: 3.15rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: rgba(255, 199, 84, 0.08);
+  color: var(--gold-bright);
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  padding: 0.8rem 1rem;
+}
+
+.provider-api-fallback {
+  margin-top: -0.35rem;
+}
+
+@media (max-width: 520px) {
+  .oauth-code-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .primary-button,

@@ -24,11 +24,19 @@ import {
   CursiveWorkspace,
   type CursiveWorkspaceStep,
 } from "../cursive/CursiveWorkspace";
+import {
+  EMPTY_TOP_SECRET_WORKFLOW_STATE,
+  TopSecretWorkspace,
+  getSteppedTopSecretState,
+  parseTopSecretClaimsText,
+  type TopSecretFinding,
+  type TopSecretWorkflowState,
+} from "../top-secret/TopSecretWorkspace";
 import { RoriWorkspace } from "../rori/RoriWorkspace";
 
 type SessionSnapshot = {
   id: string;
-  provider: "openai" | "anthropic";
+  provider: "openai" | "anthropic" | "openai_codex";
   startedAt: string;
   expiresAt: string;
   durationSeconds: number;
@@ -1131,8 +1139,11 @@ export function DashboardShell({
   const [cursiveWorkflow, setCursiveWorkflow] = useState<CursiveWorkflowState>(
     EMPTY_CURSIVE_WORKFLOW_STATE,
   );
+  const [topSecretWorkflow, setTopSecretWorkflow] =
+    useState<TopSecretWorkflowState>(EMPTY_TOP_SECRET_WORKFLOW_STATE);
   const cursiveGenerateInFlightRef = useRef(false);
   const cursiveGenerateRequestIdRef = useRef(0);
+  const topSecretGenerateInFlightRef = useRef(false);
   const reviewPromptRequestKeyRef = useRef<string | null>(null);
   const forceSessionExpiry = useMemo(
     () =>
@@ -1190,6 +1201,7 @@ export function DashboardShell({
     ? getBotWorkspacePanel(selectedBot.id)
     : null;
   const isCursiveWorkspace = selectedBot?.id === "document_wizard";
+  const isTopSecretWorkspace = selectedBot?.id === "verifier";
   const isRoriWorkspace = selectedBot?.id === "concierge_general_academy_KB";
   useEffect(() => {
     if (!activeSessionId || !sessionToken) {
@@ -1238,6 +1250,7 @@ export function DashboardShell({
     setArtifacts([]);
     setConversations({});
     setCursiveWorkflow(EMPTY_CURSIVE_WORKFLOW_STATE);
+    setTopSecretWorkflow(EMPTY_TOP_SECRET_WORKFLOW_STATE);
     setSelectedMenuBotId(null);
   }, [activeSessionId, sessionToken]);
 
@@ -1474,7 +1487,9 @@ export function DashboardShell({
   function handleBackToMenu() {
     cursiveGenerateInFlightRef.current = false;
     cursiveGenerateRequestIdRef.current += 1;
+    topSecretGenerateInFlightRef.current = false;
     setCursiveWorkflow(EMPTY_CURSIVE_WORKFLOW_STATE);
+    setTopSecretWorkflow(EMPTY_TOP_SECRET_WORKFLOW_STATE);
     setSelectedMenuBotId(null);
   }
 
@@ -1560,6 +1575,18 @@ export function DashboardShell({
     cursiveGenerateRequestIdRef.current += 1;
     setCursiveWorkflow((currentState) =>
       getSteppedCursiveState(currentState, "next"),
+    );
+  }
+
+  function handleTopSecretBackStep() {
+    setTopSecretWorkflow((currentState) =>
+      getSteppedTopSecretState(currentState, "back"),
+    );
+  }
+
+  function handleTopSecretNextStep() {
+    setTopSecretWorkflow((currentState) =>
+      getSteppedTopSecretState(currentState, "next"),
     );
   }
 
@@ -1948,11 +1975,103 @@ export function DashboardShell({
     }
   }
 
+  async function handleTopSecretGenerate() {
+    if (topSecretGenerateInFlightRef.current || topSecretWorkflow.isGenerating) {
+      return;
+    }
+
+    topSecretGenerateInFlightRef.current = true;
+
+    if (!activeSessionId || !sessionToken) {
+      setTopSecretWorkflow((currentState) => ({
+        ...currentState,
+        error: "Reconnect your provider session before creating the report.",
+        isGenerating: false,
+      }));
+      topSecretGenerateInFlightRef.current = false;
+      return;
+    }
+
+    setTopSecretWorkflow((currentState) => ({
+      ...currentState,
+      error: null,
+      isGenerating: true,
+    }));
+
+    try {
+      const response = await fetch("/api/reports/top-secret/claim-review", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${sessionToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          botId: "verifier",
+          claims: parseTopSecretClaimsText(topSecretWorkflow.claimsText),
+          sessionId: activeSessionId,
+        }),
+      });
+      const payload = (await response.json()) as {
+        artifact?: {
+          fileName: string;
+          id: string;
+          originalFilename: string;
+          status: "queued" | "ready" | "failed";
+        };
+        artifactType?: "pdf";
+        findings?: TopSecretFinding[];
+        message?: string;
+      };
+
+      if (!response.ok || !payload.artifact) {
+        throw new Error(payload.message ?? "Unable to create the report.");
+      }
+
+      const queuedArtifact = payload.artifact;
+      setArtifacts((currentArtifacts) => [
+        {
+          artifactType: payload.artifactType ?? "pdf",
+          botId: "verifier",
+          botName: selectedMenuItem?.displayName ?? "Top Secret",
+          createdAt: new Date().toISOString(),
+          fileName: queuedArtifact.fileName,
+          generatedAt: new Date().toISOString(),
+          id: queuedArtifact.id,
+          originalFilename: queuedArtifact.originalFilename,
+          status: queuedArtifact.status,
+        },
+        ...currentArtifacts.filter(
+          (artifact) => artifact.id !== queuedArtifact.id,
+        ),
+      ]);
+      setTopSecretWorkflow((currentState) => ({
+        ...currentState,
+        currentStep: "results",
+        error: null,
+        findings: payload.findings ?? [],
+        isGenerating: false,
+      }));
+    } catch (error) {
+      setTopSecretWorkflow((currentState) => ({
+        ...currentState,
+        currentStep: "review",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to create the report right now.",
+        isGenerating: false,
+      }));
+    } finally {
+      topSecretGenerateInFlightRef.current = false;
+    }
+  }
+
   return (
     <main
       className={[
         "app-shell",
         "app-shell--dashboard",
+        isTopSecretWorkspace ? "app-shell--top-secret" : "",
         isRoriWorkspace ? "app-shell--rori" : "",
       ]
         .filter(Boolean)
@@ -2022,6 +2141,31 @@ export function DashboardShell({
                   onUploadFileChange={handleCursiveUploadFileChange}
                   onUploadIssueToggle={handleCursiveUploadIssueToggle}
                   state={cursiveWorkflow}
+                />
+              ) : isTopSecretWorkspace ? (
+                <TopSecretWorkspace
+                  artifacts={artifacts.filter(
+                    (artifact) =>
+                      isArtifactForMenuSelection(
+                        artifact,
+                        selectedMenuItem.id,
+                        selectedMenuItem.displayName,
+                      ),
+                  )}
+                  onBack={handleTopSecretBackStep}
+                  onBackToMenu={handleBackToMenu}
+                  onClaimsTextChange={(claimsText) => {
+                    setTopSecretWorkflow((currentState) => ({
+                      ...currentState,
+                      claimsText,
+                      error: null,
+                    }));
+                  }}
+                  onGenerate={() => {
+                    void handleTopSecretGenerate();
+                  }}
+                  onNext={handleTopSecretNextStep}
+                  state={topSecretWorkflow}
                 />
               ) : isRoriWorkspace ? (
                 <RoriWorkspace

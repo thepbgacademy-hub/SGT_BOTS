@@ -54,7 +54,13 @@ import {
 import { registerSessionRoutes } from "./modules/sessions/session.route";
 import { createSessionTokenService } from "./modules/sessions/session.token";
 import { registerTelegramRoutes } from "./modules/telegram/telegram.route";
-import { validateTelegramInitData } from "./modules/telegram/init-data";
+import { validateTelegramInitDataWithTokens } from "./modules/telegram/init-data";
+import { registerTopSecretAdminRoutes } from "./modules/top-secret/top-secret-admin.route";
+import {
+  createInMemoryTopSecretReviewRepo,
+  createSupabaseTopSecretReviewRepo,
+  type TopSecretReviewRepo,
+} from "./modules/top-secret/top-secret-review.repo";
 import { createUploadService } from "./modules/uploads/upload.service";
 
 declare module "fastify" {
@@ -75,6 +81,7 @@ declare module "fastify" {
     reviewService: ReturnType<typeof createReviewService>;
     sessionService: ReturnType<typeof createSessionService>;
     cursiveConfigService: CursiveConfigService;
+    topSecretReviewRepo: TopSecretReviewRepo;
   }
 }
 
@@ -88,6 +95,7 @@ export async function buildApp(options?: {
   reportQueueJobRunner?: RenderReportJobRunner;
   roriDirectoryRepo?: RoriAcademyDirectoryRepo;
   roriWikiRepo?: RoriWikiRepo;
+  topSecretReviewRepo?: TopSecretReviewRepo;
 }) {
   // JSON uploads include base64-encoded PDFs, so the default ~1 MiB limit is too
   // small for ordinary documents before our own validation runs.
@@ -147,6 +155,13 @@ export async function buildApp(options?: {
   );
   app.decorate("cursiveService", createCursiveService());
   app.decorate("cursiveConfigService", createCursiveConfigService(appEnv));
+  app.decorate(
+    "topSecretReviewRepo",
+    options?.topSecretReviewRepo ??
+      (appEnv.profileRepoMode === "memory"
+        ? createInMemoryTopSecretReviewRepo()
+        : createSupabaseTopSecretReviewRepo(appEnv)),
+  );
   app.decorate("uploadService", createUploadService({ now: options?.now }));
   let reportService!: ReturnType<typeof createReportService>;
   const reportQueue = createInMemoryReportQueue({
@@ -192,7 +207,10 @@ export async function buildApp(options?: {
     try {
       return {
         profile: buildLaunchPrefill(
-          validateTelegramInitData(initData, app.appEnv.telegramBotToken),
+          validateTelegramInitDataWithTokens(
+            initData,
+            app.appEnv.telegramBotTokens,
+          ),
         ),
       };
     } catch (error) {
@@ -211,5 +229,6 @@ export async function buildApp(options?: {
   await registerCursiveRoutes(app);
   await registerReportRoutes(app);
   await registerReviewRoutes(app);
+  await registerTopSecretAdminRoutes(app);
   return app;
 }

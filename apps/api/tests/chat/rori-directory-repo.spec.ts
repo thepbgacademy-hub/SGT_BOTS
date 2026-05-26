@@ -12,6 +12,7 @@ const BASE_ENV: AppEnv = {
   telegramBotAppShortName: "app",
   telegramBotRuntimeMode: "off",
   telegramBotToken: "test-token",
+  telegramBotTokens: ["test-token"],
   telegramBotUsername: "sgt_playground_bot",
   telegramReviewGroupUrl: "https://t.me/+review",
 };

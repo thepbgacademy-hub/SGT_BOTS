@@ -96,10 +96,10 @@ export const BOT_MANIFESTS = [
     capabilities: createBotCapabilities({
       chat: true,
       citations: true,
-      html_report: false,
+      html_report: true,
       pdf_upload: false,
       rag_query: true,
-      structured_form: false,
+      structured_form: true,
     }),
     sourceBinding: "knowledge_base",
     toolPermissions: ["knowledge_base_search"],
