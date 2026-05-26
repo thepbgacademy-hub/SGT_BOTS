@@ -159,3 +159,13 @@
 **Fix applied:** Replaced `findLastIndex` with a small reverse `for` loop that works under the current TypeScript target.
 
 **Rule going forward:** Shared mini app components should avoid newer built-in APIs unless the app TS lib target already supports them, especially when Vitest can pass before `tsc` checks the target library.
+
+## 2026-05-26 - Rori Empty State Repeated Header Instructions
+
+**Context:** Rori mini app visual cleanup after the centered chat panel update.
+
+**Problem:** The shared chat empty-state card showed `Ready`, repeated prompt guidance, and rendered four starter buttons immediately below the Rori header. Because the header already tells users what Rori can answer, the card added clutter without a useful job.
+
+**Fix applied:** Added a `hideEmptyState` option to the shared `ChatPanel`, enabled it only for Rori, and stopped passing starter prompts into the Rori workspace.
+
+**Rule going forward:** Rori should not show redundant starter cards or decorative prompt buttons unless they are part of a newly approved interaction design.

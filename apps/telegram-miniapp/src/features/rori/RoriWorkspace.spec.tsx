@@ -40,12 +40,13 @@ describe("RoriWorkspace", () => {
     );
     expect(markup).not.toContain("Tool routing");
     expect(markup).not.toContain("Telegram rooms</span>");
-    expect(markup).toContain("Pick a prompt or type your question below.");
     expect(markup).toContain("Ask Rori about the Academy...");
-    expect(markup).toContain("How do I enroll?");
-    expect(markup).toContain("What workshops are coming up?");
-    expect(markup).toContain("Which PBG Telegram rooms should I join?");
-    expect(markup).toContain("Which tool should I use for...?");
+    expect(markup).not.toContain("Pick a prompt or type your question below.");
+    expect(markup).not.toContain("How do I enroll?");
+    expect(markup).not.toContain("What workshops are coming up?");
+    expect(markup).not.toContain("Which PBG Telegram rooms should I join?");
+    expect(markup).not.toContain("Which tool should I use for...?");
+    expect(markup).not.toContain("message-card--empty");
   });
 
   it("does not render upload, report, artifact, or support sections", () => {

@@ -77,6 +77,29 @@ describe("ChatPanel", () => {
     expect(markup).toContain("What workshops are coming up?");
   });
 
+  it("can hide the empty state card when a bot supplies its own instructions", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ChatPanel, {
+        bot: GENERIC_BOT,
+        conversationId: undefined,
+        emptyCopy: "Pick a prompt or type your question below.",
+        hideEmptyState: true,
+        inputPlaceholder: "Ask Rori about the Academy...",
+        messages: [],
+        onArtifactQueued: () => undefined,
+        onConversationUpdate: () => undefined,
+        sessionId: "session-1",
+        sessionToken: "token-1",
+        starterPrompts: ["How do I enroll?"],
+      }),
+    );
+
+    expect(markup).not.toContain("Pick a prompt or type your question below.");
+    expect(markup).not.toContain("How do I enroll?");
+    expect(markup).not.toContain("message-card--empty");
+    expect(markup).toContain("Ask Rori about the Academy...");
+  });
+
   it("uses a custom send button label when provided", () => {
     const markup = renderToStaticMarkup(
       createElement(ChatPanel, {

@@ -14,13 +14,6 @@ type RoriWorkspaceProps = {
   sessionToken: string;
 };
 
-const RORI_STARTER_PROMPTS = [
-  "How do I enroll?",
-  "What workshops are coming up?",
-  "Which PBG Telegram rooms should I join?",
-  "Which tool should I use for...?",
-];
-
 export function RoriWorkspace({
   bot,
   conversationId,
@@ -52,8 +45,8 @@ export function RoriWorkspace({
         <ChatPanel
           bot={bot}
           conversationId={conversationId}
-          emptyCopy="Pick a prompt or type your question below."
           hideCitations
+          hideEmptyState
           hideHeader
           inputPlaceholder="Ask Rori about the Academy..."
           latestExchangeOnly
@@ -64,7 +57,6 @@ export function RoriWorkspace({
           sendErrorCopy="Rori could not answer right now. Please try again."
           sessionId={sessionId}
           sessionToken={sessionToken}
-          starterPrompts={RORI_STARTER_PROMPTS}
         />
       </div>
     </section>

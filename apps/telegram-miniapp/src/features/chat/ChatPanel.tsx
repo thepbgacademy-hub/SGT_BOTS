@@ -31,6 +31,7 @@ type ChatPanelProps = {
   emptyCopy?: string;
   hideHeader?: boolean;
   hideCitations?: boolean;
+  hideEmptyState?: boolean;
   inputPlaceholder?: string;
   latestExchangeOnly?: boolean;
   messages: ChatMessage[];
@@ -60,6 +61,7 @@ export function ChatPanel({
   emptyCopy = "Start the conversation here. Each bot stays inside its assigned lane and only returns user-facing results.",
   hideHeader = false,
   hideCitations = false,
+  hideEmptyState = false,
   inputPlaceholder,
   latestExchangeOnly = false,
   messages,
@@ -378,7 +380,7 @@ export function ChatPanel({
             </article>
           );
         })}
-        {!visibleMessages.length ? (
+        {!visibleMessages.length && !hideEmptyState ? (
           <article className="message-card message-card--empty">
             <p className="message-role">Ready</p>
             <p className="message-copy">{emptyCopy}</p>

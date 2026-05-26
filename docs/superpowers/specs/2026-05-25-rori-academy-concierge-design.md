@@ -66,6 +66,7 @@ The UI should borrow the Top Secret layout family:
 - The chat window should be centered inside the Rori card area for a uniform, intentional layout.
 - User and Rori messages should show only the latest exchange instead of stacking the full visible history.
 - Rori should not print wiki source names or citation pills in the user-facing chat. Source grounding may remain internal to the API response.
+- Do not show the shared empty-state starter prompt card in Rori. The header instructions already explain what to ask, so the chat area should stay uncluttered until the user sends a message.
 
 Rori uses purple accents instead of Top Secret scarlet:
 
@@ -80,13 +81,6 @@ Header:
 
 - Title: `Rori`
 - Helper text: `Ask about the Academy, workshops, enrollment, PBG Telegram rooms, or what tools do what.`
-
-Starter prompts:
-
-- `How do I enroll?`
-- `What workshops are coming up?`
-- `Which PBG Telegram rooms should I join?`
-- `Which tool should I use for...?`
 
 Chat composer:
 
