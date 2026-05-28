@@ -197,17 +197,6 @@ export async function registerReportRoutes(app: FastifyInstance) {
       });
     } catch (error) {
       const message = (error as Error).message;
-      app.log.warn(
-        {
-          error: message,
-          route: "top-secret-claim-review",
-        },
-        "top secret claim review failed",
-      );
-      console.warn("top secret claim review failed", {
-        error: message,
-        route: "top-secret-claim-review",
-      });
       return reply.code(replyForReportRuntimeError(message)).send({
         message: getReportRuntimeErrorMessage(message),
       });
@@ -760,6 +749,7 @@ export async function registerReportRoutes(app: FastifyInstance) {
         sessionId,
         userId: claims.userId,
       });
+      const originalProviderApiKey = sessionSecret.apiKey;
       let runtimeKnowledgeEntries: TopSecretRuntimeKnowledgeEntry[] = [];
 
       try {
@@ -780,10 +770,18 @@ export async function registerReportRoutes(app: FastifyInstance) {
         ? payload.claims.map((claim) => String(claim))
         : [];
       const submittedClaims = parseTopSecretClaims({ claims: rawClaims });
-      const findings = await topSecretService.generateFindings({
-        claims: submittedClaims,
-        sessionSecret,
-      });
+      let findings: TopSecretReportSnapshot["findings"];
+
+      try {
+        findings = await topSecretService.generateFindings({
+          claims: submittedClaims,
+          sessionSecret,
+        });
+      } finally {
+        if (sessionSecret.apiKey !== originalProviderApiKey) {
+          app.sessionSecretStore.put(sessionSecret);
+        }
+      }
       const generatedDate = formatCursiveGeneratedDate();
       const previewSnapshot: TopSecretReportSnapshot = {
         templateSlug: "top_secret_fact_check",
@@ -829,7 +827,16 @@ export async function registerReportRoutes(app: FastifyInstance) {
       });
     } catch (error) {
       const message = (error as Error).message;
-      return reply.code(replyForReportRuntimeError(message)).send({
+      const statusCode = replyForReportRuntimeError(message);
+
+      if (statusCode >= 500) {
+        console.warn("top secret claim review failed", {
+          error: message,
+          route: "top-secret-claim-review",
+        });
+      }
+
+      return reply.code(statusCode).send({
         message: getReportRuntimeErrorMessage(message),
       });
     }

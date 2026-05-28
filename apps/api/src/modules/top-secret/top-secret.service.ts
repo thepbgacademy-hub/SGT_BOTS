@@ -488,14 +488,43 @@ function parseProviderFindings(input: {
   const findings = Array.isArray(record.findings) ? record.findings : [];
 
   if (findings.length !== input.claims.length) {
-    throw new Error("invalid top secret provider response");
+    console.warn("top secret provider returned mismatched findings", {
+      expected: input.claims.length,
+      received: findings.length,
+    });
+
+    return input.claims.map((claim, index) =>
+      buildNeutralStubFinding(
+        claim,
+        input.sourceBundlesByClaim[index] ?? [],
+        input.runtimeKnowledgeEntries,
+      ),
+    );
   }
 
   return findings.map((finding, index) => {
-    const parsed = TopSecretFindingSchema.parse(finding);
-    const citations = parsed.citations.filter(isAuthoritativeTopSecretCitation);
+    const schemaResult = TopSecretFindingSchema.safeParse(finding);
     const sources = input.sourceBundlesByClaim[index] ?? [];
     const claim = input.claims[index];
+
+    if (!schemaResult.success) {
+      console.warn("top secret provider finding failed schema validation", {
+        claimIndex: index,
+        issues: schemaResult.error.issues.map((issue) => ({
+          code: issue.code,
+          path: issue.path.join("."),
+        })),
+      });
+
+      return {
+        ...buildNeutralStubFinding(claim, sources, input.runtimeKnowledgeEntries),
+        analysis:
+          "The provider response did not keep the required report structure tied to the retained sources, so this item is marked as not enough reliable evidence instead of being forced into a true or false conclusion.",
+      };
+    }
+
+    const parsed = schemaResult.data;
+    const citations = parsed.citations.filter(isAuthoritativeTopSecretCitation);
 
     if (citations.length === 0) {
       return {

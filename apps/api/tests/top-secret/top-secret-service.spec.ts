@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createTopSecretService,
   doesClaimLikelyInvolveFederalStatute,
@@ -15,6 +15,10 @@ const sessionSecret: SessionSecret = {
 };
 
 describe("Top Secret service", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("accepts 1 to 5 statements and how-to claims", () => {
     expect(
       parseTopSecretClaims({
@@ -418,6 +422,100 @@ describe("Top Secret service", () => {
     expect(findings[0].citations.every(isAuthoritativeTopSecretCitation)).toBe(
       true,
     );
+  });
+
+  it("falls back per malformed provider finding instead of failing the whole report", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const service = createTopSecretService({
+      mode: "live",
+      fetch: async (url) => {
+        if (!String(url).includes("api.openai.com")) {
+          return new Response(
+            "<html><body>TreasuryDirect explains Treasury marketable securities and source text retained for evidence review.</body></html>",
+            {
+              status: 200,
+              headers: { "content-type": "text/html" },
+            },
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    findings: [
+                      {
+                        analysis:
+                          "This malformed finding is missing the required citations array.",
+                        claim:
+                          "A postage stamp signature pays postage under federal law.",
+                        conclusion:
+                          "So for this message, the evidence points to this conclusion: unsupported.",
+                        verdict: "not_enough_reliable_evidence",
+                      },
+                      {
+                        analysis:
+                          "TreasuryDirect is an official source for Treasury securities, but it does not validate unrelated private-account claims.",
+                        citations: [
+                          {
+                            publisher: "U.S. Treasury",
+                            title: "TreasuryDirect - Treasury securities overview",
+                            url: "https://www.treasurydirect.gov/marketable-securities/",
+                          },
+                        ],
+                        claim:
+                          "TreasuryDirect account claims should be checked with official sources.",
+                        conclusion:
+                          "So for this message, the evidence points to this conclusion: the official source can verify Treasury securities information, not every online Treasury account claim.",
+                        supportReferences: [
+                          {
+                            sourceId: "source-1",
+                            supports:
+                              "The retained source supports checking TreasuryDirect account claims with official Treasury material.",
+                          },
+                        ],
+                        verdict: "partially_verified",
+                      },
+                    ],
+                  }),
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
+      },
+    });
+
+    const findings = await service.generateFindings({
+      claims: [
+        "A postage stamp signature pays postage under federal law.",
+        "TreasuryDirect account claims should be checked with official sources.",
+      ],
+      sessionSecret,
+    });
+
+    expect(findings).toHaveLength(2);
+    expect(warnSpy).toHaveBeenCalledWith(
+      "top secret provider finding failed schema validation",
+      expect.objectContaining({ claimIndex: 0 }),
+    );
+    expect(findings[0]).toMatchObject({
+      analysis: expect.stringContaining(
+        "provider response did not keep the required report structure",
+      ),
+      verdict: "not_enough_reliable_evidence",
+    });
+    expect(findings[1]).toMatchObject({
+      claim:
+        "TreasuryDirect account claims should be checked with official sources.",
+      verdict: "partially_verified",
+    });
   });
 
   it("adds historical authority notes for secondary legal sources", async () => {

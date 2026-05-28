@@ -104,6 +104,51 @@ describe("OpenAI Codex OAuth runtime requests", () => {
     expect(refreshed).toEqual(["refresh-token-new"]);
   });
 
+  it("refreshes opaque or undecodable Codex access tokens before provider calls", async () => {
+    const refreshedToken = jwt({ exp: Math.floor(Date.now() / 1000) + 3600 });
+    const calls: string[] = [];
+    const fetchImpl = vi.fn().mockImplementation(async (url, init) => {
+      calls.push(String(url));
+
+      if (String(url).includes("/oauth/token")) {
+        return new Response(
+          JSON.stringify({
+            access_token: refreshedToken,
+            refresh_token: "refresh-token-new",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      expect((init.headers as Record<string, string>).authorization).toBe(
+        `Bearer ${refreshedToken}`,
+      );
+
+      return new Response(JSON.stringify({ output_text: '{"ok":true}' }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+
+    await expect(
+      requestCodexJson({
+        apiKey: JSON.stringify({
+          accessToken: "opaque-access-token",
+          baseUrl: "https://chatgpt.com/backend-api/codex",
+          refreshToken: "refresh-token-old",
+        }),
+        fetchImpl,
+        systemPrompt: "System",
+        userPrompt: "User",
+      }),
+    ).resolves.toEqual({ ok: true });
+
+    expect(calls).toEqual([
+      "https://auth.openai.com/oauth/token",
+      "https://chatgpt.com/backend-api/codex/responses",
+    ]);
+  });
+
   it("refreshes and retries once when Codex rejects the current access token", async () => {
     const refreshedToken = jwt({ exp: Math.floor(Date.now() / 1000) + 3600 });
     const calls: string[] = [];

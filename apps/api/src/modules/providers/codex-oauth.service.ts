@@ -381,7 +381,7 @@ function isJwtExpiring(token: string, skewSeconds: number) {
   const [, payload] = token.split(".");
 
   if (!payload) {
-    return false;
+    return true;
   }
 
   try {
@@ -394,8 +394,8 @@ function isJwtExpiring(token: string, skewSeconds: number) {
     ) as { exp?: unknown };
     const exp = typeof parsed.exp === "number" ? parsed.exp : 0;
 
-    return exp > 0 && exp <= Math.floor(Date.now() / 1000) + skewSeconds;
+    return exp <= Math.floor(Date.now() / 1000) + skewSeconds;
   } catch {
-    return false;
+    return true;
   }
 }

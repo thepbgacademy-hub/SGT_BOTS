@@ -29,3 +29,33 @@
 **Fix applied:** Updated Codex text extraction to join all output text parts and normalize fenced or prefixed JSON before parsing.
 
 **Rule going forward:** Codex Responses output should be treated as a stream-like list of content parts. Join parts before parsing and tolerate common JSON fencing.
+
+## 2026-05-28 - Diagnostic Logging Was Attached To The Wrong Report Route
+
+**Context:** Top Secret still returned the generic connected-provider failure, but backend logs did not show the expected `top secret claim review failed` diagnostic.
+
+**Problem:** The diagnostic warning was accidentally placed on the artifact-download route catch block instead of `POST /api/reports/top-secret/claim-review`. That meant the failing report-generation request could return the generic error without leaving a useful server log.
+
+**Fix applied:** Moved sanitized logging to the actual Top Secret claim-review catch block and limited it to server/runtime failures so normal 400-level validation errors do not pollute production logs.
+
+**Rule going forward:** When adding diagnostics, verify the log statement is inside the route that owns the failing user action, not an adjacent route with similar error handling.
+
+## 2026-05-28 - Top Secret Failed Closed On Imperfect Provider JSON
+
+**Context:** Connected Codex sessions can return JSON that is parseable but incomplete, such as a finding missing citations or a response with fewer findings than claims.
+
+**Problem:** Top Secret treated any malformed finding as `invalid top secret provider response`, which killed the whole report. This made the user see a provider failure even when some evidence-bound output could be safely downgraded.
+
+**Fix applied:** Top Secret now falls back to neutral, source-bound `not_enough_reliable_evidence` findings when the provider returns a malformed finding or mismatched finding count. Truly non-JSON provider output still fails at the route boundary.
+
+**Rule going forward:** Do not force a true/false conclusion from malformed provider output. Degrade to a neutral evidence-bound finding when the retained sources exist; reserve hard failure for transport errors and non-parseable provider responses.
+
+## 2026-05-28 - Opaque Codex Access Tokens Needed Preflight Refresh
+
+**Context:** A Codex subscription can show as connected while the saved access token is opaque, undecodable, or missing a normal JWT expiration payload.
+
+**Problem:** The runtime previously treated tokens with no JWT payload or decode failure as not expiring. That allowed stale or opaque access tokens to be sent directly to Codex Responses before refresh.
+
+**Fix applied:** Unknown, opaque, or undecodable Codex access tokens are now treated as expiring and refreshed before the provider call. The Top Secret route writes refreshed credentials back to the active session secret store after report generation.
+
+**Rule going forward:** If token currentness cannot be verified, refresh before use. Do not assume an opaque Codex access token is still valid.

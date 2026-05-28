@@ -15,6 +15,7 @@
 
 ## Done
 
+- [x] ~~Repair persistent Top Secret Codex report-generation failure diagnostics and fallback handling~~ (2026-05-28)
 - [x] ~~Fix OpenAI Codex subscription runtime calls for Top Secret report generation~~ (2026-05-28)
 - [x] ~~Polish Rori mini app chat workspace and preserve provider login fix~~ (2026-05-26)
 - [x] ~~Simplify Rori visible chat by removing redundant buttons, centering the chat panel, hiding source labels, and showing only the latest exchange~~ (2026-05-26)

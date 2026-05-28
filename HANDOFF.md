@@ -2,7 +2,7 @@
 
 ## Next Step
 
-After the user retests Top Secret with OpenAI Codex subscription login, confirm the claim-review report completes. Then resume Rori Phase 7 when Academy-approved wiki content is ready: collect the approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008` and `009`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
+After the user reconnects OpenAI Codex in the playground and retests Top Secret, confirm the claim-review report completes and check VPS logs for any remaining sanitized provider failure. Then resume Rori Phase 7 when Academy-approved wiki content is ready: collect the approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008` and `009`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
 
 ## Build Doc Sources
 
@@ -20,4 +20,4 @@ After the user retests Top Secret with OpenAI Codex subscription login, confirm 
 
 ## Last Completed Step
 
-Top Secret Codex provider runtime fix completed on `codex/rori-academy-concierge`: the playground still connects OpenAI Codex through device login, but the downstream Codex Responses request now matches the proven Codex transport shape, omits `max_output_tokens`, refreshes expiring access tokens, retries once after 401/403, and updates the in-memory session credential after refresh for Top Secret and Cursive provider calls.
+Persistent Top Secret Codex report-generation repair completed on `codex/rori-academy-concierge`: diagnostics now log from the actual Top Secret claim-review route for server/provider failures, opaque or undecodable Codex access tokens refresh before runtime use, refreshed Top Secret Codex credentials are written back to the active session secret store, and malformed but parseable provider findings degrade to neutral `not_enough_reliable_evidence` findings instead of killing the full report.
