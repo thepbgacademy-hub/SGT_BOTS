@@ -175,28 +175,30 @@ export async function requestCodexJson(input: {
   failurePrefix?: string;
   fetchImpl: typeof fetch;
   maxOutputTokens?: number;
+  onCredentialRefresh?: (credential: CodexCredential) => void;
   systemPrompt: string;
   userPrompt: string;
 }) {
-  const credential = parseCodexCredential(input.apiKey);
-  const baseUrl = credential.baseUrl.replace(/\/$/u, "");
-  const response = await input.fetchImpl(`${baseUrl}/responses`, {
-    body: JSON.stringify({
-      include: ["reasoning.encrypted_content"],
-      input: [{ content: input.userPrompt, role: "user" }],
-      instructions: input.systemPrompt,
-      max_output_tokens: input.maxOutputTokens ?? 2200,
-      model: "gpt-5.3-codex",
-      reasoning: { effort: "medium", summary: "auto" },
-      store: false,
-    }),
-    headers: {
-      authorization: `Bearer ${credential.accessToken}`,
-      "content-type": "application/json",
-      ...buildCodexHeaders(credential.accessToken),
-    },
-    method: "POST",
-  });
+  let credential = parseCodexCredential(input.apiKey);
+
+  if (isJwtExpiring(credential.accessToken, 120)) {
+    credential = await refreshCodexCredential({
+      credential,
+      fetchImpl: input.fetchImpl,
+    });
+    input.onCredentialRefresh?.(credential);
+  }
+
+  let response = await sendCodexJsonRequest({ credential, input });
+
+  if (response.status === 401 || response.status === 403) {
+    credential = await refreshCodexCredential({
+      credential,
+      fetchImpl: input.fetchImpl,
+    });
+    input.onCredentialRefresh?.(credential);
+    response = await sendCodexJsonRequest({ credential, input });
+  }
 
   if (!response.ok) {
     throw new Error(
@@ -208,6 +210,34 @@ export async function requestCodexJson(input: {
     extractCodexText(await response.json()),
     input.failurePrefix,
   );
+}
+
+async function sendCodexJsonRequest(input: {
+  credential: CodexCredential;
+  input: {
+    fetchImpl: typeof fetch;
+    systemPrompt: string;
+    userPrompt: string;
+  };
+}) {
+  const credential = input.credential;
+  const baseUrl = credential.baseUrl.replace(/\/$/u, "");
+  return input.input.fetchImpl(`${baseUrl}/responses`, {
+    body: JSON.stringify({
+      include: ["reasoning.encrypted_content"],
+      input: [{ content: input.input.userPrompt, role: "user" }],
+      instructions: input.input.systemPrompt,
+      model: "gpt-5.3-codex",
+      reasoning: { effort: "medium", summary: "auto" },
+      store: false,
+    }),
+    headers: {
+      authorization: `Bearer ${credential.accessToken}`,
+      "content-type": "application/json",
+      ...buildCodexHeaders(credential.accessToken),
+    },
+    method: "POST",
+  });
 }
 
 function extractCodexText(payload: unknown) {
@@ -276,5 +306,65 @@ function extractCodexAccountId(accessToken: string) {
     );
   } catch {
     return null;
+  }
+}
+
+async function refreshCodexCredential(input: {
+  credential: CodexCredential;
+  fetchImpl: typeof fetch;
+}) {
+  const response = await input.fetchImpl(CODEX_TOKEN_URL, {
+    body: new URLSearchParams({
+      client_id: CODEX_CLIENT_ID,
+      grant_type: "refresh_token",
+      refresh_token: input.credential.refreshToken,
+    }),
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error("OpenAI Codex token refresh failed");
+  }
+
+  const payload = (await response.json()) as Record<string, unknown>;
+  const accessToken =
+    typeof payload.access_token === "string" ? payload.access_token : "";
+  const refreshToken =
+    typeof payload.refresh_token === "string"
+      ? payload.refresh_token
+      : input.credential.refreshToken;
+
+  if (!accessToken) {
+    throw new Error("OpenAI Codex token refresh returned invalid tokens");
+  }
+
+  return {
+    accessToken,
+    baseUrl: input.credential.baseUrl,
+    refreshToken,
+  };
+}
+
+function isJwtExpiring(token: string, skewSeconds: number) {
+  const [, payload] = token.split(".");
+
+  if (!payload) {
+    return false;
+  }
+
+  try {
+    const normalizedPayload = payload
+      .replaceAll("-", "+")
+      .replaceAll("_", "/")
+      .padEnd(Math.ceil(payload.length / 4) * 4, "=");
+    const parsed = JSON.parse(
+      Buffer.from(normalizedPayload, "base64").toString("utf8"),
+    ) as { exp?: unknown };
+    const exp = typeof parsed.exp === "number" ? parsed.exp : 0;
+
+    return exp > 0 && exp <= Math.floor(Date.now() / 1000) + skewSeconds;
+  } catch {
+    return false;
   }
 }

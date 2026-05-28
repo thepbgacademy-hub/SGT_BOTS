@@ -189,6 +189,7 @@ async function requestAnthropicDraft(input: {
 async function requestCodexDraft(input: {
   apiKey: string;
   fetchImpl: typeof fetch;
+  onCredentialRefresh?: (apiKey: string) => void;
   promptPackage: CursivePromptPackage;
 }) {
   return requestCodexJson({
@@ -196,6 +197,8 @@ async function requestCodexDraft(input: {
     failurePrefix: "provider draft failed",
     fetchImpl: input.fetchImpl,
     maxOutputTokens: 300,
+    onCredentialRefresh: (credential) =>
+      input.onCredentialRefresh?.(JSON.stringify(credential)),
     systemPrompt:
       `${input.promptPackage.systemPrompt}\nReturn only valid JSON with keys subjectLine and disputeSummary. Keep the subject line concise. Keep disputeSummary to one or two factual sentences. Explain the inaccuracy and the corrective position without repeating the bureau name, account reference, or the phrase 'the disputed reporting is inaccurate because'. Do not add citations, addresses, or signatures.`,
     userPrompt: input.promptPackage.promptText,
@@ -269,6 +272,9 @@ export function createCursiveDraftService(deps?: {
             ? await requestCodexDraft({
                 apiKey: input.sessionSecret.apiKey,
                 fetchImpl,
+                onCredentialRefresh: (apiKey) => {
+                  input.sessionSecret.apiKey = apiKey;
+                },
                 promptPackage: input.promptPackage,
               })
           : await requestOpenAiDraft({

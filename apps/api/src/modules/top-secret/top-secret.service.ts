@@ -457,6 +457,7 @@ async function requestCodexFindings(input: {
   apiKey: string;
   claims: string[];
   fetchImpl: typeof fetch;
+  onCredentialRefresh?: (apiKey: string) => void;
   sourceBundlesByClaim: TopSecretSourceBundle[][];
 }) {
   return requestCodexJson({
@@ -464,6 +465,8 @@ async function requestCodexFindings(input: {
     failurePrefix: "top secret provider failed",
     fetchImpl: input.fetchImpl,
     maxOutputTokens: 2200,
+    onCredentialRefresh: (credential) =>
+      input.onCredentialRefresh?.(JSON.stringify(credential)),
     systemPrompt: getTopSecretSystemPrompt(input.claims),
     userPrompt: JSON.stringify({
       claims: input.claims,
@@ -610,6 +613,9 @@ export function createTopSecretService(deps?: {
                 apiKey: input.sessionSecret.apiKey,
                 claims,
                 fetchImpl,
+                onCredentialRefresh: (apiKey) => {
+                  input.sessionSecret.apiKey = apiKey;
+                },
                 sourceBundlesByClaim,
               })
           : await requestOpenAiFindings({

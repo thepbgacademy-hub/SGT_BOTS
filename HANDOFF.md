@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Rori Phase 7 remains blocked on Academy-approved wiki content: after the user finishes the Rori wiki with `E:\REPOS\wiki-architect`, collect the approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008` and `009`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
+After the user retests Top Secret with OpenAI Codex subscription login, confirm the claim-review report completes. Then resume Rori Phase 7 when Academy-approved wiki content is ready: collect the approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008` and `009`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
 
 ## Build Doc Sources
 
@@ -15,8 +15,9 @@ Rori Phase 7 remains blocked on Academy-approved wiki content: after the user fi
 - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-phase-4-operations-directory.md`
 - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-phase-5-wiki-knowledge.md`
 - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-phase-6-admin-data-preflight.md`
+- `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-28-top-secret-codex-provider-error-log.md`
 - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-error-log.md`
 
 ## Last Completed Step
 
-Rori mini app polish completed on `codex/rori-academy-concierge`: the dedicated Rori chat workspace now uses the dark brown Top Secret layout family with cream text, rounded sections, centered chat, and purple accents. The redundant capability row, empty starter-prompt card, and duplicate workspace Back button were removed, helper copy now says `PBG Telegram rooms` and `what tools do what`, source labels are hidden from the Rori chat UI, and only the latest user/Rori exchange is shown. The shared Codex provider fix was also preserved on this branch so Rori deployment does not regress the main playground provider login.
+Top Secret Codex provider runtime fix completed on `codex/rori-academy-concierge`: the playground still connects OpenAI Codex through device login, but the downstream Codex Responses request now matches the proven Codex transport shape, omits `max_output_tokens`, refreshes expiring access tokens, retries once after 401/403, and updates the in-memory session credential after refresh for Top Secret and Cursive provider calls.

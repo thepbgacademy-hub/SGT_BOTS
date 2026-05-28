@@ -15,6 +15,7 @@
 
 ## Done
 
+- [x] ~~Fix OpenAI Codex subscription runtime calls for Top Secret report generation~~ (2026-05-28)
 - [x] ~~Polish Rori mini app chat workspace and preserve provider login fix~~ (2026-05-26)
 - [x] ~~Simplify Rori visible chat by removing redundant buttons, centering the chat panel, hiding source labels, and showing only the latest exchange~~ (2026-05-26)
 - [x] ~~Remove Rori empty starter-prompt card because header instructions already cover the same guidance~~ (2026-05-26)
