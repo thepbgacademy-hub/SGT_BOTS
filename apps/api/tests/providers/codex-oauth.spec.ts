@@ -153,4 +153,36 @@ describe("OpenAI Codex OAuth runtime requests", () => {
       "https://chatgpt.com/backend-api/codex/responses",
     ]);
   });
+
+  it("parses Codex JSON when output text is split or fenced", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output: [
+            {
+              content: [
+                { text: "```json\n", type: "output_text" },
+                { text: '{"ok":true}', type: "output_text" },
+                { text: "\n```", type: "output_text" },
+              ],
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      requestCodexJson({
+        apiKey: JSON.stringify({
+          accessToken: jwt({ exp: Math.floor(Date.now() / 1000) + 3600 }),
+          baseUrl: "https://chatgpt.com/backend-api/codex",
+          refreshToken: "refresh-token",
+        }),
+        fetchImpl,
+        systemPrompt: "System",
+        userPrompt: "User",
+      }),
+    ).resolves.toEqual({ ok: true });
+  });
 });

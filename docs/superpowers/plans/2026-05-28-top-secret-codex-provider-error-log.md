@@ -19,3 +19,13 @@
 **Fix applied:** Added safe backend diagnostics for Top Secret claim-review failures and included a redacted, truncated provider response body in Codex provider error messages. User-facing copy remains generic, but VPS logs now show the real failure boundary.
 
 **Rule going forward:** Provider-backed report routes must log sanitized upstream status/body details server-side before returning generic user-facing errors. Do not debug provider failures from UI copy alone.
+
+## 2026-05-28 - Codex Output Parsing Needed To Join Split Output Text
+
+**Context:** Top Secret continued returning the generic connected-provider failure after Codex refresh/retry was deployed.
+
+**Problem:** The Codex Responses adapter copied most of the proven transport shape, but its text extraction selected only the first output text part. The proven adapter joins all output text parts. If Codex returns split output chunks or wraps JSON in a fenced code block, the first-part parser can throw `invalid top secret provider response` even when the provider returned usable JSON.
+
+**Fix applied:** Updated Codex text extraction to join all output text parts and normalize fenced or prefixed JSON before parsing.
+
+**Rule going forward:** Codex Responses output should be treated as a stream-like list of content parts. Join parts before parsing and tolerate common JSON fencing.

@@ -255,21 +255,43 @@ function extractCodexText(payload: unknown) {
   return (
     output
       ?.flatMap((item) => item.content ?? [])
-      .find((part) => part.type === "output_text" || typeof part.text === "string")
-      ?.text ?? ""
+      .map((part) => part.text ?? "")
+      .join("") ?? ""
   );
 }
 
 function parseJsonText(text: string, failurePrefix?: string) {
   try {
-    return JSON.parse(text) as unknown;
+    return JSON.parse(normalizeJsonText(text)) as unknown;
   } catch {
+    console.warn("codex provider returned non-json text", {
+      failurePrefix,
+      preview: summarizeProviderFailureBody(text),
+    });
     throw new Error(
       failurePrefix === "top secret provider failed"
         ? "invalid top secret provider response"
         : "invalid provider draft response",
     );
   }
+}
+
+function normalizeJsonText(text: string) {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/iu);
+
+  if (fenced?.[1]) {
+    return fenced[1].trim();
+  }
+
+  const firstObject = trimmed.indexOf("{");
+  const lastObject = trimmed.lastIndexOf("}");
+
+  if (firstObject >= 0 && lastObject > firstObject) {
+    return trimmed.slice(firstObject, lastObject + 1);
+  }
+
+  return trimmed;
 }
 
 function summarizeProviderFailureBody(body: string) {
