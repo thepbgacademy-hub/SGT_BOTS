@@ -197,6 +197,13 @@ export async function registerReportRoutes(app: FastifyInstance) {
       });
     } catch (error) {
       const message = (error as Error).message;
+      app.log.warn(
+        {
+          error: message,
+          route: "top-secret-claim-review",
+        },
+        "top secret claim review failed",
+      );
       return reply.code(replyForReportRuntimeError(message)).send({
         message: getReportRuntimeErrorMessage(message),
       });

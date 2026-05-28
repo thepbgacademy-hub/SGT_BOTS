@@ -201,8 +201,9 @@ export async function requestCodexJson(input: {
   }
 
   if (!response.ok) {
+    const failureBody = await response.text();
     throw new Error(
-      `${input.failurePrefix ?? "codex provider failed"}: ${response.status}`,
+      `${input.failurePrefix ?? "codex provider failed"}: ${response.status} ${summarizeProviderFailureBody(failureBody)}`,
     );
   }
 
@@ -269,6 +270,14 @@ function parseJsonText(text: string, failurePrefix?: string) {
         : "invalid provider draft response",
     );
   }
+}
+
+function summarizeProviderFailureBody(body: string) {
+  return body
+    .replaceAll(/\s+/gu, " ")
+    .replaceAll(/Bearer\s+[A-Za-z0-9._-]+/gu, "Bearer [redacted]")
+    .slice(0, 500)
+    .trim();
 }
 
 function buildCodexHeaders(accessToken: string) {
