@@ -260,4 +260,37 @@ describe("OpenAI Codex OAuth runtime requests", () => {
       }),
     ).resolves.toEqual({ ok: true });
   });
+
+  it("parses streamed Codex responses even when the content type is misleading", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        [
+          "event: response.output_text.delta",
+          'data: {"type":"response.output_text.delta","delta":"{\\"ok\\":"}',
+          "",
+          "event: response.output_text.delta",
+          'data: {"type":"response.output_text.delta","delta":"true}"}',
+          "",
+          "data: [DONE]",
+        ].join("\n"),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+
+    await expect(
+      requestCodexJson({
+        apiKey: JSON.stringify({
+          accessToken: jwt({ exp: Math.floor(Date.now() / 1000) + 3600 }),
+          baseUrl: "https://chatgpt.com/backend-api/codex",
+          refreshToken: "refresh-token",
+        }),
+        fetchImpl,
+        systemPrompt: "System",
+        userPrompt: "User",
+      }),
+    ).resolves.toEqual({ ok: true });
+  });
 });

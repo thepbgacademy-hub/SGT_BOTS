@@ -243,13 +243,19 @@ async function sendCodexJsonRequest(input: {
 }
 
 async function extractCodexResponseText(response: Response) {
+  const rawText = await response.text();
+  const trimmed = rawText.trimStart();
   const contentType = response.headers.get("content-type") ?? "";
 
-  if (contentType.includes("text/event-stream")) {
-    return extractCodexTextFromEventStream(await response.text());
+  if (
+    contentType.includes("text/event-stream") ||
+    trimmed.startsWith("event:") ||
+    trimmed.startsWith("data:")
+  ) {
+    return extractCodexTextFromEventStream(rawText);
   }
 
-  return extractCodexText(await response.json());
+  return extractCodexText(JSON.parse(rawText) as unknown);
 }
 
 function extractCodexText(payload: unknown) {
