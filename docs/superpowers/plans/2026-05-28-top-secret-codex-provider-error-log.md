@@ -79,3 +79,13 @@
 **Fix applied:** The Top Secret results step now suppresses provider fallback findings, shows a simple queue banner, relabels the primary action as `Back to menu`, and makes the report panel explicitly show queued-vs-ready download state.
 
 **Rule going forward:** If the PDF/report flow is the primary user outcome, fallback normalization text belongs in logs or the final PDF, not as the main visible success-state copy in the app.
+
+## 2026-05-28 - Top Secret Cover Page Was Lost When The Template Was Simplified
+
+**Context:** A live Top Secret run successfully generated and downloaded a PDF, but page 1 started directly with the report body instead of the dedicated cover sheet the user had already approved.
+
+**Problem:** The current `top-secret-report.html.ts` renderer still produced a valid report header and findings, so the PDF path looked healthy, but the standalone cover-page block had been dropped from the HTML template. Because the render queue only converts the supplied HTML to PDF, no later stage could re-attach a missing first page.
+
+**Fix applied:** Restored the Top Secret cover page directly in the HTML template with a forced page break after it, including the approved `PBG TOP SECRET` and `Claim Review Report` headings plus generated date and reviewed-message count. Added a regression assertion so template tests now fail if the cover page disappears again.
+
+**Rule going forward:** For Top Secret, the approved cover sheet must be part of the rendered HTML contract, not an implied post-processing step. When a PDF needs a fixed first page, add a template-level test that verifies the cover text and page break are present.

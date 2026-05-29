@@ -333,6 +333,62 @@ export function renderTopSecretReportHtml(input: TopSecretReportTemplateInput) {
         margin: 0;
       }
 
+      .cover-page {
+        break-after: page;
+        min-height: 9.2in;
+        padding: 2.2in 0.55in 0.7in;
+      }
+
+      .cover-kicker {
+        font-family: Arial, sans-serif;
+        font-size: 13pt;
+        font-weight: 700;
+        letter-spacing: 0;
+        margin: 0 0 0.55in;
+        text-transform: uppercase;
+      }
+
+      .cover-title {
+        font-family: Arial, sans-serif;
+        font-size: 30pt;
+        font-weight: 700;
+        letter-spacing: 0;
+        line-height: 1.12;
+        margin: 0 0 0.26in;
+      }
+
+      .cover-subtitle {
+        font-family: Arial, sans-serif;
+        font-size: 18pt;
+        line-height: 1.35;
+        margin: 0 0 0.7in;
+        max-width: 6.2in;
+      }
+
+      .cover-rule {
+        border-top: 1px solid #17130b;
+        margin: 0 0 0.22in;
+      }
+
+      .cover-meta {
+        display: grid;
+        gap: 0.18in;
+        grid-template-columns: 1.35in 1fr;
+        max-width: 5.5in;
+      }
+
+      .cover-meta dt,
+      .cover-meta dd {
+        font-family: Arial, sans-serif;
+        font-size: 12pt;
+        line-height: 1.35;
+        margin: 0;
+      }
+
+      .cover-meta dt {
+        font-weight: 700;
+      }
+
       header {
         border-bottom: 1px solid #9d7a25;
         margin-bottom: 22px;
@@ -583,6 +639,20 @@ export function renderTopSecretReportHtml(input: TopSecretReportTemplateInput) {
     </style>
   </head>
   <body>
+    <section class="cover-page">
+      <p class="cover-kicker">PBG TOP SECRET</p>
+      <h1 class="cover-title">Claim Review Report</h1>
+      <p class="cover-subtitle">A neutral research summary for pasted messages, online claims, and how-to statements.</p>
+      <div class="cover-rule"></div>
+      <dl class="cover-meta">
+        <dt>Generated</dt>
+        <dd>${escapeHtml(input.generatedDate)}</dd>
+        <dt>Scope</dt>
+        <dd>${escapeHtml(
+          `${input.findings.length} message${input.findings.length === 1 ? "" : "s"} reviewed`,
+        )}</dd>
+      </dl>
+    </section>
     <header>
       <p class="meta">Top Secret Research Report</p>
       <h1>Claim Review</h1>
