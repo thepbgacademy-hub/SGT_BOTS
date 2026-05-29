@@ -4,10 +4,11 @@ export type SessionEndPrompt = {
 };
 
 type SessionEndModalProps = {
+  onReviewClick: (url: string) => void;
   prompt: SessionEndPrompt;
 };
 
-export function SessionEndModal({ prompt }: SessionEndModalProps) {
+export function SessionEndModal({ onReviewClick, prompt }: SessionEndModalProps) {
   return (
     <section aria-label="Session end review" className="modal-shell">
       <div className="modal-card">
@@ -26,9 +27,13 @@ export function SessionEndModal({ prompt }: SessionEndModalProps) {
         so others can feel assured they have found the right place to be, to buy
         back their time and accomplish their goals.
       </p>
-      <a className="primary-button primary-button--link" href={prompt.reviewUrl} rel="noreferrer" target="_blank">
+      <button
+        className="primary-button primary-button--link"
+        onClick={() => onReviewClick(prompt.reviewUrl)}
+        type="button"
+      >
         Leave your review
-      </a>
+      </button>
       </div>
     </section>
   );

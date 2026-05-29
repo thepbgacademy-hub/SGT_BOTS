@@ -17,6 +17,9 @@ declare global {
   interface Window {
     Telegram?: {
       WebApp?: {
+        close?: () => void;
+        openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
+        openTelegramLink?: (url: string) => void;
         initData?: string;
         ready?: () => void;
         expand?: () => void;
@@ -28,6 +31,22 @@ declare global {
 export function initializeTelegramWebApp() {
   window.Telegram?.WebApp?.ready?.();
   window.Telegram?.WebApp?.expand?.();
+}
+
+export function openTelegramReviewLink(url: string) {
+  const telegram = window.Telegram?.WebApp;
+
+  if (telegram?.openTelegramLink) {
+    telegram.openTelegramLink(url);
+    return;
+  }
+
+  if (telegram?.openLink) {
+    telegram.openLink(url);
+    return;
+  }
+
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export function readTelegramInitData(search: string) {

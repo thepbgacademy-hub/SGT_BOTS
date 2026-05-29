@@ -139,3 +139,13 @@
 **Fix applied:** Rebuilt the backend from the full `Dockerfile.backend` so `pnpm install` reran against the current workspace and refreshed the dependency layer before restarting only `sgt-bots-backend`.
 
 **Rule going forward:** Use the source-only hotfix Dockerfile only when the dependency graph is unchanged. If any imported workspace package may have changed, rebuild from the full backend Dockerfile before restarting the live service.
+
+## 2026-05-29 - Telegram Review CTA Needed A Native Telegram Open Path
+
+**Context:** In the live playground, the user could reach the session-end CTA page, but tapping the review button closed the mini app instead of opening the Telegram review group. At the same time, the user still saw stale `End tour` copy in the session banner, which made it look like the newer `Danger Zone` flow had not been deployed.
+
+**Problem:** The review CTA was rendered as a plain anchor with `target="_blank"`. That is fragile inside Telegram mini apps, where generic browser-link behavior can close or background the webview without navigating into the intended Telegram destination. The stale banner copy was a separate signal that the live frontend bundle had lagged behind the branch state even though the backend logic was already updated.
+
+**Fix applied:** Added a shared `openTelegramReviewLink(...)` helper that prefers `Telegram.WebApp.openTelegramLink(...)`, falls back to `openLink(...)`, and only then falls back to `window.open(...)`. The session-end CTA now uses a button wired to that helper instead of a raw anchor. The handoff was updated to explicitly re-run the live Telegram UI smoke after the frontend redeploy.
+
+**Rule going forward:** For Telegram mini-app destinations, do not rely on generic anchor behavior when the target is another Telegram surface. Use the Telegram WebApp navigation APIs first, and treat stale UI copy after backend success as a frontend deploy verification problem, not a logic regression.

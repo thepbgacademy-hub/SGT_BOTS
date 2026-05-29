@@ -9,6 +9,7 @@ import { BotSupportPanel } from "./BotSupportPanel";
 import { formatRemaining } from "../../lib/timer";
 import { SessionEndModal, type SessionEndPrompt } from "./SessionEndModal";
 import { MainMenu } from "./MainMenu";
+import { openTelegramReviewLink } from "../../lib/telegram";
 import { getBotWorkspacePanel } from "./bot-workspace-panels";
 import {
   getMenuItem,
@@ -2092,7 +2093,14 @@ export function DashboardShell({
           <h1>{preferredName}, your dashboard is ready</h1>
         </div>
       </header>
-      {reviewPrompt ? <SessionEndModal prompt={reviewPrompt} /> : null}
+      {reviewPrompt ? (
+        <SessionEndModal
+          onReviewClick={(url) => {
+            openTelegramReviewLink(url);
+          }}
+          prompt={reviewPrompt}
+        />
+      ) : null}
       {isSessionActive && sessionToken && !reviewPrompt ? (
         <>
           <section className="session-banner panel">
