@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Deploy the Top Secret artifact-isolation fix to VPS 2, then retest a live Top Secret report in Telegram and confirm a new Top Secret run replaces the older Top Secret report artifact for that same session instead of leaving multiple same-named PDFs in the Report area. If any new render issue appears, inspect sanitized VPS backend logs first. Then resume Rori Phase 7 when Academy-approved wiki content is ready: collect the approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008` and `009`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
+Retest the one-entry playground gate in Telegram: after one successful provider-backed playground entry, confirm a second provider connect attempt returns the polite participation message instead of opening a new session. Then verify fresh Top Secret reports still render with the approved cover PDF and personalized filename. After that, resume Rori Phase 7 when Academy-approved wiki content is ready: collect the approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008`, `009`, and `010`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
 
 ## Build Doc Sources
 
@@ -20,4 +20,4 @@ Deploy the Top Secret artifact-isolation fix to VPS 2, then retest a live Top Se
 
 ## Last Completed Step
 
-Top Secret artifact isolation was tightened on `codex/rori-academy-concierge`: a new Top Secret report now evicts older Top Secret artifacts for that same session and user before queueing the new one, so the Report area no longer offers multiple stale same-named Top Secret PDFs that can be mistaken for the current run.
+The one-entry playground participation gate is now live on `codex/rori-academy-concierge`: successful first-time provider connection writes Telegram identity and session info into `playground_participations`, later connect attempts are blocked with a polite one-entry message, and VPS 2 now has migration `010_playground_participations.sql` applied.

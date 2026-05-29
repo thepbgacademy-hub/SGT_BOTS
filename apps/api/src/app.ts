@@ -31,6 +31,11 @@ import {
   createSupabaseProfileRepo,
   type ProfileRepo,
 } from "./modules/profiles/profile.repo";
+import {
+  createInMemoryPlaygroundParticipationRepo,
+  createSupabasePlaygroundParticipationRepo,
+  type PlaygroundParticipationRepo,
+} from "./modules/playground/playground-participation.repo";
 import { buildLaunchPrefill } from "./modules/profiles/profile.service";
 import { registerProfileRoutes } from "./modules/profiles/profile.route";
 import { registerProviderRoutes } from "./modules/providers/provider.route";
@@ -82,6 +87,7 @@ declare module "fastify" {
     sessionService: ReturnType<typeof createSessionService>;
     cursiveConfigService: CursiveConfigService;
     topSecretReviewRepo: TopSecretReviewRepo;
+    playgroundParticipationRepo: PlaygroundParticipationRepo;
   }
 }
 
@@ -96,6 +102,7 @@ export async function buildApp(options?: {
   roriDirectoryRepo?: RoriAcademyDirectoryRepo;
   roriWikiRepo?: RoriWikiRepo;
   topSecretReviewRepo?: TopSecretReviewRepo;
+  playgroundParticipationRepo?: PlaygroundParticipationRepo;
 }) {
   // JSON uploads include base64-encoded PDFs, so the default ~1 MiB limit is too
   // small for ordinary documents before our own validation runs.
@@ -128,6 +135,13 @@ export async function buildApp(options?: {
     (appEnv.profileRepoMode === "memory"
       ? createInMemoryBotRegistryRepo()
       : createSupabaseBotRegistryRepo(appEnv));
+  app.decorate(
+    "playgroundParticipationRepo",
+    options?.playgroundParticipationRepo ??
+      (appEnv.profileRepoMode === "memory"
+        ? createInMemoryPlaygroundParticipationRepo()
+        : createSupabasePlaygroundParticipationRepo(appEnv)),
+  );
   app.decorate(
     "sessionService",
     createSessionService({

@@ -225,6 +225,14 @@ export function createSessionService(deps: {
 
       return secret;
     },
+    async retireSessionById(input: { sessionId: string }) {
+      const retiredAt = new Date(now()).toISOString();
+      await deps.metadataRepo.retireSessionById({
+        retiredAt,
+        sessionId: input.sessionId,
+      });
+      secretStore.delete(input.sessionId);
+    },
   };
 }
 

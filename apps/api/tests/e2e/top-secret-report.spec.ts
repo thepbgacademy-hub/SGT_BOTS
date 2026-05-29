@@ -364,6 +364,9 @@ describe("Top Secret report route", () => {
         secrets.set(secret.sessionId, { ...secret });
         return secret;
       },
+      delete(sessionId: string) {
+        secrets.delete(sessionId);
+      },
     };
     const refreshedToken = jwt({ exp: Math.floor(Date.now() / 1000) + 3600 });
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
@@ -481,6 +484,9 @@ describe("Top Secret report route", () => {
       put(secret: SessionSecret) {
         secrets.set(secret.sessionId, { ...secret });
         return secret;
+      },
+      delete(sessionId: string) {
+        secrets.delete(sessionId);
       },
     };
     const refreshedToken = jwt({ exp: Math.floor(Date.now() / 1000) + 3600 });

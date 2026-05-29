@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../../src/app";
 import { readEnv } from "../../src/config/env";
+import { createInMemoryPlaygroundParticipationRepo } from "../../src/modules/playground/playground-participation.repo";
 import { createInMemoryProfileRepo } from "../../src/modules/profiles/profile.repo";
 import {
   createInMemorySessionMetadataRepo,
@@ -151,10 +152,11 @@ describe("provider connection and session start", () => {
     ).rejects.toThrowError("session secret unavailable");
   });
 
-  it("retires prior active sessions when the user reconnects", async () => {
+  it("blocks a second playground entry after the first provider session starts", async () => {
     const validInitData = createSignedTelegramInitData();
     const profileRepo = createInMemoryProfileRepo();
     const metadataRepo = createInMemorySessionMetadataRepo();
+    const participationRepo = createInMemoryPlaygroundParticipationRepo();
     const app = await buildApp({
       env: readEnv({
         APP_PORT: "3001",
@@ -164,6 +166,7 @@ describe("provider connection and session start", () => {
         PROVIDER_VALIDATION_MODE: "stub",
       }),
       profileRepo,
+      playgroundParticipationRepo: participationRepo,
       sessionMetadataRepo: metadataRepo,
       sessionSecretStore: createInMemorySessionSecretStore(),
     });
@@ -199,44 +202,36 @@ describe("provider connection and session start", () => {
         apiKey: "sk-test-2",
       },
     });
-    const secondPayload = secondConnectResponse.json() as {
-      session: {
-        id: string;
-      };
-      sessionToken: string;
-    };
 
-    const retiredSessionResponse = await app.inject({
+    const activeSessionResponse = await app.inject({
       method: "GET",
       url: `/api/sessions/${firstPayload.session.id}`,
       headers: {
         authorization: `Bearer ${firstPayload.sessionToken}`,
       },
     });
-    const activeSessionResponse = await app.inject({
-      method: "GET",
-      url: `/api/sessions/${secondPayload.session.id}`,
-      headers: {
-        authorization: `Bearer ${secondPayload.sessionToken}`,
-      },
-    });
 
     expect(firstConnectResponse.statusCode).toBe(200);
-    expect(secondConnectResponse.statusCode).toBe(200);
-    expect(retiredSessionResponse.statusCode).toBe(401);
-    expect(retiredSessionResponse.json()).toEqual({
-      message: "session invalidated",
+    expect(secondConnectResponse.statusCode).toBe(403);
+    expect(secondConnectResponse.json()).toEqual({
+      message:
+        "You have already participated in the PBG Playground. This guided tour is limited to one entry per member.",
     });
     expect(activeSessionResponse.statusCode).toBe(200);
     expect(metadataRepo.snapshot()).toMatchObject({
       playground_sessions: [
         {
           id: firstPayload.session.id,
-          status: "retired",
-        },
-        {
-          id: secondPayload.session.id,
           status: "active",
+        },
+      ],
+    });
+    expect(participationRepo.snapshot()).toMatchObject({
+      playground_participations: [
+        {
+          first_session_id: firstPayload.session.id,
+          telegram_username: "ada_l",
+          user_id: expect.any(String),
         },
       ],
     });
@@ -330,6 +325,7 @@ describe("provider connection and session start", () => {
     const validInitData = createSignedTelegramInitData();
     const profileRepo = createInMemoryProfileRepo();
     const metadataRepo = createInMemorySessionMetadataRepo();
+    const participationRepo = createInMemoryPlaygroundParticipationRepo();
     const app = await buildApp({
       env: readEnv({
         APP_PORT: "3001",
@@ -339,6 +335,7 @@ describe("provider connection and session start", () => {
         PROVIDER_VALIDATION_MODE: "stub",
       }),
       profileRepo,
+      playgroundParticipationRepo: participationRepo,
       sessionMetadataRepo: metadataRepo,
       sessionSecretStore: createInMemorySessionSecretStore(),
     });
@@ -391,7 +388,63 @@ describe("provider connection and session start", () => {
       auth_method: "oauth",
       provider_name: "openai_codex",
     });
+    expect(participationRepo.snapshot()).toMatchObject({
+      playground_participations: [
+        {
+          first_provider_name: "openai_codex",
+          telegram_username: "ada_l",
+        },
+      ],
+    });
   }, 10000);
+
+  it("blocks restarting OpenAI Codex login after the user already participated", async () => {
+    const validInitData = createSignedTelegramInitData();
+    const app = await buildApp({
+      env: readEnv({
+        APP_PORT: "3001",
+        TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+        TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
+        PROFILE_REPO_MODE: "memory",
+        PROVIDER_VALIDATION_MODE: "stub",
+      }),
+      profileRepo: createInMemoryProfileRepo(),
+      playgroundParticipationRepo: createInMemoryPlaygroundParticipationRepo(),
+      sessionMetadataRepo: createInMemorySessionMetadataRepo(),
+      sessionSecretStore: createInMemorySessionSecretStore(),
+    });
+
+    await onboardProfile(app, validInitData);
+
+    const firstConnectResponse = await app.inject({
+      method: "POST",
+      url: "/api/providers/connect",
+      headers: {
+        "x-telegram-init-data": validInitData,
+      },
+      payload: {
+        provider: "openai",
+        apiKey: "sk-test-1",
+      },
+    });
+
+    expect(firstConnectResponse.statusCode).toBe(200);
+
+    const secondStartResponse = await app.inject({
+      method: "POST",
+      url: "/api/providers/openai-codex/oauth/start",
+      headers: {
+        "x-telegram-init-data": validInitData,
+      },
+      payload: {},
+    });
+
+    expect(secondStartResponse.statusCode).toBe(403);
+    expect(secondStartResponse.json()).toEqual({
+      message:
+        "You have already participated in the PBG Playground. This guided tour is limited to one entry per member.",
+    });
+  });
 
   it("persists provider and session metadata without storing raw api keys durably", async () => {
     const validInitData = createSignedTelegramInitData();
@@ -452,6 +505,12 @@ describe("provider connection and session start", () => {
         }),
       )
       .mockResolvedValueOnce(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
         new Response(JSON.stringify([{ id: "provider-1" }]), {
           status: 201,
           headers: { "content-type": "application/json" },
@@ -468,6 +527,24 @@ describe("provider connection and session start", () => {
               ends_at: "2026-05-05T03:00:00.000Z",
               status: "active",
               review_prompted: false,
+            },
+          ]),
+          { status: 201, headers: { "content-type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              id: "participation-1",
+              user_id: "user-1",
+              telegram_user_id: "123456",
+              telegram_username: "ada_l",
+              first_name: "Ada",
+              preferred_name: "Ada",
+              first_provider_name: "openai",
+              first_session_id: "session-1",
+              participated_at: "2026-05-05T00:00:00.000Z",
             },
           ]),
           { status: 201, headers: { "content-type": "application/json" } },
@@ -515,7 +592,7 @@ describe("provider connection and session start", () => {
 
     expect(response.statusCode).toBe(200);
     expect(fetchMock).toHaveBeenNthCalledWith(
-      6,
+      7,
       "https://example.supabase.co/rest/v1/provider_connections",
       expect.objectContaining({
         method: "POST",
@@ -523,7 +600,7 @@ describe("provider connection and session start", () => {
       }),
     );
     expect(
-      JSON.parse(String(fetchMock.mock.calls[5]?.[1]?.body)),
+      JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)),
     ).toMatchObject({
       user_id: "user-1",
       provider_name: "openai",
@@ -531,10 +608,10 @@ describe("provider connection and session start", () => {
       validation_status: "validated",
     });
     expect(
-      JSON.parse(String(fetchMock.mock.calls[5]?.[1]?.body)),
+      JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)),
     ).not.toHaveProperty("apiKey");
     expect(fetchMock).toHaveBeenNthCalledWith(
-      7,
+      8,
       "https://example.supabase.co/rest/v1/playground_sessions",
       expect.objectContaining({
         method: "POST",
@@ -542,7 +619,7 @@ describe("provider connection and session start", () => {
       }),
     );
     expect(
-      JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)),
+      JSON.parse(String(fetchMock.mock.calls[7]?.[1]?.body)),
     ).toMatchObject({
       user_id: "user-1",
       provider_connection_id: "provider-1",
@@ -550,8 +627,25 @@ describe("provider connection and session start", () => {
       review_prompted: false,
     });
     expect(
-      JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)),
+      JSON.parse(String(fetchMock.mock.calls[7]?.[1]?.body)),
     ).not.toHaveProperty("apiKey");
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      9,
+      "https://example.supabase.co/rest/v1/playground_participations",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.any(String),
+      }),
+    );
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[8]?.[1]?.body)),
+    ).toMatchObject({
+      user_id: "user-1",
+      telegram_user_id: "123456",
+      telegram_username: "ada_l",
+      first_provider_name: "openai",
+      first_session_id: "session-1",
+    });
   });
 
   it("lets in-flight requests finish after expiry and blocks new requests", async () => {

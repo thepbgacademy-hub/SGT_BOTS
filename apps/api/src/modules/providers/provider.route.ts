@@ -29,6 +29,8 @@ type CodexOAuthSession = {
 };
 
 const codexOAuthSessions = new Map<string, CodexOAuthSession>();
+const PLAYGROUND_ALREADY_PARTICIPATED_MESSAGE =
+  "You have already participated in the PBG Playground. This guided tour is limited to one entry per member.";
 
 export async function registerProviderRoutes(app: FastifyInstance) {
   app.post("/api/providers/connect", async (request, reply) => {
@@ -38,6 +40,10 @@ export async function registerProviderRoutes(app: FastifyInstance) {
         botToken: app.appEnv.telegramBotToken,
         botTokens: app.appEnv.telegramBotTokens,
         profileRepo: app.profileRepo,
+      });
+      await assertPlaygroundParticipationAvailable({
+        app,
+        userId: user.id,
       });
 
       const result = await connectProvider(
@@ -53,6 +59,12 @@ export async function registerProviderRoutes(app: FastifyInstance) {
           startSession: (input) => app.sessionService.startSession(input),
         },
       );
+      await recordPlaygroundParticipation({
+        app,
+        provider: result.provider,
+        sessionId: result.session.id,
+        user,
+      });
 
       app.analyticsService.track({
         eventName: "provider_connected",
@@ -76,6 +88,8 @@ export async function registerProviderRoutes(app: FastifyInstance) {
           : message === "unsupported provider" ||
               message.startsWith("invalid api key for")
             ? 400
+            : message === PLAYGROUND_ALREADY_PARTICIPATED_MESSAGE
+              ? 403
             : message.startsWith("provider validation failed for")
               ? 502
               : 500;
@@ -93,6 +107,10 @@ export async function registerProviderRoutes(app: FastifyInstance) {
         botToken: app.appEnv.telegramBotToken,
         botTokens: app.appEnv.telegramBotTokens,
         profileRepo: app.profileRepo,
+      });
+      await assertPlaygroundParticipationAvailable({
+        app,
+        userId: user.id,
       });
       cleanupCodexOAuthSessions(Date.now());
       const device = await requestCodexDeviceCode();
@@ -129,6 +147,8 @@ export async function registerProviderRoutes(app: FastifyInstance) {
         message === "stale telegram init data" ||
         message === "profile not found"
           ? 401
+          : message === PLAYGROUND_ALREADY_PARTICIPATED_MESSAGE
+            ? 403
           : message.startsWith("Unable to start OpenAI Codex")
             ? 502
             : 500;
@@ -224,6 +244,31 @@ async function pollCodexOAuthSession(input: {
         provider: "openai_codex",
         userId: oauthSession.userId,
       });
+      const user = await input.app.profileRepo.getUserById(oauthSession.userId);
+
+      if (!user) {
+        throw new Error("profile not found");
+      }
+
+      try {
+        await recordPlaygroundParticipation({
+          app: input.app,
+          provider: "openai_codex",
+          sessionId: session.id,
+          user,
+        });
+      } catch (error) {
+        if (isParticipationRecordedError((error as Error).message)) {
+          await input.app.sessionService.retireSessionById({
+            sessionId: session.id,
+          });
+          oauthSession.error = PLAYGROUND_ALREADY_PARTICIPATED_MESSAGE;
+          oauthSession.status = "failed";
+          return;
+        }
+
+        throw error;
+      }
 
       oauthSession.session = session;
       oauthSession.sessionToken = input.app.sessionTokenService.issueToken({
@@ -266,4 +311,52 @@ function sleep(ms: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+async function assertPlaygroundParticipationAvailable(input: {
+  app: FastifyInstance;
+  userId: string;
+}) {
+  const existing = await input.app.playgroundParticipationRepo.getByUserId(
+    input.userId,
+  );
+
+  if (existing) {
+    throw new Error(PLAYGROUND_ALREADY_PARTICIPATED_MESSAGE);
+  }
+}
+
+async function recordPlaygroundParticipation(input: {
+  app: FastifyInstance;
+  provider: "openai" | "anthropic" | "openai_codex";
+  sessionId: string;
+  user: Awaited<ReturnType<typeof resolveAuthenticatedUser>>;
+}) {
+  try {
+    await input.app.playgroundParticipationRepo.insertParticipation({
+      first_name: input.user.first_name,
+      first_provider_name: input.provider,
+      first_session_id: input.sessionId,
+      participated_at: new Date().toISOString(),
+      preferred_name: input.user.preferred_name,
+      telegram_user_id: input.user.telegram_user_id,
+      telegram_username: input.user.username,
+      user_id: input.user.id,
+    });
+  } catch (error) {
+    if (isParticipationRecordedError((error as Error).message)) {
+      throw error;
+    }
+
+    throw error;
+  }
+}
+
+function isParticipationRecordedError(message: string) {
+  return (
+    message === "playground participation already recorded" ||
+    message.includes("duplicate key value") ||
+    message.includes("duplicate key") ||
+    message.includes("23505")
+  );
 }

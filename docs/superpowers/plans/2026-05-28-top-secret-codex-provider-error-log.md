@@ -109,3 +109,13 @@
 **Fix applied:** Top Secret now purges older Top Secret artifacts for the same session and user before queueing a new one. The new report becomes the only Top Secret PDF available in that session workspace, and a regression test now verifies the older artifact record and files are removed.
 
 **Rule going forward:** If a workflow produces repeated single-result reports with the same filename, do not keep stale same-bot artifacts visible by default in the same session workspace. Either replace the older artifact or give every output a clearly distinct identity.
+
+## 2026-05-28 - Playground Needed A Durable One-Entry Participation Gate
+
+**Context:** The user wants the Telegram playground to be a one-time guided tour. The prior three-hour session timer limited a single session, but it did not stop someone from reconnecting later and taking the playground again, even if they had already used part or all of the tour.
+
+**Problem:** We had durable profile rows and session rows, but no dedicated participation ledger that unambiguously records that a member already took the playground. That left repeat entry enforcement soft and made downstream PDF personalization depend on ad hoc profile lookups instead of a shared participation record.
+
+**Fix applied:** Added a new `playground_participations` table plus in-memory/Supabase repo support. The first successful provider-backed playground entry records `user_id`, `telegram_user_id`, `telegram_username`, names, first provider, first session id, and participation timestamp. Later provider connect attempts, including OpenAI Codex device-login starts, now return a polite one-entry message instead of opening a new session. The VPS 2 Supabase database has migration `010_playground_participations.sql` applied.
+
+**Rule going forward:** Session timers are not participation controls. If the business rule is one entry per member, enforce it with a durable participation table keyed by the internal user id and checked before any new provider-backed session can begin.

@@ -10,6 +10,7 @@ export type SessionSecret = {
 export type SessionSecretStore = {
   put(secret: SessionSecret): SessionSecret;
   get(sessionId: string): SessionSecret | undefined;
+  delete(sessionId: string): void;
 };
 
 export function createInMemorySessionSecretStore(): SessionSecretStore {
@@ -30,6 +31,19 @@ export function createInMemorySessionSecretStore(): SessionSecretStore {
     },
     get(sessionId) {
       return sessions.get(sessionId);
+    },
+    delete(sessionId) {
+      const secret = sessions.get(sessionId);
+
+      if (!secret) {
+        return;
+      }
+
+      sessions.delete(sessionId);
+
+      if (sessionIdsByUserId.get(secret.userId) === sessionId) {
+        sessionIdsByUserId.delete(secret.userId);
+      }
     },
   };
 }
