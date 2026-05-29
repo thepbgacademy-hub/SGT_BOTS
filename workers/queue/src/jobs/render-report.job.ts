@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { PDFDocument } from "pdf-lib";
 
 export type RenderReportJobInput = {
   artifactId: string;
@@ -36,6 +37,12 @@ export type RenderReportJobResult = {
 export type RenderReportJobRunner = (
   input: RenderReportJobInput,
 ) => Promise<RenderReportJobResult>;
+
+const TOP_SECRET_TEMPLATE_ID = "top_secret_fact_check_v1";
+const TOP_SECRET_COVER_PDF = new URL(
+  "../../assets/PBG-TopSecretCover.pdf",
+  import.meta.url,
+);
 
 function escapeHtml(value: string) {
   return value
@@ -111,6 +118,38 @@ async function renderPdfFromTemplateHtml(html: string) {
   }
 }
 
+async function prependPdfCover(options: {
+  coverPdfPath: URL;
+  reportPdfBytes: Buffer;
+}) {
+  const [coverPdfBytes, mergedPdf] = await Promise.all([
+    readFile(options.coverPdfPath),
+    PDFDocument.create(),
+  ]);
+  const [coverPdf, reportPdf] = await Promise.all([
+    PDFDocument.load(coverPdfBytes),
+    PDFDocument.load(options.reportPdfBytes),
+  ]);
+  const coverPages = await mergedPdf.copyPages(
+    coverPdf,
+    coverPdf.getPageIndices(),
+  );
+  const reportPages = await mergedPdf.copyPages(
+    reportPdf,
+    reportPdf.getPageIndices(),
+  );
+
+  for (const page of coverPages) {
+    mergedPdf.addPage(page);
+  }
+
+  for (const page of reportPages) {
+    mergedPdf.addPage(page);
+  }
+
+  return Buffer.from(await mergedPdf.save());
+}
+
 export const runRenderReportJob: RenderReportJobRunner = async (
   input: RenderReportJobInput,
 ) => {
@@ -132,12 +171,21 @@ export const runRenderReportJob: RenderReportJobRunner = async (
           fileSizeLabel: escapeHtml(formatFileSize(input.upload.byteSize)),
         });
 
+  const renderedBytes =
+    input.html !== undefined
+      ? await renderPdfFromHtml(html)
+      : await renderPdfFromTemplateHtml(html);
+  const bytes =
+    input.templateId === TOP_SECRET_TEMPLATE_ID
+      ? await prependPdfCover({
+          coverPdfPath: TOP_SECRET_COVER_PDF,
+          reportPdfBytes: renderedBytes,
+        })
+      : renderedBytes;
+
   return {
     artifactId: input.artifactId,
     fileName: input.artifactFileName,
-    bytes:
-      input.html !== undefined
-        ? await renderPdfFromHtml(html)
-        : await renderPdfFromTemplateHtml(html),
+    bytes,
   };
 };

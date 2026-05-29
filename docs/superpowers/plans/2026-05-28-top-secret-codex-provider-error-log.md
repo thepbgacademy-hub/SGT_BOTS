@@ -89,3 +89,13 @@
 **Fix applied:** Restored the Top Secret cover page directly in the HTML template with a forced page break after it, including the approved `PBG TOP SECRET` and `Claim Review Report` headings plus generated date and reviewed-message count. Added a regression assertion so template tests now fail if the cover page disappears again.
 
 **Rule going forward:** For Top Secret, the approved cover sheet must be part of the rendered HTML contract, not an implied post-processing step. When a PDF needs a fixed first page, add a template-level test that verifies the cover text and page break are present.
+
+## 2026-05-28 - Top Secret Should Prepend The Approved Cover PDF Asset, Not Rebuild It In HTML
+
+**Context:** The user provided the exact approved cover file `PBG-TopSecretCover.pdf` and clarified that this PDF, not an HTML recreation, must be attached as page 1 to every Top Secret rendered report.
+
+**Problem:** The temporary HTML cover-page restoration fixed the missing-first-page symptom, but it still allowed layout drift from the approved PDF and did not satisfy the requirement to use the exact cover asset.
+
+**Fix applied:** Added `workers/queue/assets/PBG-TopSecretCover.pdf`, taught the queue render job to prepend that PDF only when `templateId === "top_secret_fact_check_v1"`, removed the temporary HTML cover block from the Top Secret template, and added a queue-worker regression test proving Top Secret outputs gain an extra first page while other render paths stay unchanged.
+
+**Rule going forward:** When a workflow has an approved first-page PDF asset, attach the binary asset in the render pipeline instead of rebuilding it as HTML. Keep a focused merge test at the queue layer so future template edits cannot silently replace the approved PDF.

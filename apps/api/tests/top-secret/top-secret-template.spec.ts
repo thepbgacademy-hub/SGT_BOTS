@@ -71,14 +71,6 @@ describe("Top Secret report template", () => {
 
     expect(html).toContain("@page");
     expect(html).toContain("size: Letter portrait");
-    expect(html).toContain("PBG TOP SECRET");
-    expect(html).toContain("Claim Review Report");
-    expect(html).toContain(
-      "A neutral research summary for pasted messages, online claims, and how-to statements.",
-    );
-    expect(html).toContain("Scope");
-    expect(html).toContain("1 message reviewed");
-    expect(html).toContain("break-after: page");
     expect(html).toContain("Message 1");
     expect(html).toContain("<em><strong>The message says</strong></em>");
     expect(html).toContain("Income tax is voluntary.");
