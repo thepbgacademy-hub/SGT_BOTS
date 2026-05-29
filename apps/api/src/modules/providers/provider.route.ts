@@ -43,6 +43,7 @@ export async function registerProviderRoutes(app: FastifyInstance) {
       });
       await assertPlaygroundParticipationAvailable({
         app,
+        telegramUserId: user.telegram_user_id,
         userId: user.id,
       });
 
@@ -110,6 +111,7 @@ export async function registerProviderRoutes(app: FastifyInstance) {
       });
       await assertPlaygroundParticipationAvailable({
         app,
+        telegramUserId: user.telegram_user_id,
         userId: user.id,
       });
       cleanupCodexOAuthSessions(Date.now());
@@ -315,8 +317,17 @@ function sleep(ms: number) {
 
 async function assertPlaygroundParticipationAvailable(input: {
   app: FastifyInstance;
+  telegramUserId: string;
   userId: string;
 }) {
+  if (
+    input.app.appEnv.playgroundParticipationBypassTelegramUserIds.includes(
+      input.telegramUserId,
+    )
+  ) {
+    return;
+  }
+
   const existing = await input.app.playgroundParticipationRepo.getByUserId(
     input.userId,
   );
@@ -332,6 +343,14 @@ async function recordPlaygroundParticipation(input: {
   sessionId: string;
   user: Awaited<ReturnType<typeof resolveAuthenticatedUser>>;
 }) {
+  if (
+    input.app.appEnv.playgroundParticipationBypassTelegramUserIds.includes(
+      input.user.telegram_user_id,
+    )
+  ) {
+    return;
+  }
+
   try {
     await input.app.playgroundParticipationRepo.insertParticipation({
       first_name: input.user.first_name,

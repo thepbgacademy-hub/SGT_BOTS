@@ -38,11 +38,17 @@ export function openTelegramReviewLink(url: string) {
 
   if (telegram?.openTelegramLink) {
     telegram.openTelegramLink(url);
+    window.setTimeout(() => {
+      telegram.close?.();
+    }, 150);
     return;
   }
 
   if (telegram?.openLink) {
     telegram.openLink(url);
+    window.setTimeout(() => {
+      telegram.close?.();
+    }, 150);
     return;
   }
 

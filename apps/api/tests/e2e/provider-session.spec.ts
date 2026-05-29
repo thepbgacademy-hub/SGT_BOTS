@@ -446,6 +446,57 @@ describe("provider connection and session start", () => {
     });
   });
 
+  it("lets allowlisted Telegram tester ids re-enter without recording participation", async () => {
+    const validInitData = createSignedTelegramInitData();
+    const participationRepo = createInMemoryPlaygroundParticipationRepo();
+    const app = await buildApp({
+      env: readEnv({
+        APP_PORT: "3001",
+        TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+        TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
+        PLAYGROUND_PARTICIPATION_BYPASS_TELEGRAM_USER_IDS: "123456",
+        PROFILE_REPO_MODE: "memory",
+        PROVIDER_VALIDATION_MODE: "stub",
+      }),
+      profileRepo: createInMemoryProfileRepo(),
+      playgroundParticipationRepo: participationRepo,
+      sessionMetadataRepo: createInMemorySessionMetadataRepo(),
+      sessionSecretStore: createInMemorySessionSecretStore(),
+    });
+
+    await onboardProfile(app, validInitData);
+
+    const firstConnectResponse = await app.inject({
+      method: "POST",
+      url: "/api/providers/connect",
+      headers: {
+        "x-telegram-init-data": validInitData,
+      },
+      payload: {
+        provider: "openai",
+        apiKey: "sk-test-1",
+      },
+    });
+
+    const secondConnectResponse = await app.inject({
+      method: "POST",
+      url: "/api/providers/connect",
+      headers: {
+        "x-telegram-init-data": validInitData,
+      },
+      payload: {
+        provider: "openai",
+        apiKey: "sk-test-2",
+      },
+    });
+
+    expect(firstConnectResponse.statusCode).toBe(200);
+    expect(secondConnectResponse.statusCode).toBe(200);
+    expect(participationRepo.snapshot()).toEqual({
+      playground_participations: [],
+    });
+  });
+
   it("persists provider and session metadata without storing raw api keys durably", async () => {
     const validInitData = createSignedTelegramInitData();
     const fetchMock = vi

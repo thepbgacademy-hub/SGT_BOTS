@@ -3,6 +3,7 @@ import path from "node:path";
 
 export type AppEnv = {
   appPort: number;
+  playgroundParticipationBypassTelegramUserIds: string[];
   telegramBotUsername: string;
   telegramBotToken: string;
   telegramBotTokens: string[];
@@ -84,6 +85,15 @@ function uniqueValues(values: string[]) {
   return [...new Set(values)];
 }
 
+function parseIdList(value: string | undefined) {
+  return uniqueValues(
+    (value ?? "")
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean),
+  );
+}
+
 export function readEnv(env: NodeJS.ProcessEnv = process.env): AppEnv {
   const fileEnv = loadRootEnvFile(process.cwd());
   const profileRepoMode =
@@ -126,6 +136,10 @@ export function readEnv(env: NodeJS.ProcessEnv = process.env): AppEnv {
 
   return {
     appPort: Number(env.APP_PORT ?? fileEnv.APP_PORT ?? "3000"),
+    playgroundParticipationBypassTelegramUserIds: parseIdList(
+      env.PLAYGROUND_PARTICIPATION_BYPASS_TELEGRAM_USER_IDS ??
+        fileEnv.PLAYGROUND_PARTICIPATION_BYPASS_TELEGRAM_USER_IDS,
+    ),
     telegramBotUsername:
       env.TELEGRAM_BOT_USERNAME ??
       fileEnv.TELEGRAM_BOT_USERNAME ??

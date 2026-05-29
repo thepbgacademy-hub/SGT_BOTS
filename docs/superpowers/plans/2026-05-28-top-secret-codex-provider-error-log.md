@@ -149,3 +149,13 @@
 **Fix applied:** Added a shared `openTelegramReviewLink(...)` helper that prefers `Telegram.WebApp.openTelegramLink(...)`, falls back to `openLink(...)`, and only then falls back to `window.open(...)`. The session-end CTA now uses a button wired to that helper instead of a raw anchor. The handoff was updated to explicitly re-run the live Telegram UI smoke after the frontend redeploy.
 
 **Rule going forward:** For Telegram mini-app destinations, do not rely on generic anchor behavior when the target is another Telegram surface. Use the Telegram WebApp navigation APIs first, and treat stale UI copy after backend success as a frontend deploy verification problem, not a logic regression.
+
+## 2026-05-29 - Owner Testing Needed An Explicit Participation-Gate Bypass
+
+**Context:** After the live `Danger Zone` and review-group flow worked correctly, the owner reopened the playground and was immediately blocked by the one-entry participation gate before reaching provider setup again. That is correct for normal members, but it is too strict for ongoing owner/admin smoke testing.
+
+**Problem:** The participation gate enforced a hard durable block for every Telegram identity equally. That meant repeated live validation required manual SQL cleanup of the owner's participation row, which is noisy, easy to forget, and not a reliable long-term testing workflow.
+
+**Fix applied:** Added `PLAYGROUND_PARTICIPATION_BYPASS_TELEGRAM_USER_IDS` as a backend env allowlist. Allowlisted Telegram user ids bypass the participation check and skip participation-row insertion altogether, so they can continue testing without polluting the durable one-entry ledger. The review CTA helper was also tightened to call `Telegram.WebApp.close()` shortly after opening the review group so the mini app exits more cleanly for end users.
+
+**Rule going forward:** Business gates that should apply to normal members but not to owner/admin smoke testing need an explicit env-driven bypass, not repeated manual database cleanup. Keep the bypass narrowly keyed by Telegram user id and out of the ordinary user path.
