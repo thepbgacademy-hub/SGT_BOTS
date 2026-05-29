@@ -1292,20 +1292,7 @@ export function DashboardShell({
     }
 
     reviewPromptRequestKeyRef.current = requestKey;
-    setReviewPrompt({
-      reason: "timeout",
-      reviewUrl: DEFAULT_REVIEW_GROUP_URL,
-    });
-    setSession((currentSession) =>
-      currentSession
-        ? {
-            ...currentSession,
-            remainingSeconds: 0,
-            state: "expired",
-          }
-        : currentSession,
-    );
-    setSessionToken(null);
+    setSessionError(null);
 
     let cancelled = false;
 
@@ -1322,6 +1309,7 @@ export function DashboardShell({
     })
       .then(async (response) => {
         const payload = (await response.json()) as {
+          message?: string;
           reviewUrl?: string;
         };
 
@@ -1329,15 +1317,36 @@ export function DashboardShell({
           return;
         }
 
+        if (!response.ok) {
+          reviewPromptRequestKeyRef.current = null;
+          setSessionError(
+            payload.message ?? "Unable to end the playground right now.",
+          );
+          return;
+        }
+
         setReviewPrompt({
           reason: "timeout",
           reviewUrl: payload.reviewUrl ?? DEFAULT_REVIEW_GROUP_URL,
         });
+        setSession((currentSession) =>
+          currentSession
+            ? {
+                ...currentSession,
+                remainingSeconds: 0,
+                state: "expired",
+              }
+            : currentSession,
+        );
+        setSessionToken(null);
       })
       .catch(() => {
         if (cancelled) {
           return;
         }
+
+        reviewPromptRequestKeyRef.current = null;
+        setSessionError("Unable to end the playground right now.");
       });
 
     return () => {
@@ -2103,8 +2112,12 @@ export function DashboardShell({
                   Back to Menu
                 </button>
               ) : null}
-              <button className="secondary-button" onClick={handleEndPlayground} type="button">
-                End playground
+              <button
+                className="secondary-button secondary-button--danger"
+                onClick={handleEndPlayground}
+                type="button"
+              >
+                Danger Zone
               </button>
             </div>
           </section>

@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Retest the one-entry playground gate in Telegram: after one successful provider-backed playground entry, confirm a second provider connect attempt returns the polite participation message instead of opening a new session. Then verify fresh Top Secret reports still render with the approved cover PDF and personalized filename. After that, resume Rori Phase 7 when Academy-approved wiki content is ready: collect the approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008`, `009`, and `010`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
+Verify the live Telegram playground end-session contract: the `Danger Zone` button and the three-hour timeout should both retire the active session, delete the in-memory provider secret, and then show the review CTA. After that, retest the one-entry playground gate in Telegram to confirm a second provider-backed entry attempt is still politely blocked. Then resume Rori Phase 7 when Academy-approved wiki content is ready: collect the approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008`, `009`, and `010`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
 
 ## Build Doc Sources
 
@@ -20,4 +20,4 @@ Retest the one-entry playground gate in Telegram: after one successful provider-
 
 ## Last Completed Step
 
-The one-entry playground participation gate is now live on `codex/rori-academy-concierge`: successful first-time provider connection writes Telegram identity and session info into `playground_participations`, later connect attempts are blocked with a polite one-entry message, and VPS 2 now has migration `010_playground_participations.sql` applied.
+The playground session shutdown path is now unified on `codex/rori-academy-concierge`: both timeout review prompts and the manual `Danger Zone` exit retire the active session, purge the in-memory provider secret, and then show the review CTA. The browser retention suite was updated to use unique Telegram identities because the one-entry participation gate is now live and would otherwise block the second onboarding pass by design.

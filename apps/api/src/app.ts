@@ -206,7 +206,7 @@ export async function buildApp(options?: {
     createReviewService({
       analyticsService: app.analyticsService,
       metadataRepo: app.sessionMetadataRepo,
-      now: options?.now,
+      retireSessionById: (input) => app.sessionService.retireSessionById(input),
       reviewGroupUrl: appEnv.telegramReviewGroupUrl,
     }),
   );

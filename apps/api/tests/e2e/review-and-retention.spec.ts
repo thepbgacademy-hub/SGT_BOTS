@@ -22,10 +22,13 @@ afterEach(() => {
 async function createAuthorizedSession(options?: {
   metadataRepo?: InMemorySessionMetadataRepo;
   now?: () => number;
+  sessionSecretStore?: ReturnType<typeof createInMemorySessionSecretStore>;
 }) {
   const initData = createSignedTelegramInitData();
   const metadataRepo =
     options?.metadataRepo ?? createInMemorySessionMetadataRepo();
+  const sessionSecretStore =
+    options?.sessionSecretStore ?? createInMemorySessionSecretStore();
   const app = await buildApp({
     env: readEnv({
       APP_PORT: "3001",
@@ -38,7 +41,7 @@ async function createAuthorizedSession(options?: {
     now: options?.now,
     profileRepo: createInMemoryProfileRepo(),
     sessionMetadataRepo: metadataRepo,
-    sessionSecretStore: createInMemorySessionSecretStore(),
+    sessionSecretStore,
   });
 
   const profileResponse = await app.inject({
@@ -78,6 +81,7 @@ async function createAuthorizedSession(options?: {
     app,
     metadataRepo,
     sessionId: payload.session.id,
+    sessionSecretStore,
     sessionToken: payload.sessionToken,
     userId: payload.session.userId,
   };
@@ -103,7 +107,7 @@ describe("review prompt and retention cleanup", () => {
   it(
     "returns a review url, marks review_prompted, retires early-exit sessions, and records analytics",
     async () => {
-      const { app, metadataRepo, sessionId, sessionToken } =
+      const { app, metadataRepo, sessionId, sessionSecretStore, sessionToken } =
         await createAuthorizedSession();
 
       const response = await app.inject({
@@ -133,6 +137,7 @@ describe("review prompt and retention cleanup", () => {
           },
         ],
       });
+      expect(sessionSecretStore.get(sessionId)).toBeUndefined();
       expect(app.analyticsService.listEvents()).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -157,7 +162,7 @@ describe("review prompt and retention cleanup", () => {
 
   it("allows a just-expired session token to request the timeout review prompt", async () => {
     let now = Date.parse("2026-05-05T12:00:00.000Z");
-    const { app, metadataRepo, sessionId, sessionToken } =
+    const { app, metadataRepo, sessionId, sessionSecretStore, sessionToken } =
       await createAuthorizedSession({
         metadataRepo: createInMemorySessionMetadataRepo(),
         now: () => now,
@@ -188,7 +193,50 @@ describe("review prompt and retention cleanup", () => {
         {
           id: sessionId,
           review_prompted: true,
-          status: "active",
+          status: "retired",
+        },
+      ],
+    });
+    expect(sessionSecretStore.get(sessionId)).toBeUndefined();
+  });
+
+  it("allows repeated review prompts without restoring the deleted session secret", async () => {
+    const { app, metadataRepo, sessionId, sessionSecretStore, sessionToken } =
+      await createAuthorizedSession();
+
+    const firstResponse = await app.inject({
+      method: "POST",
+      url: "/api/reviews/prompt",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        reason: "early_exit",
+      },
+    });
+    expect(firstResponse.statusCode).toBe(200);
+
+    const secondResponse = await app.inject({
+      method: "POST",
+      url: "/api/reviews/prompt",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        reason: "early_exit",
+      },
+    });
+
+    expect(secondResponse.statusCode).toBe(200);
+    expect(sessionSecretStore.get(sessionId)).toBeUndefined();
+    expect(metadataRepo.snapshot()).toMatchObject({
+      playground_sessions: [
+        {
+          id: sessionId,
+          review_prompted: true,
+          status: "retired",
         },
       ],
     });

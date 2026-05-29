@@ -119,3 +119,13 @@
 **Fix applied:** Added a new `playground_participations` table plus in-memory/Supabase repo support. The first successful provider-backed playground entry records `user_id`, `telegram_user_id`, `telegram_username`, names, first provider, first session id, and participation timestamp. Later provider connect attempts, including OpenAI Codex device-login starts, now return a polite one-entry message instead of opening a new session. The VPS 2 Supabase database has migration `010_playground_participations.sql` applied.
 
 **Rule going forward:** Session timers are not participation controls. If the business rule is one entry per member, enforce it with a durable participation table keyed by the internal user id and checked before any new provider-backed session can begin.
+
+## 2026-05-29 - Review Prompt Needed To Be The Shared Credential Cleanup Path
+
+**Context:** The user asked for a true `Danger Zone` exit and for timeout-driven playground endings to delete provider credentials automatically before sending people to the review room.
+
+**Problem:** The existing mini-app `End playground` flow and timeout prompt cleared local UI state and showed the review CTA, but they did not guarantee the backend session secret was purged. The session could look over in the UI while the in-memory provider credential still existed on the server until other cleanup paths ran.
+
+**Fix applied:** The review prompt path now calls `sessionService.retireSessionById(...)` before marking the review as prompted, so both `early_exit` and `timeout` reasons retire the active session and delete the in-memory provider secret. The manual session button in the playground UI is now explicitly labeled `Danger Zone`, and the retention browser tests now use unique Telegram identities so they do not trip the one-entry participation gate by accident.
+
+**Rule going forward:** If a user-facing action ends the playground, it must also end the backend session and purge the provider secret through the same shared code path. Do not treat UI lockout or modal display as proof that credentials were actually removed.

@@ -771,6 +771,12 @@ h2 {
   width: min(100%, 34rem);
 }
 
+.session-banner .secondary-button--danger {
+  border-color: rgba(255, 143, 125, 0.4);
+  background: rgba(91, 24, 14, 0.28);
+  color: var(--danger);
+}
+
 .panel-header {
   display: flex;
   align-items: start;
@@ -963,6 +969,12 @@ h2 {
   background: rgba(255, 199, 84, 0.08);
   color: var(--gold-bright);
   padding: 0.85rem 1rem;
+}
+
+.secondary-button--danger {
+  border-color: rgba(255, 143, 125, 0.4);
+  background: rgba(91, 24, 14, 0.28);
+  color: var(--danger);
 }
 
 .ghost-link,

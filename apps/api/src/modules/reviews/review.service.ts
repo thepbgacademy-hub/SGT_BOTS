@@ -6,11 +6,9 @@ export type ReviewPromptReason = "early_exit" | "timeout";
 export function createReviewService(deps: {
   analyticsService: ReturnType<typeof createAnalyticsService>;
   metadataRepo: SessionMetadataRepo;
-  now?: () => number;
+  retireSessionById: (input: { sessionId: string }) => Promise<void>;
   reviewGroupUrl: string;
 }) {
-  const now = deps.now ?? (() => Date.now());
-
   return {
     async promptForReview(input: {
       reason: ReviewPromptReason;
@@ -23,16 +21,13 @@ export function createReviewService(deps: {
         throw new Error("session not found");
       }
 
-      await deps.metadataRepo.markReviewPrompted({
+      await deps.retireSessionById({
         sessionId: input.sessionId,
       });
 
-      if (input.reason === "early_exit" && details.session.status === "active") {
-        await deps.metadataRepo.retireSessionById({
-          retiredAt: new Date(now()).toISOString(),
-          sessionId: input.sessionId,
-        });
-      }
+      await deps.metadataRepo.markReviewPrompted({
+        sessionId: input.sessionId,
+      });
 
       deps.analyticsService.track({
         eventName: "review_prompted",
