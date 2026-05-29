@@ -2,7 +2,7 @@
 
 ## Next Step
 
-After the user reconnects OpenAI Codex in the playground and retests Top Secret, confirm the claim-review report completes and check VPS logs for any remaining sanitized provider failure. Then resume Rori Phase 7 when Academy-approved wiki content is ready: collect the approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008` and `009`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
+After the user retests Top Secret in Telegram, confirm the report panel shows a queued PDF cleanly and then exposes the download button when rendering finishes. If any new failure appears, inspect sanitized VPS backend logs first. Then resume Rori Phase 7 when Academy-approved wiki content is ready: collect the approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008` and `009`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
 
 ## Build Doc Sources
 
@@ -20,4 +20,4 @@ After the user reconnects OpenAI Codex in the playground and retests Top Secret,
 
 ## Last Completed Step
 
-Persistent Top Secret Codex report-generation repair completed on `codex/rori-academy-concierge`: diagnostics now log from the actual Top Secret claim-review route for server/provider failures, opaque or undecodable Codex access tokens refresh before runtime use, refreshed Top Secret Codex credentials are written back to the active session secret store, and malformed but parseable provider findings degrade to neutral `not_enough_reliable_evidence` findings instead of killing the full report.
+Top Secret Codex runtime and results-UI repair completed on `codex/rori-academy-concierge`: the live Codex transport now handles streamed SSE-style responses, fallback findings no longer dump raw provider-normalization text into the results card, the Top Secret report panel clearly shows queued-vs-ready report state, and the results action now says `Back to menu` instead of the ambiguous `Done`.

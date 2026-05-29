@@ -22,6 +22,9 @@ export type TopSecretWorkflowState = {
   isGenerating: boolean;
 };
 
+const TOP_SECRET_PROVIDER_FALLBACK_PREFIX =
+  "The provider response did not keep";
+
 type TopSecretWorkspaceProps = {
   artifacts: ArtifactListItem[];
   onBack: () => void;
@@ -126,6 +129,10 @@ function formatVerdict(verdict: string) {
     .join(" ");
 }
 
+function isProviderFallbackFinding(finding: TopSecretFinding) {
+  return finding.analysis.startsWith(TOP_SECRET_PROVIDER_FALLBACK_PREFIX);
+}
+
 function TopSecretStepContent({
   onClaimsTextChange,
   state,
@@ -202,7 +209,8 @@ function TopSecretStepContent({
           We are putting everything into one PDF for you.
         </p>
       </div>
-      {state.findings.length ? (
+      {state.findings.length &&
+      !state.findings.every(isProviderFallbackFinding) ? (
         <div className="top-secret-findings">
           {state.findings.map((finding, index) => (
             <article className="top-secret-finding-card" key={finding.claim}>
@@ -268,7 +276,7 @@ export function TopSecretWorkspace({
               ? "Researching"
               : "Create report"
             : state.currentStep === "results"
-              ? "Done"
+              ? "Back to menu"
               : "Review messages"
         }
         onBack={state.currentStep === "input" ? onBackToMenu : onBack}

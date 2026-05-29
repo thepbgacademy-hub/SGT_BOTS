@@ -59,3 +59,23 @@
 **Fix applied:** Unknown, opaque, or undecodable Codex access tokens are now treated as expiring and refreshed before the provider call. The Top Secret route writes refreshed credentials back to the active session secret store after report generation.
 
 **Rule going forward:** If token currentness cannot be verified, refresh before use. Do not assume an opaque Codex access token is still valid.
+
+## 2026-05-28 - Codex Streaming Payloads Required Body-Level SSE Detection
+
+**Context:** After `stream: true` was added for live Codex Responses requests, Top Secret still failed with `Unexpected token 'e', "event: res"... is not valid JSON`.
+
+**Problem:** The Codex backend streamed SSE-style payloads with `event:` and `data:` lines, and the response parser relied too heavily on the response content type instead of the body format itself.
+
+**Fix applied:** The Codex runtime now detects streamed payloads from the body text, ignores SSE event headers, reads only `data:` payload lines, and joins output text deltas before JSON parsing.
+
+**Rule going forward:** For Codex Responses, trust the actual body shape more than the header. Event-stream payloads may arrive with mixed or misleading content-type hints.
+
+## 2026-05-28 - Top Secret Results Screen Should Not Dump Provider Fallback Text
+
+**Context:** A Top Secret run completed far enough to queue a report, but the mini app showed raw fallback analysis text on the results step and the user reasonably expected an immediate PDF download.
+
+**Problem:** When the provider returned malformed-but-parseable structured output, the frontend treated the fallback findings like final user-facing copy instead of staying in a clean report-queue posture.
+
+**Fix applied:** The Top Secret results step now suppresses provider fallback findings, shows a simple queue banner, relabels the primary action as `Back to menu`, and makes the report panel explicitly show queued-vs-ready download state.
+
+**Rule going forward:** If the PDF/report flow is the primary user outcome, fallback normalization text belongs in logs or the final PDF, not as the main visible success-state copy in the app.

@@ -13,6 +13,7 @@ export function BotSupportPanel({
 }: BotSupportPanelProps) {
   const panel = getBotWorkspacePanel(botId);
   const isCursiveReportPanel = botId === "document_wizard";
+  const showGeneratedReport = artifacts.length > 0;
   const showCursiveReport = isCursiveReportPanel && artifacts.length > 0;
 
   return (
@@ -20,14 +21,18 @@ export function BotSupportPanel({
       <header className="panel-header">
         <div>
           <p className="eyebrow">
-            {showCursiveReport
+            {showGeneratedReport
+              ? "Report"
+              : showCursiveReport
               ? "Generated Output"
               : isCursiveReportPanel
                 ? "Instructions"
                 : panel.supportLabel}
           </p>
           <h2>
-            {showCursiveReport
+            {showGeneratedReport
+              ? "Report"
+              : showCursiveReport
               ? "Report"
               : isCursiveReportPanel
                 ? "3 Easy Steps:"
@@ -65,6 +70,12 @@ export function BotSupportPanel({
               )}
               {artifact.failureReason ? (
                 <p className="alert-banner">{artifact.failureReason}</p>
+              ) : null}
+              {!artifact.downloadUrl && artifact.status === "queued" ? (
+                <p className="muted-copy">
+                  Your PDF is being created. The download button will appear
+                  here shortly.
+                </p>
               ) : null}
               {artifact.downloadUrl ? (
                 <p className="artifact-actions">

@@ -103,4 +103,47 @@ describe("TopSecretWorkspace", () => {
     expect(markup).toContain("Here is the plan:");
     expect(markup).not.toContain("Chat");
   });
+
+  it("shows the queue banner instead of provider fallback text in the results step", () => {
+    const markup = renderToStaticMarkup(
+      createElement(TopSecretWorkspace, {
+        artifacts: [
+          {
+            artifactType: "pdf",
+            botId: "verifier",
+            botName: "Top Secret",
+            fileName: "top-secret-claim-review.pdf",
+            id: "artifact-1",
+            originalFilename: "top-secret-claim-review.html",
+            status: "queued",
+          },
+        ],
+        onBack: () => undefined,
+        onBackToMenu: () => undefined,
+        onClaimsTextChange: () => undefined,
+        onGenerate: () => undefined,
+        onNext: () => undefined,
+        state: {
+          ...EMPTY_TOP_SECRET_WORKFLOW_STATE,
+          currentStep: "results",
+          findings: [
+            {
+              analysis:
+                "The provider response did not keep the required report structure tied to the retained sources, so this item is marked as not enough reliable evidence instead of being forced into a true or false conclusion.",
+              claim: "A sample claim",
+              conclusion: "A sample conclusion",
+              verdict: "not_enough_reliable_evidence",
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(markup).toContain("Your report is being created.");
+    expect(markup).toContain("download button will appear here shortly.");
+    expect(markup).not.toContain(
+      "The provider response did not keep the required report structure",
+    );
+    expect(markup).toContain("Back to menu");
+  });
 });
