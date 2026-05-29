@@ -129,3 +129,13 @@
 **Fix applied:** The review prompt path now calls `sessionService.retireSessionById(...)` before marking the review as prompted, so both `early_exit` and `timeout` reasons retire the active session and delete the in-memory provider secret. The manual session button in the playground UI is now explicitly labeled `Danger Zone`, and the retention browser tests now use unique Telegram identities so they do not trip the one-entry participation gate by accident.
 
 **Rule going forward:** If a user-facing action ends the playground, it must also end the backend session and purge the provider secret through the same shared code path. Do not treat UI lockout or modal display as proof that credentials were actually removed.
+
+## 2026-05-29 - Backend Hotfix Image Missed Workspace Dependencies After Source-Only Refresh
+
+**Context:** After the live playground table-prefix migration was applied, the backend source was updated on VPS2 and the service was rebuilt using the lightweight `Dockerfile.backend.hotfix` path.
+
+**Problem:** The hotfix image reused the previous dependency layer from `ghcr.io/thepbgacademy-hub/sgt-bots-app-backend:top-secret-smoke`. That layer did not include the newer workspace dependency `pdf-lib`, which is imported from `workers/queue/src/jobs/render-report.job.ts`. The backend container entered a restart loop with `ERR_MODULE_NOT_FOUND`, causing public health to fail with `502`.
+
+**Fix applied:** Rebuilt the backend from the full `Dockerfile.backend` so `pnpm install` reran against the current workspace and refreshed the dependency layer before restarting only `sgt-bots-backend`.
+
+**Rule going forward:** Use the source-only hotfix Dockerfile only when the dependency graph is unchanged. If any imported workspace package may have changed, rebuild from the full backend Dockerfile before restarting the live service.
