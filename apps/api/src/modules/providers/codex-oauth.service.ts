@@ -208,7 +208,7 @@ export async function requestCodexJson(input: {
   }
 
   return parseJsonText(
-    extractCodexText(await response.json()),
+    await extractCodexResponseText(response),
     input.failurePrefix,
   );
 }
@@ -230,6 +230,7 @@ async function sendCodexJsonRequest(input: {
       instructions: input.input.systemPrompt,
       model: "gpt-5.3-codex",
       reasoning: { effort: "medium", summary: "auto" },
+      stream: true,
       store: false,
     }),
     headers: {
@@ -239,6 +240,16 @@ async function sendCodexJsonRequest(input: {
     },
     method: "POST",
   });
+}
+
+async function extractCodexResponseText(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.includes("text/event-stream")) {
+    return extractCodexTextFromEventStream(await response.text());
+  }
+
+  return extractCodexText(await response.json());
 }
 
 function extractCodexText(payload: unknown) {
@@ -258,6 +269,53 @@ function extractCodexText(payload: unknown) {
       .map((part) => part.text ?? "")
       .join("") ?? ""
   );
+}
+
+function extractCodexTextFromEventStream(streamText: string) {
+  const deltaParts: string[] = [];
+  let fallbackText = "";
+
+  for (const rawLine of streamText.split(/\r?\n/gu)) {
+    const line = rawLine.trim();
+
+    if (!line.startsWith("data:")) {
+      continue;
+    }
+
+    const payloadText = line.slice(5).trim();
+
+    if (!payloadText || payloadText === "[DONE]") {
+      continue;
+    }
+
+    try {
+      const payload = JSON.parse(payloadText) as Record<string, unknown>;
+      const type = String(payload.type ?? "");
+
+      if (
+        type.includes("output_text") &&
+        typeof payload.delta === "string" &&
+        payload.delta.length > 0
+      ) {
+        deltaParts.push(payload.delta);
+        continue;
+      }
+
+      const responsePayload =
+        typeof payload.response === "object" && payload.response !== null
+          ? payload.response
+          : payload;
+      const text = extractCodexText(responsePayload);
+
+      if (text) {
+        fallbackText = text;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return deltaParts.join("") || fallbackText;
 }
 
 function parseJsonText(text: string, failurePrefix?: string) {

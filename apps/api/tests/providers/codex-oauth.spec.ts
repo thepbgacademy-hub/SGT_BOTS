@@ -48,6 +48,7 @@ describe("OpenAI Codex OAuth runtime requests", () => {
     expect(calls[0]?.body).toMatchObject({
       instructions: "System",
       model: "gpt-5.3-codex",
+      stream: true,
       store: false,
     });
     expect(calls[0]?.body).not.toHaveProperty("max_output_tokens");
@@ -214,6 +215,35 @@ describe("OpenAI Codex OAuth runtime requests", () => {
           ],
         }),
         { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      requestCodexJson({
+        apiKey: JSON.stringify({
+          accessToken: jwt({ exp: Math.floor(Date.now() / 1000) + 3600 }),
+          baseUrl: "https://chatgpt.com/backend-api/codex",
+          refreshToken: "refresh-token",
+        }),
+        fetchImpl,
+        systemPrompt: "System",
+        userPrompt: "User",
+      }),
+    ).resolves.toEqual({ ok: true });
+  });
+
+  it("parses streamed Codex event responses", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        [
+          'data: {"type":"response.output_text.delta","delta":"{\\"ok\\":"}',
+          'data: {"type":"response.output_text.delta","delta":"true}"}',
+          "data: [DONE]",
+        ].join("\n"),
+        {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        },
       ),
     );
 
