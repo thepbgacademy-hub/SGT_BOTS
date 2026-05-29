@@ -152,6 +152,37 @@ export function createReportService(deps: {
     );
   }
 
+  function deleteArtifactFiles(artifact: ArtifactRecord) {
+    if (fs.existsSync(artifact.diskPath)) {
+      fs.rmSync(artifact.diskPath, { force: true });
+    }
+
+    const metadataPath = resolveArtifactMetadataPath(artifact.storagePath);
+
+    if (fs.existsSync(metadataPath)) {
+      fs.rmSync(metadataPath, { force: true });
+    }
+  }
+
+  function purgeArtifactsForSessionBot(input: {
+    botId: string;
+    sessionId: string;
+    userId: string;
+  }) {
+    for (const artifact of [...artifacts.values()]) {
+      if (
+        artifact.botId !== input.botId ||
+        artifact.sessionId !== input.sessionId ||
+        artifact.userId !== input.userId
+      ) {
+        continue;
+      }
+
+      artifacts.delete(artifact.id);
+      deleteArtifactFiles(artifact);
+    }
+  }
+
   function hydrateArtifactsFromDisk() {
     if (!fs.existsSync(artifactRoot)) {
       return;
@@ -520,6 +551,12 @@ export function createReportService(deps: {
       sessionId: string;
       userId: string;
     }) {
+      purgeArtifactsForSessionBot({
+        botId: input.botId,
+        sessionId: input.sessionId,
+        userId: input.userId,
+      });
+
       const generatedAt = new Date(now()).toISOString();
       const artifactId = crypto.randomUUID();
       const artifact: ArtifactRecord = {

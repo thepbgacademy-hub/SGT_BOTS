@@ -95,4 +95,72 @@ describe("createReportService", () => {
       ),
     ).toBe("%PDF-");
   });
+
+  it("replaces older Top Secret artifacts for the same session and user", () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "top-secret-artifacts-"));
+    process.chdir(tempRoot);
+
+    const analyticsService = createAnalyticsService();
+    const uploadService = createUploadService();
+    const reportService = createReportService({
+      analyticsService,
+      reportQueue: {
+        enqueueRenderReportJob(input) {
+          return {
+            artifactId: input.artifactId,
+            status: "queued" as const,
+          };
+        },
+      },
+      uploadService,
+    });
+
+    const firstQueued = reportService.queueTopSecretReportPdfDraft({
+      botId: "verifier",
+      previewHtml: "<html><body>First</body></html>",
+      previewSnapshot: {
+        findings: [],
+        generatedDate: "May 28, 2026",
+        templateSlug: "top_secret_fact_check",
+      },
+      sessionId: "session-1",
+      userId: "user-1",
+    });
+
+    reportService.markArtifactRendered({
+      artifactId: firstQueued.artifact.id,
+      byteSize: Buffer.byteLength("%PDF-first"),
+      fileBytes: Buffer.from("%PDF-first"),
+    });
+
+    const firstDiskPath = firstQueued.artifact.diskPath;
+    const firstMetadataPath = `${firstDiskPath}.json`;
+
+    const secondQueued = reportService.queueTopSecretReportPdfDraft({
+      botId: "verifier",
+      previewHtml: "<html><body>Second</body></html>",
+      previewSnapshot: {
+        findings: [],
+        generatedDate: "May 28, 2026",
+        templateSlug: "top_secret_fact_check",
+      },
+      sessionId: "session-1",
+      userId: "user-1",
+    });
+
+    expect(
+      reportService.listArtifactsForSession({
+        sessionId: "session-1",
+        userId: "user-1",
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        id: secondQueued.artifact.id,
+        status: "queued",
+      }),
+    ]);
+    expect(reportService.getArtifact(firstQueued.artifact.id)).toBeNull();
+    expect(fs.existsSync(firstDiskPath)).toBe(false);
+    expect(fs.existsSync(firstMetadataPath)).toBe(false);
+  });
 });

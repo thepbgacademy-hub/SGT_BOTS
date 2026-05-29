@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Deploy the Top Secret approved binary cover asset fix to VPS 2, then retest a live Top Secret report in Telegram and confirm page 1 is the exact `PBG-TopSecretCover.pdf` asset before the findings PDF pages. If any new render issue appears, inspect sanitized VPS backend logs first. Then resume Rori Phase 7 when Academy-approved wiki content is ready: collect the approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008` and `009`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
+Deploy the Top Secret artifact-isolation fix to VPS 2, then retest a live Top Secret report in Telegram and confirm a new Top Secret run replaces the older Top Secret report artifact for that same session instead of leaving multiple same-named PDFs in the Report area. If any new render issue appears, inspect sanitized VPS backend logs first. Then resume Rori Phase 7 when Academy-approved wiki content is ready: collect the approved Rori wiki pages, Telegram room records, event records, and live links, generate reviewed upsert SQL with `corepack pnpm rori:data:sql`, apply it to the target operations database after migrations `008` and `009`, then perform a VPS/Telegram smoke test. Do not deploy invented, fallback, fixture, or placeholder data.
 
 ## Build Doc Sources
 
@@ -20,4 +20,4 @@ Deploy the Top Secret approved binary cover asset fix to VPS 2, then retest a li
 
 ## Last Completed Step
 
-Top Secret PDF cover handling was upgraded on `codex/rori-academy-concierge`: the queue worker now prepends the approved binary asset `workers/queue/assets/PBG-TopSecretCover.pdf` to Top Secret PDFs only, the HTML template is body-only again, and queue/API regression tests are green.
+Top Secret artifact isolation was tightened on `codex/rori-academy-concierge`: a new Top Secret report now evicts older Top Secret artifacts for that same session and user before queueing the new one, so the Report area no longer offers multiple stale same-named Top Secret PDFs that can be mistaken for the current run.

@@ -99,3 +99,13 @@
 **Fix applied:** Added `workers/queue/assets/PBG-TopSecretCover.pdf`, taught the queue render job to prepend that PDF only when `templateId === "top_secret_fact_check_v1"`, removed the temporary HTML cover block from the Top Secret template, and added a queue-worker regression test proving Top Secret outputs gain an extra first page while other render paths stay unchanged.
 
 **Rule going forward:** When a workflow has an approved first-page PDF asset, attach the binary asset in the render pipeline instead of rebuilding it as HTML. Keep a focused merge test at the queue layer so future template edits cannot silently replace the approved PDF.
+
+## 2026-05-28 - Top Secret Session Artifact History Could Make Users Download The Wrong Report
+
+**Context:** After the cover-page fix, the user reported that a Top Secret PDF appeared to include unrelated carry-over from a previous report.
+
+**Problem:** Top Secret artifacts were kept for the whole session and surfaced back into the same Report area by `sessionId`. Because successive Top Secret outputs share the same human-facing filename, the user could easily download an older Top Secret PDF and reasonably conclude the current run was contaminated.
+
+**Fix applied:** Top Secret now purges older Top Secret artifacts for the same session and user before queueing a new one. The new report becomes the only Top Secret PDF available in that session workspace, and a regression test now verifies the older artifact record and files are removed.
+
+**Rule going forward:** If a workflow produces repeated single-result reports with the same filename, do not keep stale same-bot artifacts visible by default in the same session workspace. Either replace the older artifact or give every output a clearly distinct identity.
