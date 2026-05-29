@@ -30,6 +30,7 @@ export type TelegramProfileRow = {
 export type ProfileRepo = {
   insertUser(input: Omit<UserRow, "id">): Promise<UserRow>;
   insertTelegramProfile(input: TelegramProfileRow): Promise<TelegramProfileRow>;
+  getUserById(userId: string): Promise<UserRow | null>;
   getUserByTelegramUserId(telegramUserId: string): Promise<UserRow | null>;
   snapshot?: () => {
     users: UserRow[];
@@ -64,6 +65,9 @@ export function createInMemoryProfileRepo(): InMemoryProfileRepo {
     async insertTelegramProfile(input) {
       telegramProfiles.push(input);
       return input;
+    },
+    async getUserById(userId) {
+      return users.find((user) => user.id === userId) ?? null;
     },
     async getUserByTelegramUserId(telegramUserId) {
       return (
@@ -184,6 +188,15 @@ export function createSupabaseProfileRepo(env: AppEnv): ProfileRepo {
         env,
         table: "users",
         query: `?telegram_user_id=eq.${encodeURIComponent(telegramUserId)}&select=*`,
+      });
+
+      return rows[0] ?? null;
+    },
+    async getUserById(userId) {
+      const rows = await selectRows<UserRow>({
+        env,
+        table: "users",
+        query: `?id=eq.${encodeURIComponent(userId)}&select=*`,
       });
 
       return rows[0] ?? null;

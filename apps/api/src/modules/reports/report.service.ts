@@ -85,6 +85,16 @@ export type TopSecretReportSnapshot = {
   findings: TopSecretReportTemplateInput["findings"];
 };
 
+function toSafeReportSlug(value: string) {
+  const slug = value
+    .trim()
+    .replace(/^@+/u, "")
+    .replace(/[^A-Za-z0-9]+/gu, "_")
+    .replace(/^_+|_+$/gu, "");
+
+  return slug || "top_secret";
+}
+
 export function createReportService(deps: {
   analyticsService: ReturnType<typeof createAnalyticsService>;
   now?: () => number;
@@ -546,6 +556,7 @@ export function createReportService(deps: {
     },
     queueTopSecretReportPdfDraft(input: {
       botId: string;
+      fileNameBase?: string;
       previewHtml: string;
       previewSnapshot: TopSecretReportSnapshot;
       sessionId: string;
@@ -559,23 +570,25 @@ export function createReportService(deps: {
 
       const generatedAt = new Date(now()).toISOString();
       const artifactId = crypto.randomUUID();
+      const fileNameBase = toSafeReportSlug(input.fileNameBase ?? "top_secret");
+      const fileName = `${fileNameBase}_top_secret_review.pdf`;
       const artifact: ArtifactRecord = {
         artifactType: "pdf",
         botId: input.botId,
         createdAt: generatedAt,
-        fileName: "top-secret-claim-review.pdf",
+        fileName,
         generatedAt,
         id: artifactId,
         originalFilename: "top-secret-claim-review.html",
         sessionId: input.sessionId,
         status: "queued",
-        storagePath: `artifacts/${input.sessionId}/${artifactId}/top-secret-claim-review.pdf`,
+        storagePath: `artifacts/${input.sessionId}/${artifactId}/${fileName}`,
         templateId: "top_secret_fact_check_v1",
         topSecretSnapshot: input.previewSnapshot,
         uploadId: null,
         userId: input.userId,
         diskPath: resolveArtifactDiskPath(
-          `artifacts/${input.sessionId}/${artifactId}/top-secret-claim-review.pdf`,
+          `artifacts/${input.sessionId}/${artifactId}/${fileName}`,
         ),
       };
 

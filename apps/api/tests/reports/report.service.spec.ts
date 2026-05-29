@@ -138,6 +138,7 @@ describe("createReportService", () => {
 
     const secondQueued = reportService.queueTopSecretReportPdfDraft({
       botId: "verifier",
+      fileNameBase: "user_name",
       previewHtml: "<html><body>Second</body></html>",
       previewSnapshot: {
         findings: [],
@@ -155,6 +156,7 @@ describe("createReportService", () => {
       }),
     ).toEqual([
       expect.objectContaining({
+        fileName: "user_name_top_secret_review.pdf",
         id: secondQueued.artifact.id,
         status: "queued",
       }),
@@ -162,5 +164,38 @@ describe("createReportService", () => {
     expect(reportService.getArtifact(firstQueued.artifact.id)).toBeNull();
     expect(fs.existsSync(firstDiskPath)).toBe(false);
     expect(fs.existsSync(firstMetadataPath)).toBe(false);
+  });
+
+  it("builds a safe personalized Top Secret filename", () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "top-secret-name-"));
+    process.chdir(tempRoot);
+
+    const reportService = createReportService({
+      analyticsService: createAnalyticsService(),
+      reportQueue: {
+        enqueueRenderReportJob(input) {
+          return {
+            artifactId: input.artifactId,
+            status: "queued" as const,
+          };
+        },
+      },
+      uploadService: createUploadService(),
+    });
+
+    const queued = reportService.queueTopSecretReportPdfDraft({
+      botId: "verifier",
+      fileNameBase: "@johnQ1234",
+      previewHtml: "<html><body>Named</body></html>",
+      previewSnapshot: {
+        findings: [],
+        generatedDate: "May 28, 2026",
+        templateSlug: "top_secret_fact_check",
+      },
+      sessionId: "session-2",
+      userId: "user-2",
+    });
+
+    expect(queued.artifact.fileName).toBe("johnQ1234_top_secret_review.pdf");
   });
 });

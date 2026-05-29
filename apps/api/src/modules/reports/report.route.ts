@@ -783,6 +783,11 @@ export async function registerReportRoutes(app: FastifyInstance) {
         }
       }
       const generatedDate = formatCursiveGeneratedDate();
+      const profile = await app.profileRepo.getUserById(claims.userId);
+      const topSecretFileNameBase =
+        profile?.username?.trim() ||
+        profile?.preferred_name?.trim() ||
+        "top_secret";
       const previewSnapshot: TopSecretReportSnapshot = {
         templateSlug: "top_secret_fact_check",
         generatedDate,
@@ -794,6 +799,7 @@ export async function registerReportRoutes(app: FastifyInstance) {
       });
       const result = app.reportService.queueTopSecretReportPdfDraft({
         botId: manifest.id,
+        fileNameBase: topSecretFileNameBase,
         previewHtml: html,
         previewSnapshot,
         sessionId,

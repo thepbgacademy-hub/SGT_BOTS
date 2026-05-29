@@ -151,7 +151,7 @@ describe("Top Secret report route", () => {
     expect(response.statusCode).toBe(202);
     expect(response.json()).toMatchObject({
       artifact: {
-        fileName: "top-secret-claim-review.pdf",
+        fileName: "ada_l_top_secret_review.pdf",
       },
       status: "queued",
     });
@@ -191,7 +191,7 @@ describe("Top Secret report route", () => {
     };
 
     expect(payload.status).toBe("queued");
-    expect(payload.artifact.fileName).toBe("top-secret-claim-review.pdf");
+    expect(payload.artifact.fileName).toBe("ada_l_top_secret_review.pdf");
     expect(payload.findings).toHaveLength(2);
 
     const storedArtifact = await app.reportService.waitForArtifact(
