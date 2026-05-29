@@ -1,4 +1,4 @@
-create table audit_events (
+create table playground_audit_events (
   id uuid primary key default gen_random_uuid(),
   actor text not null,
   entity_type text not null,

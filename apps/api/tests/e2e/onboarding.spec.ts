@@ -49,7 +49,7 @@ describe("POST /api/profiles", () => {
       nextStep: "connect_provider",
     });
     expect(profileRepo.snapshot()).toMatchObject({
-      users: [
+      playground_users: [
         {
           telegram_user_id: "123456",
           username: "ada_l",
@@ -58,7 +58,7 @@ describe("POST /api/profiles", () => {
           preferred_name: "Ada",
         },
       ],
-      telegram_profiles: [
+      playground_telegram_profiles: [
         {
           language_code: "en",
           launch_metadata: {
@@ -113,7 +113,7 @@ describe("POST /api/profiles", () => {
     expect("snapshot" in app.profileRepo).toBe(false);
   });
 
-  it("persists default runtime onboarding into the phase-1 users and telegram_profiles tables", async () => {
+  it("persists default runtime onboarding into the phase-1 playground profile tables", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -168,7 +168,7 @@ describe("POST /api/profiles", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      "https://example.supabase.co/rest/v1/users?on_conflict=telegram_user_id",
+      "https://example.supabase.co/rest/v1/playground_users?on_conflict=telegram_user_id",
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
@@ -188,7 +188,7 @@ describe("POST /api/profiles", () => {
     });
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      "https://example.supabase.co/rest/v1/telegram_profiles?on_conflict=user_id",
+      "https://example.supabase.co/rest/v1/playground_telegram_profiles?on_conflict=user_id",
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({

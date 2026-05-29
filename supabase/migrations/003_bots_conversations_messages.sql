@@ -1,4 +1,4 @@
-create table bot_definitions (
+create table playground_bot_definitions (
   bot_id text primary key,
   name text not null,
   category text not null,
@@ -8,7 +8,7 @@ create table bot_definitions (
   active boolean not null default true
 );
 
-insert into bot_definitions (
+insert into playground_bot_definitions (
   bot_id,
   name,
   category,
@@ -37,20 +37,20 @@ values
     true
   );
 
-create table conversations (
+create table playground_conversations (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references users(id) on delete cascade,
+  user_id uuid not null references playground_users(id) on delete cascade,
   session_id uuid not null references playground_sessions(id) on delete cascade,
-  bot_id text not null references bot_definitions(bot_id),
+  bot_id text not null references playground_bot_definitions(bot_id),
   state jsonb not null default '{"status":"active"}'::jsonb,
   started_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   ended_at timestamptz
 );
 
-create table messages (
+create table playground_messages (
   id uuid primary key default gen_random_uuid(),
-  conversation_id uuid not null references conversations(id) on delete cascade,
+  conversation_id uuid not null references playground_conversations(id) on delete cascade,
   role text not null,
   content text not null,
   citations jsonb not null default '[]'::jsonb,

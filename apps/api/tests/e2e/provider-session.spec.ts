@@ -384,7 +384,7 @@ describe("provider connection and session start", () => {
       state: "active",
     });
     expect(statusPayload.sessionToken).toEqual(expect.any(String));
-    expect(metadataRepo.snapshot().provider_connections[0]).toMatchObject({
+    expect(metadataRepo.snapshot().playground_provider_connections[0]).toMatchObject({
       auth_method: "oauth",
       provider_name: "openai_codex",
     });
@@ -593,7 +593,7 @@ describe("provider connection and session start", () => {
     expect(response.statusCode).toBe(200);
     expect(fetchMock).toHaveBeenNthCalledWith(
       7,
-      "https://example.supabase.co/rest/v1/provider_connections",
+      "https://example.supabase.co/rest/v1/playground_provider_connections",
       expect.objectContaining({
         method: "POST",
         body: expect.any(String),

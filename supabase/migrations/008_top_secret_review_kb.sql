@@ -1,6 +1,6 @@
 create table if not exists top_secret_submissions (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references users(id) on delete cascade,
+  user_id uuid not null references playground_users(id) on delete cascade,
   session_id uuid not null references playground_sessions(id) on delete cascade,
   artifact_id uuid null,
   claims jsonb not null default '[]'::jsonb,

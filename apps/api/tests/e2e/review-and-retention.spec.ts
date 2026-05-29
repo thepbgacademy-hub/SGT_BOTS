@@ -97,7 +97,7 @@ describe("review prompt and retention cleanup", () => {
       "utf8",
     );
 
-    expect(sql).toContain("create table audit_events");
+    expect(sql).toContain("create table playground_audit_events");
     expect(sql).toContain("actor text not null");
     expect(sql).toContain("entity_type text not null");
     expect(sql).toContain("event_type text not null");

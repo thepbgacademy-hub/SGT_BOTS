@@ -262,7 +262,9 @@ This shape keeps Telegram-specific work lightweight, prevents n8n from becoming 
 
 ### Main Tables
 
-- `users`
+Playground-owned tables stay in the `public` schema for now, but they must use a `playground_` prefix so they are immediately distinguishable from any other app data.
+
+- `playground_users`
   - internal user id
   - telegram user id
   - username
@@ -271,14 +273,14 @@ This shape keeps Telegram-specific work lightweight, prevents n8n from becoming 
   - last name
   - timestamps
 
-- `telegram_profiles`
+- `playground_telegram_profiles`
   - user id
   - validated Telegram payload snapshot
   - language code
   - launch metadata
   - raw init data hash
 
-- `provider_connections`
+- `playground_provider_connections`
   - user id
   - provider name
   - auth method (`oauth` or `api_key`)
@@ -300,7 +302,7 @@ This shape keeps Telegram-specific work lightweight, prevents n8n from becoming 
   - provider connection id
   - review prompted flag
 
-- `bot_definitions`
+- `playground_bot_definitions`
   - bot id
   - name
   - category
@@ -319,7 +321,7 @@ This shape keeps Telegram-specific work lightweight, prevents n8n from becoming 
   - model routing policy
   - report template binding
 
-- `conversations`
+- `playground_conversations`
   - conversation id
   - session id
   - bot id
@@ -327,7 +329,7 @@ This shape keeps Telegram-specific work lightweight, prevents n8n from becoming 
   - started at
   - ended at
 
-- `messages`
+- `playground_messages`
   - conversation id
   - role
   - content
@@ -335,7 +337,7 @@ This shape keeps Telegram-specific work lightweight, prevents n8n from becoming 
   - safety flags
   - created at
 
-- `artifacts`
+- `playground_artifacts`
   - conversation id
   - bot id
   - type (`pdf`, `html`, `json`, etc.)
@@ -343,7 +345,7 @@ This shape keeps Telegram-specific work lightweight, prevents n8n from becoming 
   - template id if rendered
   - created at
 
-- `uploads`
+- `playground_uploads`
   - session id
   - conversation id
   - original filename
@@ -353,7 +355,7 @@ This shape keeps Telegram-specific work lightweight, prevents n8n from becoming 
   - parse status
   - storage path
 
-- `audit_events`
+- `playground_audit_events`
   - actor
   - entity type/id
   - event type

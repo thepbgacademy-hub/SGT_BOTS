@@ -200,7 +200,7 @@ describe("bot runtime routes", () => {
       "utf8",
     );
 
-    expect(sql).toContain("create table bot_definitions");
+    expect(sql).toContain("create table playground_bot_definitions");
     expect(sql).toContain("bot_id text primary key");
     expect(sql).toContain("name text not null");
     expect(sql).toContain("category text not null");
@@ -208,10 +208,10 @@ describe("bot runtime routes", () => {
     expect(sql).toContain("source_binding text not null");
     expect(sql).toContain("prompt_version text");
     expect(sql).toContain("active boolean");
-    expect(sql).toContain("create table conversations");
+    expect(sql).toContain("create table playground_conversations");
     expect(sql).toContain("state jsonb");
     expect(sql).toContain("ended_at timestamptz");
-    expect(sql).toContain("create table messages");
+    expect(sql).toContain("create table playground_messages");
     expect(sql).toContain("safety_flags jsonb");
   });
 

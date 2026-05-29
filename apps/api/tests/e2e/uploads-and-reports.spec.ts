@@ -93,13 +93,13 @@ describe("document wizard uploads and reports", () => {
       "utf8",
     );
 
-    expect(sql).toContain("create table uploads");
+    expect(sql).toContain("create table playground_uploads");
     expect(sql).toContain("original_filename text not null");
     expect(sql).toContain("mime_type text not null");
     expect(sql).toContain("virus_scan_status text not null");
     expect(sql).toContain("parse_status text not null");
     expect(sql).toContain("storage_path text not null");
-    expect(sql).toContain("create table artifacts");
+    expect(sql).toContain("create table playground_artifacts");
     expect(sql).toContain("artifact_type text not null");
     expect(sql).toContain("template_id text");
   });

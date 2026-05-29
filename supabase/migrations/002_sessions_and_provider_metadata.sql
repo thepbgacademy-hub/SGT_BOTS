@@ -1,6 +1,6 @@
-create table provider_connections (
+create table playground_provider_connections (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references users(id) on delete cascade,
+  user_id uuid not null references playground_users(id) on delete cascade,
   provider_name text not null,
   auth_method text not null,
   validation_status text not null,
@@ -12,8 +12,8 @@ create table provider_connections (
 
 create table playground_sessions (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references users(id) on delete cascade,
-  provider_connection_id uuid not null references provider_connections(id),
+  user_id uuid not null references playground_users(id) on delete cascade,
+  provider_connection_id uuid not null references playground_provider_connections(id),
   started_at timestamptz not null default now(),
   ends_at timestamptz not null,
   status text not null,

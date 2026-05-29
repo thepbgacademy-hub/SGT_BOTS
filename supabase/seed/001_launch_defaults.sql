@@ -1,4 +1,4 @@
-insert into bot_definitions (
+insert into playground_bot_definitions (
   bot_id,
   name,
   category,

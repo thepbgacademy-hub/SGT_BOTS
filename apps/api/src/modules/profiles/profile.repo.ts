@@ -33,15 +33,15 @@ export type ProfileRepo = {
   getUserById(userId: string): Promise<UserRow | null>;
   getUserByTelegramUserId(telegramUserId: string): Promise<UserRow | null>;
   snapshot?: () => {
-    users: UserRow[];
-    telegram_profiles: TelegramProfileRow[];
+    playground_users: UserRow[];
+    playground_telegram_profiles: TelegramProfileRow[];
   };
 };
 
 export type InMemoryProfileRepo = ProfileRepo & {
   snapshot: () => {
-    users: UserRow[];
-    telegram_profiles: TelegramProfileRow[];
+    playground_users: UserRow[];
+    playground_telegram_profiles: TelegramProfileRow[];
   };
 };
 
@@ -76,8 +76,8 @@ export function createInMemoryProfileRepo(): InMemoryProfileRepo {
     },
     snapshot() {
       return {
-        users,
-        telegram_profiles: telegramProfiles,
+        playground_users: users,
+        playground_telegram_profiles: telegramProfiles,
       };
     },
   };
@@ -152,7 +152,7 @@ export function createSupabaseProfileRepo(env: AppEnv): ProfileRepo {
     async insertUser(input) {
       return insertRow<Omit<UserRow, "id">, UserRow>({
         env,
-        table: "users",
+        table: "playground_users",
         query: "?on_conflict=telegram_user_id",
         prefer: "resolution=merge-duplicates,return=representation",
         payload: {
@@ -170,7 +170,7 @@ export function createSupabaseProfileRepo(env: AppEnv): ProfileRepo {
     async insertTelegramProfile(input) {
       return insertRow<TelegramProfileRow, TelegramProfileRow>({
         env,
-        table: "telegram_profiles",
+        table: "playground_telegram_profiles",
         query: "?on_conflict=user_id",
         prefer: "resolution=merge-duplicates,return=representation",
         payload: {
@@ -186,7 +186,7 @@ export function createSupabaseProfileRepo(env: AppEnv): ProfileRepo {
     async getUserByTelegramUserId(telegramUserId) {
       const rows = await selectRows<UserRow>({
         env,
-        table: "users",
+        table: "playground_users",
         query: `?telegram_user_id=eq.${encodeURIComponent(telegramUserId)}&select=*`,
       });
 
@@ -195,7 +195,7 @@ export function createSupabaseProfileRepo(env: AppEnv): ProfileRepo {
     async getUserById(userId) {
       const rows = await selectRows<UserRow>({
         env,
-        table: "users",
+        table: "playground_users",
         query: `?id=eq.${encodeURIComponent(userId)}&select=*`,
       });
 

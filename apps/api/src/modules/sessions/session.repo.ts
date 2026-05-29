@@ -51,7 +51,7 @@ export type SessionMetadataRepo = {
 export type InMemorySessionMetadataRepo = SessionMetadataRepo & {
   snapshot: () => {
     playground_sessions: PlaygroundSessionRow[];
-    provider_connections: ProviderConnectionRow[];
+    playground_provider_connections: ProviderConnectionRow[];
   };
 };
 
@@ -126,7 +126,7 @@ export function createInMemorySessionMetadataRepo(): InMemorySessionMetadataRepo
     snapshot() {
       return {
         playground_sessions: sessions,
-        provider_connections: providerConnections,
+        playground_provider_connections: providerConnections,
       };
     },
   };
@@ -222,7 +222,7 @@ export function createSupabaseSessionMetadataRepo(env: AppEnv): SessionMetadataR
       return insertRow<Omit<ProviderConnectionRow, "id">, ProviderConnectionRow>({
         env,
         payload: input,
-        table: "provider_connections",
+        table: "playground_provider_connections",
       });
     },
     async insertPlaygroundSession(input) {
@@ -247,7 +247,7 @@ export function createSupabaseSessionMetadataRepo(env: AppEnv): SessionMetadataR
       const providerConnections = await selectRows<ProviderConnectionRow>({
         env,
         query: `?id=eq.${encodeURIComponent(session.provider_connection_id)}&select=*`,
-        table: "provider_connections",
+        table: "playground_provider_connections",
       });
       const providerConnection = providerConnections[0];
 
