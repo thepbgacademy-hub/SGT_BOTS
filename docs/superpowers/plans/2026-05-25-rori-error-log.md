@@ -179,3 +179,33 @@
 **Fix applied:** Removed the Rori workspace Back button, its dedicated styling, and updated tests to assert that no duplicate workspace Back button renders.
 
 **Rule going forward:** Rori should rely on the top menu for Back navigation unless a future flow adds a nested step that needs an in-workspace back action.
+
+## 2026-05-31 - Rori Academy Data Needed A Hard Schema Boundary
+
+**Context:** Preparing to load the real PBG Academy wiki from `E:\REPOS\PBG_wiki`.
+
+**Problem:** Rori's Academy wiki page table and directory tables were created in `public`, which made the Academy concierge data too easy to confuse with shared Playground tables.
+
+**Fix applied:** Moved the Rori Academy storage boundary to a dedicated `rori` schema, updated the migrations and manual SQL mirrors to create and grant that schema explicitly, added a non-destructive migration to move old public Rori tables into `rori`, and updated the import SQL generator to upsert into `rori.rori_academy_wiki_pages`, `rori.rori_telegram_rooms`, and `rori.rori_academy_events`.
+
+**Rule going forward:** Keep shared Playground operational tables in `public` with the `playground_` prefix, but keep Academy concierge content isolated in the `rori` schema. Do not load Academy wiki content back into generic `public` tables.
+
+## 2026-05-31 - Rori Schema Migration Needed To Tolerate Empty Live Environments
+
+**Context:** Applying `012_rori_schema_segregation.sql` on VPS2 before any real Rori Academy content had been loaded.
+
+**Problem:** The first version of the segregation migration always granted `select` on the Rori tables at the end. In a fresh environment where the old public Rori tables did not exist yet, those grants failed because there was nothing to move.
+
+**Fix applied:** Wrapped the end-of-file grants in existence checks so `012_rori_schema_segregation.sql` works in both cases: older environments that need a move, and fresh environments where `008` and `009` create the `rori` tables directly.
+
+**Rule going forward:** Non-destructive retrofit migrations should succeed both when legacy objects exist and when the target environment is still empty.
+
+## 2026-05-31 - Public Concierge Load Must Not Expose Student-Only Wiki Pages
+
+**Context:** Loading the real PBG Academy wiki from `E:\REPOS\PBG_wiki` into the live Rori concierge schema on VPS2.
+
+**Problem:** Several wiki pages are marked `Student-Only`, but the current Rori Academy wiki table only distinguishes `published`, `draft`, and `visible`. Loading those pages into the public concierge schema would make enrolled-student onboarding, troubleshooting, and policy content reachable without a separate access boundary.
+
+**Fix applied:** Loaded only the public-facing Academy pages into `rori.rori_academy_wiki_pages`, kept the student-only pages out of the live Rori schema, and documented that a separate access-control boundary is required before those pages are published through Rori.
+
+**Rule going forward:** Public concierge loads may include only public Academy content. Do not publish student-only wiki pages through Rori until the data model can enforce an enrolled-student visibility boundary.

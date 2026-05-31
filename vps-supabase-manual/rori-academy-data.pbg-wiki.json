@@ -1,0 +1,198 @@
+{
+  "wikiPages": [
+    {
+      "pageKey": "academy-overview",
+      "title": "Academy Overview",
+      "summary": "PBG Academy is a truth-based education platform focused on business, private commerce, and source-based learning.",
+      "body": "PBG Academy is an educational platform for Cadets who want a stronger foundation in business, private commerce, and public and private systems. The Academy is built for people who want structured, source-based study instead of hype, shortcuts, or internet myths. PBG Academy teaches from real sources, encourages careful thinking, and stays grounded about what education can and cannot do. It does not provide legal, tax, banking, credit, securities, investment, or financial advice, and it does not guarantee results.",
+      "keywords": [
+        "academy",
+        "pbg",
+        "overview",
+        "what is pbg academy",
+        "what does pbg academy teach",
+        "cadet",
+        "education",
+        "source-based",
+        "private commerce",
+        "business"
+      ],
+      "status": "published",
+      "sourceUrl": "sgt-bots://wiki/rori/academy-overview",
+      "visible": true,
+      "sortOrder": 10
+    },
+    {
+      "pageKey": "brand-voice-and-tone",
+      "title": "Brand Voice and Tone",
+      "summary": "Rori should sound warm, grounded, scholarly, clear, and no-nonsense while staying truthful and supportive.",
+      "body": "Rori should sound clear, professional, grounded, warm, scholarly, and no-nonsense. The Academy voice is Cadet first: no hype, no empty promises. When someone is confused, skeptical, or frustrated, Rori should respond with empathy and verified Academy facts. Rori should never bend policy, disclaimers, or facts just to tell someone what they want to hear. The best Rori answers stay calm, truthful, supportive, and confident about the value of proper education without sounding pushy or salesy.",
+      "keywords": [
+        "voice",
+        "tone",
+        "brand",
+        "how should rori sound",
+        "cadet first",
+        "no hype",
+        "no empty promises",
+        "supportive",
+        "grounded"
+      ],
+      "status": "published",
+      "sourceUrl": "sgt-bots://wiki/rori/brand-voice-and-tone",
+      "visible": true,
+      "sortOrder": 20
+    },
+    {
+      "pageKey": "compliance-and-boundaries",
+      "title": "Compliance and Boundaries",
+      "summary": "PBG Academy provides education and research-based learning, not personal legal, tax, banking, credit, securities, or financial advice.",
+      "body": "PBG Academy is education first. It provides educational and research-based information to help Cadets build understanding, but it does not provide legal, tax, banking, credit, securities, investment, financial, debt-discharge, or professional advice. Rori can explain what the Academy teaches, point someone toward the next learning step, and encourage source-based study. If a question turns into a personal legal, tax, credit, banking, securities, debt, or financial situation, the right next step is to consult a qualified licensed professional. PBG Academy also does not guarantee funding, debt elimination, court success, tax results, approval, or any other specific outcome.",
+      "keywords": [
+        "compliance",
+        "boundaries",
+        "disclaimer",
+        "advice",
+        "legal advice",
+        "tax advice",
+        "financial advice",
+        "professional advice",
+        "guarantee results"
+      ],
+      "status": "published",
+      "sourceUrl": "sgt-bots://wiki/rori/compliance-and-boundaries",
+      "visible": true,
+      "sortOrder": 30
+    },
+    {
+      "pageKey": "enrollment",
+      "title": "Enrollment and Pricing",
+      "summary": "Enrollment is open year-round, 24/7, with Free/Public and paid levels that include different access and credit benefits.",
+      "body": "Enrollment in PBG Academy is available year-round, 24/7. Rori can collect basic information, help a learner understand the available enrollment levels, and guide them toward the next step. Current levels include Free/Public at $0, Basic at $9.99 per month, Pro at $19.99 per month, Ultra at $49.99 per month, and Specialist at $79.99 per month. Paid levels include PBG Academy credits for tool use, while Free/Public learners can purchase credit packs separately. Stripe and PayPal are accepted for recurring enrollment, and Cash App is limited to low-cost items and selected workshops. Refunds are not issued for instant-access digital materials, and Rori should not promise discounts directly, but may send a learner's information to an Ambassador for follow-up when discount questions come up.",
+      "keywords": [
+        "enroll",
+        "enrollment",
+        "join",
+        "sign up",
+        "signup",
+        "pricing",
+        "cost",
+        "tuition",
+        "credits",
+        "payment",
+        "refund",
+        "discount"
+      ],
+      "status": "published",
+      "sourceUrl": "sgt-bots://wiki/rori/enrollment",
+      "visible": true,
+      "sortOrder": 40
+    },
+    {
+      "pageKey": "events-and-workshops",
+      "title": "Events and Workshops",
+      "summary": "PBG Academy offers public and enrolled events, with Ambassador follow-up for event questions and payment links when applicable.",
+      "body": "PBG Academy offers instructor-led discussions, guest workshops, live walkthroughs, invitation-only events, and other focused learning sessions. Some events are public, while others are limited to enrolled Cadets or certain access levels. Rori can collect a learner's interest in an event and forward it to an Ambassador, who can answer event-topic questions and provide the payment link when applicable. Whether an event is included with tuition or paid separately depends on the event. If a learner misses a paid workshop, they may request replay room access for that workshop at no additional charge, but unauthorized recordings are prohibited. Rori should not invent a live calendar or registration link when one has not been configured.",
+      "keywords": [
+        "events",
+        "workshops",
+        "guest workshop",
+        "registration",
+        "register",
+        "event cost",
+        "replay",
+        "ambassador",
+        "payment link"
+      ],
+      "status": "published",
+      "sourceUrl": "sgt-bots://wiki/rori/events-and-workshops",
+      "visible": true,
+      "sortOrder": 50
+    },
+    {
+      "pageKey": "programs-and-curriculum",
+      "title": "Programs and Curriculum",
+      "summary": "PBG Academy courses are called Missions and are built as structured, source-based learning paths with different enrollment levels and unlocks.",
+      "body": "At PBG Academy, courses are called Missions. A Mission is a structured learning path that helps Cadets study specific topics through source-based education, tools, discussions, and comprehension testing. PBG Academy offers both general knowledge course missions and deeper tuition-based missions. Public learners can explore selected entry-level materials and some Playground tools, while enrolled Cadets unlock deeper courses, more tools, and added benefits depending on level. Enrollment levels may include Entry Level, Intermediate, Pro, and Ultra access. The PBG Playground is where prospective Cadets can test drive tools and gadgets before enrolling. Completing a Mission does not guarantee any legal, tax, credit, banking, securities, commercial, or financial outcome.",
+      "keywords": [
+        "missions",
+        "programs",
+        "curriculum",
+        "courses",
+        "playground",
+        "learning levels",
+        "entry level",
+        "pro",
+        "ultra",
+        "tools",
+        "gadgets"
+      ],
+      "status": "published",
+      "sourceUrl": "sgt-bots://wiki/rori/programs-and-curriculum",
+      "visible": true,
+      "sortOrder": 60
+    },
+    {
+      "pageKey": "support-and-concierge-faqs",
+      "title": "Support and Concierge FAQs",
+      "summary": "Rori is available 24/7 for general Academy help, while live staff usually handle escalations during weekday business hours.",
+      "body": "Rori is available 24/7 for general questions about PBG Academy, including pricing, enrollment levels, disclaimers, Missions, support channels, and basic troubleshooting. Live staff are usually available Monday through Friday from 11:00 AM to 4:00 PM, excluding weekends and holidays. Official support channels are Rori DM and Lobby DM to staff. Rori should escalate payment problems, upgrade questions, student conflicts, leave-of-absence requests, referral-perk eligibility questions, and account-specific issues to human admins. Rori can acknowledge the concern, explain that staff will be notified, and keep the answer grounded without pretending to approve or resolve something that needs human review.",
+      "keywords": [
+        "support",
+        "concierge",
+        "faq",
+        "staff",
+        "hours",
+        "rori dm",
+        "lobby",
+        "human review",
+        "escalation",
+        "contact support"
+      ],
+      "status": "published",
+      "sourceUrl": "sgt-bots://wiki/rori/support-and-concierge-faqs",
+      "visible": true,
+      "sortOrder": 70
+    }
+  ],
+  "telegramRooms": [
+    {
+      "roomKey": "rori-dm",
+      "label": "Rori DM",
+      "purpose": "General Academy questions, pricing, enrollment direction, Missions, disclaimers, and first-step guidance through the concierge bot.",
+      "keywords": [
+        "rori",
+        "concierge",
+        "academy help",
+        "pricing",
+        "enrollment",
+        "missions",
+        "general questions",
+        "support"
+      ],
+      "linkStatus": "not_configured",
+      "visible": true,
+      "sortOrder": 10
+    },
+    {
+      "roomKey": "lobby-dm-to-staff",
+      "label": "Lobby DM to staff",
+      "purpose": "Human review for payment problems, upgrade questions, leave-of-absence requests, account-specific issues, conflicts, and most troubleshooting concerns.",
+      "keywords": [
+        "lobby",
+        "staff",
+        "human admin",
+        "payment issue",
+        "upgrade",
+        "leave of absence",
+        "troubleshooting",
+        "account issue",
+        "access help"
+      ],
+      "linkStatus": "not_configured",
+      "visible": true,
+      "sortOrder": 20
+    }
+  ],
+  "events": []
+}

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const PLACEHOLDER_PATTERN =
   /(example\.[a-z]+|localhost|127\.0\.0\.1|tbd|todo|placeholder|#)/i;
+const RORI_SCHEMA = "rori";
 const WIKI_STATUSES = new Set(["draft", "published", "archived"]);
 const EVENT_TYPES = new Set(["workshop", "event"]);
 const EVENT_STATUSES = new Set(["active", "cancelled", "archived"]);
@@ -314,7 +315,7 @@ function buildWikiSql(records) {
     )
     .join(",\n");
 
-  return `insert into rori_academy_wiki_pages (page_key, title, summary, body, keywords, status, source_url, visible, sort_order)
+  return `insert into ${RORI_SCHEMA}.rori_academy_wiki_pages (page_key, title, summary, body, keywords, status, source_url, visible, sort_order)
 values
 ${values}
 on conflict (page_key) do update set
@@ -341,7 +342,7 @@ function buildRoomsSql(records) {
     )
     .join(",\n");
 
-  return `insert into rori_telegram_rooms (room_key, label, purpose, keywords, link_status, invite_url, visible, sort_order)
+  return `insert into ${RORI_SCHEMA}.rori_telegram_rooms (room_key, label, purpose, keywords, link_status, invite_url, visible, sort_order)
 values
 ${values}
 on conflict (room_key) do update set
@@ -367,7 +368,7 @@ function buildEventsSql(records) {
     )
     .join(",\n");
 
-  return `insert into rori_academy_events (event_key, title, summary, timing, event_type, status, keywords, registration_status, registration_url, visible, sort_order)
+  return `insert into ${RORI_SCHEMA}.rori_academy_events (event_key, title, summary, timing, event_type, status, keywords, registration_status, registration_url, visible, sort_order)
 values
 ${values}
 on conflict (event_key) do update set

@@ -69,6 +69,9 @@ describe("Rori wiki repo", () => {
         "/rest/v1/rori_academy_wiki_pages?select=page_key,title,summary,body,keywords,status,source_url,updated_at&visible=is.true&status=eq.published",
       ),
       expect.objectContaining({
+        headers: expect.objectContaining({
+          "accept-profile": "rori",
+        }),
         method: "GET",
       }),
     );

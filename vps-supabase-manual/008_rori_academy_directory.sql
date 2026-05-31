@@ -1,4 +1,8 @@
-create table if not exists rori_academy_events (
+create schema if not exists rori;
+
+grant usage on schema rori to authenticated, service_role;
+
+create table if not exists rori.rori_academy_events (
   event_key text primary key,
   title text not null,
   summary text not null,
@@ -28,7 +32,7 @@ create table if not exists rori_academy_events (
   )
 );
 
-create table if not exists rori_telegram_rooms (
+create table if not exists rori.rori_telegram_rooms (
   room_key text primary key,
   label text not null,
   purpose text not null,
@@ -55,18 +59,21 @@ create table if not exists rori_telegram_rooms (
   )
 );
 
-alter table rori_academy_events enable row level security;
-alter table rori_telegram_rooms enable row level security;
+grant select on rori.rori_academy_events to authenticated, service_role;
+grant select on rori.rori_telegram_rooms to authenticated, service_role;
 
-drop policy if exists "Authenticated users can read active Rori Academy events" on rori_academy_events;
-drop policy if exists "Authenticated users can read active Rori Telegram rooms" on rori_telegram_rooms;
+alter table rori.rori_academy_events enable row level security;
+alter table rori.rori_telegram_rooms enable row level security;
+
+drop policy if exists "Authenticated users can read active Rori Academy events" on rori.rori_academy_events;
+drop policy if exists "Authenticated users can read active Rori Telegram rooms" on rori.rori_telegram_rooms;
 
 create policy "Authenticated users can read active Rori Academy events"
-on rori_academy_events for select
+on rori.rori_academy_events for select
 to authenticated
 using (visible is true and status = 'active');
 
 create policy "Authenticated users can read active Rori Telegram rooms"
-on rori_telegram_rooms for select
+on rori.rori_telegram_rooms for select
 to authenticated
 using (visible is true);

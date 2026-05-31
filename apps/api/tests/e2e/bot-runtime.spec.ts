@@ -242,14 +242,18 @@ describe("bot runtime routes", () => {
       "utf8",
     );
 
-    expect(sql).toContain("create table if not exists rori_academy_events");
+    expect(sql).toContain("create schema if not exists rori");
+    expect(sql).toContain("grant usage on schema rori to authenticated, service_role");
+    expect(sql).toContain("create table if not exists rori.rori_academy_events");
     expect(sql).toContain("event_key text primary key");
     expect(sql).toContain("registration_url text");
-    expect(sql).toContain("create table if not exists rori_telegram_rooms");
+    expect(sql).toContain("create table if not exists rori.rori_telegram_rooms");
     expect(sql).toContain("room_key text primary key");
     expect(sql).toContain("invite_url text");
-    expect(sql).toContain("alter table rori_academy_events enable row level security");
-    expect(sql).toContain("alter table rori_telegram_rooms enable row level security");
+    expect(sql).toContain("grant select on rori.rori_academy_events to authenticated, service_role");
+    expect(sql).toContain("grant select on rori.rori_telegram_rooms to authenticated, service_role");
+    expect(sql).toContain("alter table rori.rori_academy_events enable row level security");
+    expect(sql).toContain("alter table rori.rori_telegram_rooms enable row level security");
     expect(sql).toContain("Authenticated users can read active Rori Academy events");
     expect(sql).toContain("Authenticated users can read active Rori Telegram rooms");
   });
@@ -263,14 +267,37 @@ describe("bot runtime routes", () => {
       "utf8",
     );
 
-    expect(sql).toContain("create table if not exists rori_academy_wiki_pages");
+    expect(sql).toContain("create schema if not exists rori");
+    expect(sql).toContain("grant usage on schema rori to authenticated, service_role");
+    expect(sql).toContain("create table if not exists rori.rori_academy_wiki_pages");
     expect(sql).toContain("page_key text primary key");
     expect(sql).toContain("status text not null default 'draft'");
     expect(sql).toContain("source_url text");
-    expect(sql).toContain("alter table rori_academy_wiki_pages enable row level security");
+    expect(sql).toContain("grant select on rori.rori_academy_wiki_pages to authenticated, service_role");
+    expect(sql).toContain("alter table rori.rori_academy_wiki_pages enable row level security");
     expect(sql).toContain("Authenticated users can read published Rori Academy wiki pages");
     expect(sql).toContain("status = 'published'");
     expect(sql).toContain("example\\.invalid");
+  });
+
+  it("adds a non-destructive migration that moves Rori Academy data into the dedicated rori schema", async () => {
+    const sql = await readFile(
+      new URL(
+        "../../../../supabase/migrations/012_rori_schema_segregation.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    expect(sql).toContain("create schema if not exists rori");
+    expect(sql).toContain("grant usage on schema rori to authenticated, service_role");
+    expect(sql).toContain("alter table public.rori_academy_events set schema rori");
+    expect(sql).toContain("alter table public.rori_telegram_rooms set schema rori");
+    expect(sql).toContain("alter table public.rori_academy_wiki_pages set schema rori");
+    expect(sql).toContain("grant select on rori.rori_academy_events to authenticated, service_role");
+    expect(sql).toContain("grant select on rori.rori_telegram_rooms to authenticated, service_role");
+    expect(sql).toContain("grant select on rori.rori_academy_wiki_pages to authenticated, service_role");
+    expect(sql).not.toMatch(/\bdrop table\b|\btruncate\b|\bdelete from\b/i);
   });
 
   it("returns the authenticated bot catalog for an active provider session", async () => {

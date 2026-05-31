@@ -121,9 +121,9 @@ describe("Rori Academy data import", () => {
     const sql = buildRoriAcademyDataSql(APPROVED_SHAPE_FIXTURE);
 
     expect(sql).toContain("begin;");
-    expect(sql).toContain("insert into rori_academy_wiki_pages");
-    expect(sql).toContain("insert into rori_telegram_rooms");
-    expect(sql).toContain("insert into rori_academy_events");
+    expect(sql).toContain("insert into rori.rori_academy_wiki_pages");
+    expect(sql).toContain("insert into rori.rori_telegram_rooms");
+    expect(sql).toContain("insert into rori.rori_academy_events");
     expect(sql).toContain("on conflict (page_key) do update");
     expect(sql).toContain("on conflict (room_key) do update");
     expect(sql).toContain("on conflict (event_key) do update");

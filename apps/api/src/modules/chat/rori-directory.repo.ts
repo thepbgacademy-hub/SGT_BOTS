@@ -12,6 +12,8 @@ export type RoriAcademyDirectoryRepo = {
   listUpcomingEvents(): Promise<RoriWorkshopRecord[]>;
 };
 
+const RORI_SCHEMA = "rori";
+
 type FetchLike = typeof fetch;
 
 type SupabaseRoriEventRow = {
@@ -65,6 +67,7 @@ async function selectRows<T>(input: {
     {
       method: "GET",
       headers: {
+        "accept-profile": RORI_SCHEMA,
         apikey: input.env.supabaseServiceRoleKey,
         authorization: `Bearer ${input.env.supabaseServiceRoleKey}`,
       },

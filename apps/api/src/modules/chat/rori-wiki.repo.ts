@@ -10,6 +10,8 @@ export type RoriWikiRepo = {
   searchPages(query: string): Promise<RoriWikiPage[]>;
 };
 
+const RORI_SCHEMA = "rori";
+
 type FetchLike = typeof fetch;
 
 type SupabaseRoriWikiRow = {
@@ -50,6 +52,7 @@ async function selectWikiRows(input: {
     {
       method: "GET",
       headers: {
+        "accept-profile": RORI_SCHEMA,
         apikey: input.env.supabaseServiceRoleKey,
         authorization: `Bearer ${input.env.supabaseServiceRoleKey}`,
       },

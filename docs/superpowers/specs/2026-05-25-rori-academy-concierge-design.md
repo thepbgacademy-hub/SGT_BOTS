@@ -107,6 +107,17 @@ V1 may use a bounded local response policy if a live Academy knowledge source is
 
 Rori does not create artifacts. It does not write report files. It does not use the Top Secret or Cursive report routes.
 
+## Data Sources
+
+- `E:\REPOS\PBG_wiki` remains the Academy authoring source of truth.
+- Runtime Rori answers do not read Markdown directly from that repo on VPS.
+- Approved Academy wiki pages, Telegram room records, and event records should be loaded into the dedicated Supabase schema `rori`.
+- The intended live tables are:
+  - `rori.rori_academy_wiki_pages`
+  - `rori.rori_telegram_rooms`
+  - `rori.rori_academy_events`
+- Shared Playground session, profile, and artifact tables remain separate under the `playground_` naming convention in `public`.
+
 ## Error Handling
 
 If chat send fails, show a plain message in the Rori chat workspace:

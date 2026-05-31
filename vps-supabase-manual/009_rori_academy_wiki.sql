@@ -1,4 +1,8 @@
-create table if not exists rori_academy_wiki_pages (
+create schema if not exists rori;
+
+grant usage on schema rori to authenticated, service_role;
+
+create table if not exists rori.rori_academy_wiki_pages (
   page_key text primary key,
   title text not null,
   summary text not null,
@@ -22,11 +26,13 @@ create table if not exists rori_academy_wiki_pages (
   )
 );
 
-alter table rori_academy_wiki_pages enable row level security;
+grant select on rori.rori_academy_wiki_pages to authenticated, service_role;
 
-drop policy if exists "Authenticated users can read published Rori Academy wiki pages" on rori_academy_wiki_pages;
+alter table rori.rori_academy_wiki_pages enable row level security;
+
+drop policy if exists "Authenticated users can read published Rori Academy wiki pages" on rori.rori_academy_wiki_pages;
 
 create policy "Authenticated users can read published Rori Academy wiki pages"
-on rori_academy_wiki_pages for select
+on rori.rori_academy_wiki_pages for select
 to authenticated
 using (visible is true and status = 'published');
