@@ -31,45 +31,49 @@ export const RORI_DIRECTORY_SOURCE: RoriDirectorySource = {
   title: "Rori Academy Directory Source Pack",
   url: "sgt-bots://docs/rori-academy-directory-source-pack#academy-directory",
   summary:
-    "Admin-maintained Rori directory for Academy workshops, event status, and Telegram room routing. Missing links must be named as not configured instead of guessed.",
+    "Admin-maintained Rori directory for Academy workshops, event status, and Telegram room routing. If a live link is not available in the playground, Rori should say so plainly instead of guessing.",
 };
 
 export const RORI_TELEGRAM_ROOM_DIRECTORY: RoriTelegramRoomRecord[] = [
   {
-    id: "enrollment-help",
-    label: "Enrollment Help",
-    purpose: "Questions about joining the PBG Academy, membership access, and first steps.",
-    keywords: ["enroll", "enrollment", "join", "membership", "academy", "sign up", "signup"],
-    linkStatus: "not_configured",
-  },
-  {
-    id: "workshop-updates",
-    label: "Workshop Updates",
-    purpose: "Announcements, schedules, and next steps for PBG Academy workshops and events.",
-    keywords: ["workshop", "event", "class", "schedule", "register", "registration"],
-    linkStatus: "not_configured",
-  },
-  {
-    id: "technical-access-help",
-    label: "Technical Access Help",
-    purpose: "Telegram access, room navigation, login trouble, provider keys, and app issues.",
+    id: "rori-dm",
+    label: "Rori DM",
+    purpose: "General Academy questions, pricing, enrollment direction, Missions, disclaimers, and first-step guidance through the concierge bot.",
     keywords: [
-      "access",
-      "login",
-      "trouble",
-      "technical",
-      "provider",
-      "api key",
-      "cannot find",
-      "can't find",
+      "rori",
+      "concierge",
+      "academy help",
+      "pricing",
+      "enrollment",
+      "missions",
+      "general questions",
+      "support",
     ],
     linkStatus: "not_configured",
   },
   {
-    id: "tool-support",
-    label: "Tool Support",
-    purpose: "Help choosing or using Playground tools such as Cursive, Top Secret, Condor, and ShAzZaM.",
-    keywords: ["tool", "support", "cursive", "top secret", "condor", "shazzam", "bot", "playground"],
+    id: "lobby-dm-to-staff",
+    label: "Lobby DM to staff",
+    purpose: "Human review for payment problems, upgrade questions, leave-of-absence requests, account-specific issues, conflicts, and most troubleshooting concerns.",
+    keywords: [
+      "lobby",
+      "staff",
+      "human admin",
+      "payment issue",
+      "upgrade",
+      "leave of absence",
+      "troubleshooting",
+      "account issue",
+      "access",
+      "login",
+      "trouble",
+      "technical",
+      "cannot find",
+      "can't find",
+      "provider",
+      "api key",
+      "conflict",
+    ],
     linkStatus: "not_configured",
   },
 ];
@@ -118,26 +122,26 @@ export function formatTelegramRoomList(
 
 export function formatTelegramRoomLinkStatus(room: RoriTelegramRoomRecord) {
   if (room.linkStatus === "configured" && room.inviteUrl) {
-    return `Use the configured invite link for ${room.label}: ${room.inviteUrl}`;
+    return `Here is the live invite link for ${room.label}: ${room.inviteUrl}`;
   }
 
-  return `The live invite link is not configured for ${room.label} yet.`;
+  return `I can't open the live invite for ${room.label} in the playground yet, but I can still point you to the right room.`;
 }
 
 export function formatWorkshopDirectorySummary(
   workshops: RoriWorkshopRecord[] = RORI_WORKSHOP_DIRECTORY,
 ) {
   if (workshops.length === 0) {
-    return "No upcoming PBG Academy workshops or events are configured in this playground build. Please ask an Academy admin for the current schedule or registration path.";
+    return "I don't have a live workshop or event list inside the playground yet. An Academy admin can give you the current schedule and the right registration links.";
   }
 
   return workshops.map((workshop) => {
     const registration =
       workshop.registrationStatus === "configured" && workshop.registrationUrl
-        ? `Registration: ${workshop.registrationUrl}`
+        ? `Registration link: ${workshop.registrationUrl}`
         : workshop.registrationStatus === "closed"
           ? "Registration is closed."
-          : "Registration link is not configured yet.";
+          : "I can't open the registration link in the playground yet, but an Academy admin or Ambassador can share it.";
 
     return `${workshop.label}: ${workshop.summary} Timing: ${workshop.timing}. ${registration}`;
   }).join(" ");

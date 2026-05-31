@@ -7,6 +7,7 @@ import {
 
 const BASE_ENV: AppEnv = {
   appPort: 3001,
+  playgroundParticipationBypassTelegramUserIds: [],
   profileRepoMode: "memory",
   providerValidationMode: "stub",
   telegramBotAppShortName: "app",
@@ -40,7 +41,7 @@ describe("Rori wiki repo", () => {
           page_key: "enrollment",
           title: "Live Enrollment Wiki",
           summary: "Enrollment steps maintained by Academy ops.",
-          body: "Start with the live enrollment path and ask support when access is unclear.",
+          body: "Start with the live enrollment links and ask support when access is unclear.",
           keywords: ["enrollment", "join", "academy"],
           source_url: "sgt-bots://wiki/rori/enrollment",
           updated_at: "2026-05-25T00:00:00.000Z",
@@ -58,7 +59,7 @@ describe("Rori wiki repo", () => {
 
     await expect(repo.searchPages("enrollment")).resolves.toEqual([
       expect.objectContaining({
-        body: "Start with the live enrollment path and ask support when access is unclear.",
+        body: "Start with the live enrollment links and ask support when access is unclear.",
         slug: "enrollment",
         sourceUrl: "sgt-bots://wiki/rori/enrollment",
         title: "Live Enrollment Wiki",

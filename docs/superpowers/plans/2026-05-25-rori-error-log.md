@@ -209,3 +209,33 @@
 **Fix applied:** Loaded only the public-facing Academy pages into `rori.rori_academy_wiki_pages`, kept the student-only pages out of the live Rori schema, and documented that a separate access-control boundary is required before those pages are published through Rori.
 
 **Rule going forward:** Public concierge loads may include only public Academy content. Do not publish student-only wiki pages through Rori until the data model can enforce an enrolled-student visibility boundary.
+
+## 2026-05-31 - Phase 3 Browser Tests Must Use Fresh Telegram Identities
+
+**Context:** Rori concierge wording and directory cleanup after the Playground one-entry participation gate was already live.
+
+**Problem:** The first Phase 3 Playwright rerun timed out before it ever reached Rori assertions because the shared `ada_phase3` Telegram identity had already been recorded in `playground_participations`. The app stayed on the provider screen with the polite one-entry message, so the tests kept waiting for bot buttons that never unlocked.
+
+**Fix applied:** Reworked `tests/e2e/phase-3-bot-runtime.spec.ts` to generate unique signed Telegram init data per test case and updated the onboarding flow to explicitly pick the current `OpenAI API key` option before filling `API key`.
+
+**Rule going forward:** Browser flows that need a fresh playground entry must use unique Telegram identities or a dedicated bypass identity. Do not reuse a single signed init payload across post-gate Playwright tests.
+
+## 2026-05-31 - Rori Concierge Replies Sounded Like Prompt Notes Instead Of Conversation
+
+**Context:** Live Telegram review of the first Rori Academy wiki load.
+
+**Problem:** Rori was still surfacing fallback-style wording such as `Rori can...`, `configured`, and generic support copy that sounded like internal instructions instead of a warm concierge. The generic room list also still reflected older room labels instead of the approved `Rori DM` and `Lobby DM to staff` records.
+
+**Fix applied:** Updated Rori fallback copy and live reply builders to use first-person concierge language, replaced `configured` and `path` wording with plain-language references to links and next steps, added a public-safe `What happens after I enroll?` answer, and aligned local room fallbacks and tests with `Rori DM` and `Lobby DM to staff`. The refreshed Academy import SQL was then reapplied on VPS2.
+
+**Rule going forward:** Rori should answer like a human concierge, not a runtime note. Prefer `I can...`, `I can't open that in the playground yet...`, and simple room guidance over system-language phrases.
+
+## 2026-05-31 - Hotfix Backend Layers Can Miss Queue Dependencies
+
+**Context:** Deploying the Rori concierge wording repair to VPS2.
+
+**Problem:** The first backend deploy reused the lightweight `Dockerfile.backend.hotfix` layer on top of the old `top-secret-smoke` image. That older base image did not include `pdf-lib`, so the backend immediately restart-looped with `ERR_MODULE_NOT_FOUND` when `workers/queue/src/jobs/render-report.job.ts` loaded.
+
+**Fix applied:** Rebuilt and deployed the full backend image from `Dockerfile.backend` instead of relying on the hotfix layer, then reloaded it on VPS2 and restarted only `sgt-bots-backend`. Health checks then returned `{\"status\":\"ok\"}` locally inside the container and at the public endpoint.
+
+**Rule going forward:** If the backend imports queue/report code or any dependency that may not exist in the previous base tag, deploy from the full backend Dockerfile. Use the hotfix layer only when the base image is already known to contain every transitive runtime dependency.

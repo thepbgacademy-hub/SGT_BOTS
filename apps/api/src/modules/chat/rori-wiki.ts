@@ -20,7 +20,7 @@ export const FALLBACK_RORI_WIKI_PAGES: RoriWikiPage[] = [
     summary:
       "PBG Academy helps members find the right learning path, workshop, room, or Playground tool.",
     body:
-      "PBG Academy is the home base for member learning, workshops, Telegram support, and the Playground tools. Ask Rori what you are trying to do, and Rori will point you toward the right next step.",
+      "PBG Academy is where Cadets come to study business, private commerce, and related topics from a more serious, source-based foundation. If you tell me what you're trying to do, I can help you find the right info, room, or tool.",
     keywords: ["academy", "pbg", "help", "support", "overview"],
     sourceUrl: "sgt-bots://wiki/rori/academy-overview",
     status: "published",
@@ -29,9 +29,9 @@ export const FALLBACK_RORI_WIKI_PAGES: RoriWikiPage[] = [
     slug: "enrollment",
     title: "Academy Enrollment",
     summary:
-      "Enrollment questions should be answered from the Academy wiki and current operations links when configured.",
+      "Enrollment questions should be answered from the Academy wiki and current operations links when they are available.",
     body:
-      "Rori can explain the PBG Academy enrollment path and help you find the right Telegram support room or workshop next step. The live enrollment link is not configured yet in this playground build, so Rori should not make one up.",
+      "I can help you understand how PBG Academy enrollment works, what the levels cost, and what the next step looks like. I can't open the live enrollment link inside the playground yet, but when you're ready I can point you to the right information.",
     keywords: ["enroll", "enrollment", "join", "sign up", "signup", "academy"],
     sourceUrl: "sgt-bots://wiki/rori/enrollment",
     status: "published",
@@ -40,9 +40,9 @@ export const FALLBACK_RORI_WIKI_PAGES: RoriWikiPage[] = [
     slug: "telegram-troubleshooting",
     title: "Telegram Troubleshooting",
     summary:
-      "Telegram access questions should route to the Academy room directory when live room links are configured.",
+      "Telegram access questions should route to the Academy room directory when live room links are available.",
     body:
-      "If Telegram access is unclear, describe the room or issue you are trying to solve. Rori can point you to the best matching room purpose and will only show live invite links when Academy operations has configured them.",
+      "If Telegram access is unclear, tell me what room or problem you're dealing with. I can help you figure out which room handles what, and if a live invite is available I'll share it.",
     keywords: ["telegram", "room", "rooms", "access", "trouble", "technical"],
     sourceUrl: "sgt-bots://wiki/rori/telegram-troubleshooting",
     status: "published",

@@ -7,6 +7,7 @@ import {
 
 const BASE_ENV: AppEnv = {
   appPort: 3001,
+  playgroundParticipationBypassTelegramUserIds: [],
   profileRepoMode: "memory",
   providerValidationMode: "stub",
   telegramBotAppShortName: "app",
@@ -25,7 +26,7 @@ describe("Rori directory repo", () => {
     await expect(repo.listTelegramRooms()).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          label: "Enrollment Help",
+          label: "Rori DM",
           linkStatus: "not_configured",
         }),
       ]),
@@ -109,7 +110,7 @@ describe("Rori directory repo", () => {
     await expect(repo.listTelegramRooms()).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          label: "Technical Access Help",
+          label: "Lobby DM to staff",
           linkStatus: "not_configured",
         }),
       ]),
@@ -134,7 +135,7 @@ describe("Rori directory repo", () => {
     await expect(repo.listTelegramRooms()).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          label: "Tool Support",
+          label: "Rori DM",
           linkStatus: "not_configured",
         }),
       ]),

@@ -404,8 +404,7 @@ describe("bot runtime routes", () => {
         sessionId,
       },
     });
-    expect(body.output).toContain("Telegram");
-    expect(body.output).toContain("workshop");
+    expect(body.output).toContain("I can't open the live enrollment link");
     expect(body.citations.every((citation) => !citation.url.includes("example.invalid"))).toBe(true);
     expect(body.output).not.toMatch(
       /PDF|reports?|artifacts?|Release Review Runbook|document upload/i,
@@ -592,17 +591,18 @@ describe("bot runtime routes", () => {
     },
     {
       message: "Which PBG Telegram rooms should I join?",
-      expected: "PBG Telegram rooms",
+      expected: "Rori DM",
     },
     {
       message: "What workshops are coming up?",
-      expected: "No upcoming PBG Academy workshops or events are configured",
+      expected: "I don't have a live workshop or event list inside the playground yet",
     },
     {
       message: "How do I enroll?",
       expected: "PBG Academy enrollment",
+      expectedAlt: "I can't open the live enrollment link",
     },
-  ])("answers Rori starter prompt: $message", async ({ message, expected }) => {
+  ])("answers Rori starter prompt: $message", async ({ message, expected, expectedAlt }) => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
 
     const response = await app.inject({
@@ -625,6 +625,9 @@ describe("bot runtime routes", () => {
 
     expect(response.statusCode).toBe(200);
     expect(body.output).toContain(expected);
+    if (expectedAlt) {
+      expect(body.output).toContain(expectedAlt);
+    }
     expect(body.citations.length).toBeGreaterThan(0);
     expect(body.citations.every((citation) => !citation.url.includes("example.invalid"))).toBe(true);
     expect(body.output).not.toMatch(
@@ -655,9 +658,9 @@ describe("bot runtime routes", () => {
 
     expect(response.statusCode).toBe(200);
     expect(body.output).toContain(
-      "No upcoming PBG Academy workshops or events are configured",
+      "I don't have a live workshop or event list inside the playground yet",
     );
-    expect(body.output).toContain("ask an Academy admin");
+    expect(body.output).toContain("Academy admin");
     expect(body.output).not.toMatch(/\bhttps?:\/\//i);
     expect(body.citations).toEqual(
       expect.arrayContaining([
@@ -691,11 +694,9 @@ describe("bot runtime routes", () => {
     };
 
     expect(response.statusCode).toBe(200);
-    expect(body.output).toContain("Enrollment Help");
-    expect(body.output).toContain("Workshop Updates");
-    expect(body.output).toContain("Technical Access Help");
-    expect(body.output).toContain("Tool Support");
-    expect(body.output).toContain("live invite link is not configured");
+    expect(body.output).toContain("Rori DM");
+    expect(body.output).toContain("Lobby DM to staff");
+    expect(body.output).toContain("I can't open the live invite");
     expect(body.output).not.toMatch(/\bhttps?:\/\//i);
     expect(body.citations).toEqual(
       expect.arrayContaining([
@@ -729,8 +730,8 @@ describe("bot runtime routes", () => {
     };
 
     expect(response.statusCode).toBe(200);
-    expect(body.output).toContain("Technical Access Help");
-    expect(body.output).toContain("live invite link is not configured");
+    expect(body.output).toContain("Lobby DM to staff");
+    expect(body.output).toContain("I can't open the live invite");
     expect(body.citations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -743,32 +744,16 @@ describe("bot runtime routes", () => {
 
   it.each([
     {
-      message: "Which Telegram room is for enrollment help?",
-      expectedRoom: "Enrollment Help",
+      message: "Which Telegram room should I use for general Academy help?",
+      expectedRoom: "Rori DM",
     },
     {
-      message: "Which Telegram room should I use for enrollment help?",
-      expectedRoom: "Enrollment Help",
-    },
-    {
-      message: "Which Telegram room is for workshop updates?",
-      expectedRoom: "Workshop Updates",
-    },
-    {
-      message: "Which Telegram room should I use for workshop updates?",
-      expectedRoom: "Workshop Updates",
+      message: "Which Telegram room is for support questions?",
+      expectedRoom: "Rori DM",
     },
     {
       message: "Which Telegram room should I use for technical access help?",
-      expectedRoom: "Technical Access Help",
-    },
-    {
-      message: "Which Telegram room is for tool support?",
-      expectedRoom: "Tool Support",
-    },
-    {
-      message: "Which Telegram room should I use for tool support?",
-      expectedRoom: "Tool Support",
+      expectedRoom: "Lobby DM to staff",
     },
   ])("routes specific room purpose questions to $expectedRoom", async ({ message, expectedRoom }) => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
@@ -793,7 +778,7 @@ describe("bot runtime routes", () => {
 
     expect(response.statusCode).toBe(200);
     expect(body.output).toContain(expectedRoom);
-    expect(body.output).toContain("live invite link is not configured");
+    expect(body.output).toContain("I can't open the live invite");
     expect(body.citations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -847,8 +832,8 @@ describe("bot runtime routes", () => {
     expect(body.output).toContain("Commerce Basics Workshop");
     expect(body.output).toContain("June 15, 2026 at 7:00 PM Central");
     expect(body.output).toContain("https://academy.example.test/events/commerce-basics");
-    expect(body.output).not.toContain("live workshop registration link is not configured");
-    expect(body.output).not.toContain("No upcoming PBG Academy workshops or events");
+    expect(body.output).not.toContain("I can't open the registration link in the playground yet");
+    expect(body.output).not.toContain("I don't have a live workshop or event list inside the playground yet");
     expect(body.citations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -899,7 +884,7 @@ describe("bot runtime routes", () => {
     expect(response.statusCode).toBe(200);
     expect(body.output).toContain("Live Tech Access Desk");
     expect(body.output).toContain("https://t.me/+configuredTechDesk");
-    expect(body.output).not.toContain("live invite link is not configured");
+    expect(body.output).not.toContain("I can't open the live invite");
     expect(body.citations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -915,7 +900,7 @@ describe("bot runtime routes", () => {
         return [
           {
             body:
-              "Enrollment starts with the Academy enrollment path. If access is unclear, ask the Academy support room for the current next step.",
+              "I can help you understand how enrollment works. I can't open the live enrollment link in the playground yet, but I can still point you to the right information.",
             keywords: ["enrollment", "academy", "join"],
             slug: "enrollment",
             sourceUrl: "sgt-bots://wiki/rori/enrollment",
@@ -947,8 +932,8 @@ describe("bot runtime routes", () => {
     };
 
     expect(response.statusCode).toBe(200);
-    expect(body.output).toContain("Enrollment starts with the Academy enrollment path");
-    expect(body.output).toContain("Academy support room");
+    expect(body.output).toContain("I can help you understand how enrollment works");
+    expect(body.output).toContain("I can't open the live enrollment link");
     expect(body.output).not.toMatch(/\bhttps?:\/\/example/i);
     expect(body.citations).toEqual(
       expect.arrayContaining([
@@ -1008,26 +993,26 @@ describe("bot runtime routes", () => {
     expect(body.output).toContain("Enrollment Help Live");
     expect(body.output).toContain("https://t.me/+configuredEnrollment");
     expect(body.output).toContain("Tool Support");
-    expect(body.output).toContain("live invite link is not configured for Tool Support");
+    expect(body.output).toContain("I can't open the live invite for Tool Support");
     expect(body.output).not.toContain("live room links are not configured yet");
   }, 40000);
 
   it.each([
     {
       message: "Where do I register for the next workshop?",
-      expected: "live workshop registration link is not configured yet",
+      expected: "I can't open the registration link in the playground yet",
     },
     {
       message: "How do I sign up for the next workshop?",
-      expected: "live workshop registration link is not configured yet",
+      expected: "I can't open the registration link in the playground yet",
     },
     {
       message: "Can you give me the Telegram room links?",
-      expected: "live room links are not configured yet",
+      expected: "I can't open the live room links in the playground yet",
     },
     {
       message: "Can I get an invite to the Telegram room?",
-      expected: "live room links are not configured yet",
+      expected: "I can't open the live room links in the playground yet",
     },
   ])("does not invent live links for $message", async ({ message, expected }) => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();

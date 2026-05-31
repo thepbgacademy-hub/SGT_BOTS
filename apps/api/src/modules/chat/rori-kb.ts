@@ -36,7 +36,7 @@ const ACADEMY_SOURCE: RoriSource = {
   title: "Rori Academy Concierge Source Pack",
   url: "sgt-bots://docs/rori-academy-concierge-source-pack#academy",
   summary:
-    "Rori answers PBG Academy enrollment, workshop, event, Telegram room, and general navigation questions. Live enrollment, registration, and room-link directories are not configured in this repo yet.",
+    "Rori answers PBG Academy enrollment, workshop, event, Telegram room, and general navigation questions. If a live link is not available in the playground, Rori should say so plainly instead of guessing.",
 };
 
 const TOOL_ROUTING_SOURCE: RoriSource = {
@@ -67,6 +67,14 @@ function buildWikiReply(page: RoriWikiPage): RoriReply {
   return {
     output: page.body,
     citations: [wikiCitation(page)],
+  };
+}
+
+function buildAfterEnrollmentReply(): RoriReply {
+  return {
+    output:
+      "After you enroll, I'll help you with the next practical steps and make sure you know where to go from there. In the playground I keep that part high level, so I won't expose student-only access details here, but I can still explain what to expect and who to contact if you need help.",
+    citations: [sourceCitation(ACADEMY_SOURCE)],
   };
 }
 
@@ -109,11 +117,11 @@ function buildTelegramRoomReply(
     (room) => room.linkStatus === "configured" && room.inviteUrl,
   );
   const liveLinkNote = hasLiveLinkRequest(normalizedContent) && !hasConfiguredRoomLinks
-    ? " The live room links are not configured yet; live invite links are not configured, so Rori should not make up Telegram room links."
+    ? " I can't open the live room links in the playground yet, but I can still tell you which room handles what."
     : "";
   const roomGuidance = matchedRoom
-    ? `The best PBG Telegram room match is ${matchedRoom.label}. ${matchedRoom.purpose} ${formatTelegramRoomLinkStatus(matchedRoom)}`
-    : `Here are the current PBG Telegram rooms: ${formatTelegramRoomList(directory.telegramRooms)}`;
+    ? `The best match is ${matchedRoom.label}. ${matchedRoom.purpose} ${formatTelegramRoomLinkStatus(matchedRoom)}`
+    : `Here are the PBG Telegram rooms I can point you to right now: ${formatTelegramRoomList(directory.telegramRooms)}`;
 
   return {
     output: `${roomGuidance}${liveLinkNote}`,
@@ -127,23 +135,23 @@ function toolRoute(normalizedContent: string): RoriReply | null {
       pattern:
         /\b(credit reports?|credit-report|consumer reports?|consumer reporting agenc(?:y|ies)|reinvestigation|bureau|dispute|tradeline|fcra|fair credit reporting act)\b/i,
       output:
-        "Rori would route that to Cursive. It is the best fit for credit bureau, dispute, tradeline, and FCRA workflows.",
+        "I'd send that to Cursive. It's the best fit for credit bureau, dispute, tradeline, and FCRA workflows.",
     },
     {
       pattern:
         /\b(fact[- ]?check|check (?:this )?(?:claim|myth|statement|post|message)|verify (?:this )?(?:claim|myth|statement|post|message)|source-backed verification|is this true or false|whether this is true|true\/false|true-false|online claim|myth)\b/i,
       output:
-        "Rori would route that to Top Secret. It is the right lane for checking claims, myths, and true-or-false questions.",
+        "I'd send that to Top Secret. It's the right lane for checking claims, myths, and true-or-false questions.",
     },
     {
       pattern: /\b(tax|legal|statute|usc|cfr|irs|treasury)\b/i,
       output:
-        "Rori would route that to Condor. It is the right place for tax, legal, statute, USC, CFR, IRS, and Treasury research.",
+        "I'd send that to Condor. It's the right place for tax, legal, statute, USC, CFR, IRS, and Treasury research.",
     },
     {
       pattern: /\b(form|intake|questionnaire|collect document answers)\b/i,
       output:
-        "Rori would route that to ShAzZaM. It is the best fit for forms, intake flows, questionnaires, and collecting answers.",
+        "I'd send that to ShAzZaM. It's the best fit for forms, intake flows, questionnaires, and collecting answers.",
     },
   ];
   const route = routes.find(({ pattern }) => pattern.test(normalizedContent));
@@ -190,11 +198,19 @@ export function buildGroundedRoriReply(
       return buildWikiReply(toolGuidePage);
     }
 
-    return {
-      output:
-        "Rori can help you choose the right tool. Use Cursive for credit bureau and dispute work, Top Secret for checking online claims, Condor for tax or legal research, and ShAzZaM for forms or guided intake.",
-      citations: [sourceCitation(TOOL_ROUTING_SOURCE)],
-    };
+      return {
+        output:
+          "I can help you choose the right tool. Use Cursive for credit bureau and dispute work, Top Secret for checking online claims, Condor for tax or legal research, and ShAzZaM for forms or guided intake.",
+        citations: [sourceCitation(TOOL_ROUTING_SOURCE)],
+      };
+  }
+
+  if (
+    /\b(after i enroll|after enrollment|what happens after i enroll|what happens once i enroll|what happens when i enroll)\b/i.test(
+      normalizedContent,
+    )
+  ) {
+    return buildAfterEnrollmentReply();
   }
 
   if (
@@ -207,7 +223,7 @@ export function buildGroundedRoriReply(
     );
     const liveLinkNote = hasConfiguredRegistration
       ? ""
-      : " The live workshop registration link is not configured yet, so Rori should not invent one.";
+      : " I can't open the registration link in the playground yet, but an Academy admin or Ambassador can give it to you.";
 
     return {
       output: `${formatWorkshopDirectorySummary(directory.workshops)}${liveLinkNote}`,
@@ -224,14 +240,14 @@ export function buildGroundedRoriReply(
 
     return {
       output:
-        "Rori can help with PBG Academy enrollment. Start with the current Academy enrollment path, then ask Rori where to go next if you are unsure which Telegram room, workshop, or tool fits your goal. The live enrollment link is not configured yet in this playground build.",
+        "I can help with PBG Academy enrollment. I can't open the live enrollment link inside the playground yet, but I can still point you to the right information and the right person when you're ready.",
       citations: [sourceCitation(ACADEMY_SOURCE)],
     };
   }
 
   if (/\bworkshops?|events?|classes?|register|registration\b/i.test(normalizedContent)) {
     const liveLinkNote = hasLiveLinkRequest(normalizedContent)
-      ? " The live workshop registration link is not configured yet, so Rori should not invent one."
+      ? " I can't open the registration link in the playground yet, but an Academy admin or Ambassador can share it."
       : "";
 
     return {
@@ -251,7 +267,7 @@ export function buildGroundedRoriReply(
 
   return {
     output: wikiPages[0]?.body ??
-      "Rori can help with PBG Academy enrollment, workshop details, Telegram rooms, and choosing the right Playground tool. Tell Rori what you are trying to do and Rori will point you in the right direction.",
+      "I can help with PBG Academy enrollment, workshop details, Telegram rooms, and choosing the right Playground tool. Tell me what you're trying to do and I'll point you in the right direction.",
     citations: wikiPages[0] ? [wikiCitation(wikiPages[0])] : [sourceCitation(ACADEMY_SOURCE)],
   };
 }
