@@ -13,7 +13,10 @@ import {
   createFallbackRoriDirectoryRepo,
   type RoriAcademyDirectoryRepo,
 } from "./rori-directory.repo";
-import { buildGroundedRoriReply } from "./rori-kb";
+import {
+  buildGroundedRoriReply,
+  buildRoriConversationContext,
+} from "./rori-kb";
 import {
   createFallbackRoriWikiRepo,
   type RoriWikiRepo,
@@ -84,6 +87,7 @@ function buildAcademyConciergeReply(
   content: string,
   directoryRepo: RoriAcademyDirectoryRepo,
   wikiRepo: RoriWikiRepo,
+  priorMessages: ChatMessage[] = [],
 ): Promise<RuntimeReply> {
   requireCapability(manifest, "chat");
   requireCapability(manifest, "citations");
@@ -97,6 +101,11 @@ function buildAcademyConciergeReply(
     wikiRepo.searchPages(content),
   ]).then(([telegramRooms, workshops, wikiPages]) =>
     buildGroundedRoriReply(content, {
+      conversationContext: buildRoriConversationContext(
+        priorMessages
+          .filter((message) => message.role === "user")
+          .map((message) => message.content),
+      ),
       telegramRooms,
       workshops,
       wikiPages,
@@ -183,9 +192,11 @@ export function createChatService(deps?: {
   buildRuntimeReply?: (
     manifest: BotManifest,
     trimmedContent: string,
+    priorMessages?: ChatMessage[],
   ) => RuntimeReplyResult;
 }) {
   const conversations = new Map<string, ConversationRecord>();
+  const conversationMessages = new Map<string, ChatMessage[]>();
   let conversationCount = 0;
   let messageCount = 0;
   const now = deps?.now ?? (() => Date.now());
@@ -195,12 +206,13 @@ export function createChatService(deps?: {
   const resolveManifest = deps?.resolveManifest ?? requireBotManifest;
   const buildReply =
     deps?.buildRuntimeReply ??
-    ((manifest: BotManifest, trimmedContent: string) =>
+    ((manifest: BotManifest, trimmedContent: string, priorMessages: ChatMessage[] = []) =>
       buildRuntimeReply(
         manifest,
         trimmedContent,
         roriDirectoryRepo,
         roriWikiRepo,
+        priorMessages,
       ));
 
   function nextConversationId() {
@@ -248,7 +260,10 @@ export function createChatService(deps?: {
         throw new Error("conversation not found");
       }
 
-      const runtimeReply = await buildReply(manifest, trimmedContent);
+      const priorMessages = existingConversation
+        ? (conversationMessages.get(existingConversation.id) ?? [])
+        : [];
+      const runtimeReply = await buildReply(manifest, trimmedContent, priorMessages);
       const createdAt = new Date(now()).toISOString();
       const conversation =
         existingConversation ??
@@ -279,6 +294,11 @@ export function createChatService(deps?: {
         citations: runtimeReply.citations,
         createdAt,
       };
+      conversationMessages.set(conversation.id, [
+        ...priorMessages,
+        userMessage,
+        assistantMessage,
+      ]);
 
       return {
         botId: manifest.id,
@@ -297,6 +317,7 @@ function buildRuntimeReply(
   trimmedContent: string,
   roriDirectoryRepo: RoriAcademyDirectoryRepo,
   roriWikiRepo: RoriWikiRepo,
+  priorMessages: ChatMessage[] = [],
 ): RuntimeReplyResult {
   switch (manifest.id) {
     case "document_wizard":
@@ -313,6 +334,7 @@ function buildRuntimeReply(
         trimmedContent,
         roriDirectoryRepo,
         roriWikiRepo,
+        priorMessages,
       );
     case "tax_legal_research":
       return buildTaxLegalResearchReply(manifest, trimmedContent);

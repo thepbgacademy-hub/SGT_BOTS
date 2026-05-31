@@ -672,6 +672,138 @@ describe("bot runtime routes", () => {
     );
   }, 40000);
 
+  it("uses the active Rori conversation to resolve an enrollment follow-up", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const enrollmentResponse = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "How do I enroll?",
+      },
+    });
+
+    expect(enrollmentResponse.statusCode).toBe(200);
+    const conversationId = (enrollmentResponse.json() as {
+      conversation: { id: string };
+    }).conversation.id;
+
+    const followUpResponse = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        conversationId,
+        botId: "concierge_general_academy_KB",
+        message: "What happens after that?",
+      },
+    });
+
+    const body = followUpResponse.json() as {
+      output: string;
+    };
+
+    expect(followUpResponse.statusCode).toBe(200);
+    expect(body.output).toContain("After you enroll");
+    expect(body.output).not.toContain("PBG Academy is where Cadets come to study");
+  }, 40000);
+
+  it("uses the active Rori conversation to resolve a Telegram room follow-up", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const roomListResponse = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "Which PBG Telegram rooms should I join?",
+      },
+    });
+
+    expect(roomListResponse.statusCode).toBe(200);
+    const conversationId = (roomListResponse.json() as {
+      conversation: { id: string };
+    }).conversation.id;
+
+    const followUpResponse = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        conversationId,
+        botId: "concierge_general_academy_KB",
+        message: "Which one would help with payment trouble?",
+      },
+    });
+
+    const body = followUpResponse.json() as {
+      output: string;
+    };
+
+    expect(followUpResponse.statusCode).toBe(200);
+    expect(body.output).toContain("Lobby DM to staff");
+    expect(body.output).toContain("payment problems");
+  }, 40000);
+
+  it("uses the active Rori conversation to resolve general room help follow-up", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const roomListResponse = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "Which PBG Telegram rooms should I join?",
+      },
+    });
+
+    expect(roomListResponse.statusCode).toBe(200);
+    const conversationId = (roomListResponse.json() as {
+      conversation: { id: string };
+    }).conversation.id;
+
+    const followUpResponse = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        conversationId,
+        botId: "concierge_general_academy_KB",
+        message: "And which one for general Academy help?",
+      },
+    });
+
+    const body = followUpResponse.json() as {
+      output: string;
+    };
+
+    expect(followUpResponse.statusCode).toBe(200);
+    expect(body.output).toContain("Rori DM");
+    expect(body.output).toContain("General Academy questions");
+  }, 40000);
+
   it("lists admin-maintained Telegram room purposes and does not invent invite links", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
 

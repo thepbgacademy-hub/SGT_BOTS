@@ -186,6 +186,30 @@ test("Rori shows Telegram room routing from the Academy directory", async ({ pag
   await expect(page.getByText(/https?:\/\//i)).toHaveCount(0);
 });
 
+test("Rori uses the active conversation to answer enrollment follow-ups", async ({
+  page,
+}) => {
+  await openRori(
+    page,
+    buildInitData({
+      id: 123466,
+      username: "ada_phase3_followup",
+    }),
+  );
+
+  await page.getByLabel("Chat input").fill("How do I enroll?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(
+    page.getByText("I can help you understand how PBG Academy enrollment works"),
+  ).toBeVisible();
+
+  await page.getByLabel("Chat input").fill("What happens after that?");
+  await page.getByRole("button", { name: "Send" }).click();
+
+  await expect(page.getByText("After you enroll")).toBeVisible();
+  await expect(page.getByText("student-only access details")).toBeVisible();
+});
+
 test("Rori routes specific Telegram access trouble to the matching room purpose", async ({
   page,
 }) => {

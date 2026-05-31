@@ -31,6 +31,18 @@ type RoriReply = {
   citations: RoriCitation[];
 };
 
+type RoriConversationIntent =
+  | "academy"
+  | "enrollment"
+  | "rooms"
+  | "tools"
+  | "workshops";
+
+export type RoriConversationContext = {
+  lastIntent: RoriConversationIntent | null;
+  lastUserMessage: string | null;
+};
+
 const ACADEMY_SOURCE: RoriSource = {
   id: "rori-academy-concierge",
   title: "Rori Academy Concierge Source Pack",
@@ -76,6 +88,108 @@ function buildAfterEnrollmentReply(): RoriReply {
       "After you enroll, I'll help you with the next practical steps and make sure you know where to go from there. In the playground I keep that part high level, so I won't expose student-only access details here, but I can still explain what to expect and who to contact if you need help.",
     citations: [sourceCitation(ACADEMY_SOURCE)],
   };
+}
+
+function classifyRoriIntent(content: string): RoriConversationIntent | null {
+  const normalizedContent = content.toLowerCase();
+
+  if (hasTelegramRoomRoutingQuestion(normalizedContent)) {
+    return "rooms";
+  }
+
+  if (toolRoute(normalizedContent)) {
+    return "tools";
+  }
+
+  if (
+    /\b(which|what) (tool|bot)|tool should i use|use for\b/i.test(normalizedContent)
+  ) {
+    return "tools";
+  }
+
+  if (
+    /\b(after i enroll|after enrollment|what happens after i enroll|what happens once i enroll|what happens when i enroll)\b/i.test(
+      normalizedContent,
+    ) ||
+    /\benroll|enrollment|join academy|sign up|signup\b/i.test(normalizedContent)
+  ) {
+    return "enrollment";
+  }
+
+  if (/\bworkshops?|events?|classes?|register|registration\b/i.test(normalizedContent)) {
+    return "workshops";
+  }
+
+  if (/\btelegram|rooms?|channels?|group chat|chat room\b/i.test(normalizedContent)) {
+    return "rooms";
+  }
+
+  if (/\bacademy|pbg\b/i.test(normalizedContent)) {
+    return "academy";
+  }
+
+  return null;
+}
+
+function buildRoriConversationContext(
+  priorUserMessages: string[],
+): RoriConversationContext {
+  for (let index = priorUserMessages.length - 1; index >= 0; index -= 1) {
+    const lastUserMessage = priorUserMessages[index] ?? null;
+
+    if (!lastUserMessage) {
+      continue;
+    }
+
+    const lastIntent = classifyRoriIntent(lastUserMessage);
+
+    if (lastIntent) {
+      return {
+        lastIntent,
+        lastUserMessage,
+      };
+    }
+  }
+
+  return {
+    lastIntent: null,
+    lastUserMessage: priorUserMessages.at(-1) ?? null,
+  };
+}
+
+function resolveFollowUpContent(
+  content: string,
+  context: RoriConversationContext | undefined,
+) {
+  if (!context?.lastIntent) {
+    return content;
+  }
+
+  const normalizedContent = content.toLowerCase().trim();
+
+  if (
+    context.lastIntent === "enrollment" &&
+    /\b(after that|afterwards|what happens next|and then what|what happens after that)\b/i.test(
+      normalizedContent,
+    )
+  ) {
+    return "What happens after I enroll?";
+  }
+
+  if (
+    context.lastIntent === "rooms" &&
+    /\b(which one|which room|what about|and which one)\b/i.test(normalizedContent)
+  ) {
+    if (/\b(payment|billing|upgrade|leave|absence|conflict|trouble|technical|login|access)\b/i.test(normalizedContent)) {
+      return "Which Telegram room is for payment trouble and account-specific issues?";
+    }
+
+    if (/\b(general|academy help|pricing|enrollment|missions?|first step|support)\b/i.test(normalizedContent)) {
+      return "Which Telegram room is for general Academy help?";
+    }
+  }
+
+  return content;
 }
 
 function hasLiveLinkRequest(normalizedContent: string) {
@@ -167,13 +281,18 @@ function toolRoute(normalizedContent: string): RoriReply | null {
 export function buildGroundedRoriReply(
   content: string,
   grounding: {
+    conversationContext?: RoriConversationContext;
     directory?: RoriAcademyDirectory;
     telegramRooms?: RoriAcademyDirectory["telegramRooms"];
     workshops?: RoriAcademyDirectory["workshops"];
     wikiPages?: RoriWikiPage[];
   } = {},
 ): RoriReply {
-  const normalizedContent = content.toLowerCase();
+  const resolvedContent = resolveFollowUpContent(
+    content,
+    grounding.conversationContext,
+  );
+  const normalizedContent = resolvedContent.toLowerCase();
   const directory: RoriAcademyDirectory = grounding.directory ?? {
     telegramRooms:
       grounding.telegramRooms ?? FALLBACK_RORI_ACADEMY_DIRECTORY.telegramRooms,
@@ -271,3 +390,5 @@ export function buildGroundedRoriReply(
     citations: wikiPages[0] ? [wikiCitation(wikiPages[0])] : [sourceCitation(ACADEMY_SOURCE)],
   };
 }
+
+export { buildRoriConversationContext };

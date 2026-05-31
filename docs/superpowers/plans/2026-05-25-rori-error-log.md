@@ -239,3 +239,13 @@
 **Fix applied:** Rebuilt and deployed the full backend image from `Dockerfile.backend` instead of relying on the hotfix layer, then reloaded it on VPS2 and restarted only `sgt-bots-backend`. Health checks then returned `{\"status\":\"ok\"}` locally inside the container and at the public endpoint.
 
 **Rule going forward:** If the backend imports queue/report code or any dependency that may not exist in the previous base tag, deploy from the full backend Dockerfile. Use the hotfix layer only when the base image is already known to contain every transitive runtime dependency.
+
+## 2026-05-31 - Rori Needed Bounded Follow-Up Memory To Feel Conversational
+
+**Context:** Live Rori concierge review after the tone and Academy wiki wording were already corrected.
+
+**Problem:** Rori sounded better on single prompts, but follow-ups like `What happens after that?` and `Which one would help with payment trouble?` still behaved like a one-turn rules engine. The service kept the `conversationId`, but the reply builder only examined the current message text, so ambiguous follow-ups fell back to generic enrollment or troubleshooting copy.
+
+**Fix applied:** Added a small Rori-only conversation context layer in the chat service and knowledge-base reply builder. The service now keeps prior messages for the active conversation, infers the last resolved Rori intent from recent user prompts, and rewrites ambiguous follow-ups into explicit Academy or Telegram-room questions before normal wiki and directory routing runs. Added failing backend tests and a Playwright follow-up test before implementation, then redeployed the backend to VPS2 and rechecked health.
+
+**Rule going forward:** Rori should feel conversational, but its memory should stay bounded. Use short-lived topic context to resolve pronouns and `which one` follow-ups; do not turn Rori into an unbounded freeform assistant that drifts away from the approved Academy wiki, room directory, and tool-routing rules.
