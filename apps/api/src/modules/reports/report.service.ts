@@ -95,6 +95,8 @@ function toSafeReportSlug(value: string) {
   return slug || "top_secret";
 }
 
+const ARTIFACT_RETENTION_MS = 6 * 60 * 60 * 1000;
+
 export function createReportService(deps: {
   analyticsService: ReturnType<typeof createAnalyticsService>;
   now?: () => number;
@@ -174,6 +176,27 @@ export function createReportService(deps: {
     }
   }
 
+  function isArtifactExpired(artifact: ArtifactRecord) {
+    const createdAt = Date.parse(artifact.createdAt);
+
+    if (Number.isNaN(createdAt)) {
+      return false;
+    }
+
+    return now() - createdAt >= ARTIFACT_RETENTION_MS;
+  }
+
+  function purgeExpiredArtifacts() {
+    for (const artifact of [...artifacts.values()]) {
+      if (!isArtifactExpired(artifact)) {
+        continue;
+      }
+
+      artifacts.delete(artifact.id);
+      deleteArtifactFiles(artifact);
+    }
+  }
+
   function purgeArtifactsForSessionBot(input: {
     botId: string;
     sessionId: string;
@@ -226,6 +249,7 @@ export function createReportService(deps: {
   }
 
   hydrateArtifactsFromDisk();
+  purgeExpiredArtifacts();
 
   function queueArtifact(input: {
     botId: string;
@@ -309,6 +333,7 @@ export function createReportService(deps: {
       sessionId: string;
       userId: string;
     }) {
+      purgeExpiredArtifacts();
       const upload = deps.uploadService.createPdfUpload({
         botId: input.botId,
         fileBytesBase64: input.fileBytesBase64,
@@ -335,6 +360,7 @@ export function createReportService(deps: {
       reportType: "tri_merge" | "single_bureau";
       sessionId: string;
     }) {
+      purgeExpiredArtifacts();
       const upload = deps.uploadService.createPdfUpload({
         botId: input.botId,
         fileBytesBase64: input.fileBytesBase64,
@@ -366,6 +392,7 @@ export function createReportService(deps: {
       sessionId: string;
       userId: string;
     }) {
+      purgeExpiredArtifacts();
       const generatedAt = new Date(now()).toISOString();
       const artifactId = crypto.randomUUID();
       const artifact: ArtifactRecord = {
@@ -424,6 +451,7 @@ export function createReportService(deps: {
       sessionId: string;
       userId: string;
     }) {
+      purgeExpiredArtifacts();
       const generatedAt = new Date(now()).toISOString();
       const artifactId = crypto.randomUUID();
       const artifact: ArtifactRecord = {
@@ -481,6 +509,7 @@ export function createReportService(deps: {
       sessionId: string;
       userId: string;
     }) {
+      purgeExpiredArtifacts();
       const generatedAt = new Date(now()).toISOString();
       const artifactId = crypto.randomUUID();
       const artifact: ArtifactRecord = {
@@ -562,6 +591,7 @@ export function createReportService(deps: {
       sessionId: string;
       userId: string;
     }) {
+      purgeExpiredArtifacts();
       purgeArtifactsForSessionBot({
         botId: input.botId,
         sessionId: input.sessionId,
@@ -656,9 +686,11 @@ export function createReportService(deps: {
       persistArtifactMetadata(artifact);
     },
     getArtifact(artifactId: string) {
+      purgeExpiredArtifacts();
       return artifacts.get(artifactId) ?? null;
     },
     listArtifactsForSession(input: { sessionId: string; userId: string }) {
+      purgeExpiredArtifacts();
       return [...artifacts.values()]
         .filter(
           (artifact) =>
@@ -668,6 +700,7 @@ export function createReportService(deps: {
         .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
     },
     readArtifactFile(artifactId: string) {
+      purgeExpiredArtifacts();
       const artifact = artifacts.get(artifactId);
 
       if (!artifact) {
@@ -696,6 +729,7 @@ export function createReportService(deps: {
       const startedAt = now();
 
       while (now() - startedAt < timeoutMs) {
+        purgeExpiredArtifacts();
         const artifact = artifacts.get(artifactId);
 
         if (artifact?.status === "ready") {

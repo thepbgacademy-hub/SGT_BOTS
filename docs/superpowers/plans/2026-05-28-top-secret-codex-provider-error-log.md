@@ -159,3 +159,33 @@
 **Fix applied:** Added `PLAYGROUND_PARTICIPATION_BYPASS_TELEGRAM_USER_IDS` as a backend env allowlist. Allowlisted Telegram user ids bypass the participation check and skip participation-row insertion altogether, so they can continue testing without polluting the durable one-entry ledger. The review CTA helper was also tightened to call `Telegram.WebApp.close()` shortly after opening the review group so the mini app exits more cleanly for end users.
 
 **Rule going forward:** Business gates that should apply to normal members but not to owner/admin smoke testing need an explicit env-driven bypass, not repeated manual database cleanup. Keep the bypass narrowly keyed by Telegram user id and out of the ordinary user path. Also, if VPS Compose does not reliably propagate a new env-file key into the container, pin the variable explicitly in the service `environment:` block so the runtime contract is unambiguous.
+
+## 2026-05-31 - Top Secret Needed To Salvage Partial Provider Findings Instead Of Flattening Them
+
+**Context:** The user reviewed a live Top Secret PDF and found that one message read incomplete. The pasted claim cited a statute and listed multiple supposed requirements, but the generated report fell back to generic `not enough reliable evidence` wording instead of checking whether those items actually appeared in the statute.
+
+**Problem:** When a provider finding contained useful core analysis but malformed nested fields such as citations, support references, or statute analyses, `parseProviderFindings(...)` treated the whole finding as unusable and replaced it with a neutral stub. That preserved pipeline stability, but it threw away substantive statutory analysis and made the PDF feel incomplete.
+
+**Fix applied:** Added a salvage path for malformed findings. Top Secret now preserves usable provider analysis, conclusion, and verdict text, rebuilds citations/support references from retained authoritative sources, regenerates statute analyses from discovered citations, and normalizes user-visible text to strip prompt-like prefixes such as `Body:` and `Conclusion:` before the PDF is rendered. Only findings with no usable core text fall all the way back to the neutral stub.
+
+**Rule going forward:** If a provider finding is partially malformed, salvage the valid substance and rebuild the structured support from retained sources. Do not discard useful statutory reasoning just because nested JSON fields are imperfect.
+
+## 2026-05-31 - Playground PDF Artifacts Needed A Real Retention Window
+
+**Context:** The user asked whether old generated PDFs could be cleaned up after several hours so the VPS does not accumulate stale artifacts indefinitely.
+
+**Problem:** Report artifacts and their metadata stayed on disk until a later workflow explicitly replaced them or the runtime directory was cleaned manually. That left unnecessary PDFs around and made storage growth purely operational debt.
+
+**Fix applied:** Added a six-hour artifact retention window in the report service. Artifacts older than six hours are now purged from the in-memory registry and deleted from disk together with their metadata during hydration and normal artifact/report access paths.
+
+**Rule going forward:** Treat generated playground PDFs as short-lived session artifacts unless a workflow explicitly requires archival retention. Apply retention both to metadata and to the underlying files so runtime storage stays bounded.
+
+## 2026-05-31 - Full Backend Dockerfile Was Required Again For Queue-Backed Top Secret Fixes
+
+**Context:** After the Top Secret salvage and artifact-retention fixes were ready, the first VPS2 deploy attempt reused the lightweight backend hotfix path.
+
+**Problem:** The hotfix image again reused a stale dependency layer and crashed the backend at startup with `ERR_MODULE_NOT_FOUND: Cannot find package 'pdf-lib' imported from /app/workers/queue/src/jobs/render-report.job.ts`.
+
+**Fix applied:** Rebuilt and redeployed from the full `Dockerfile.backend`, then restarted only `sgt-bots-backend`. Public and container-local health checks returned to `{\"status\":\"ok\"}` afterward.
+
+**Rule going forward:** Any backend change that touches report rendering or queue-backed code paths should default to the full backend Docker build unless dependency parity is already proven. Do not use the hotfix Dockerfile for queue/report work.

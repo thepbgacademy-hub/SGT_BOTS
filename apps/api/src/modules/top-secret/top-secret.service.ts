@@ -319,6 +319,249 @@ function buildSourceChecks(input: {
   }));
 }
 
+function normalizeUserVisibleTopSecretText(value: string) {
+  return value
+    .replace(
+      /^(?:body|analysis|end|conclusion|common sense statement|common sense)\s*:\s*/iu,
+      "",
+    )
+    .replace(
+      /\bTop Secret should reject this as unsupported\.?/giu,
+      "The retained sources do not support this claim as written.",
+    )
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+function readLooseString(
+  value: unknown,
+  options?: {
+    minimumLength?: number;
+  },
+) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = normalizeUserVisibleTopSecretText(value);
+  const minimumLength = options?.minimumLength ?? 1;
+
+  return normalized.length >= minimumLength ? normalized : null;
+}
+
+function readLooseVerdict(value: unknown): TopSecretFinding["verdict"] | null {
+  switch (value) {
+    case "true":
+    case "partially_verified":
+    case "misunderstood":
+    case "false":
+    case "not_enough_reliable_evidence":
+      return value;
+    default:
+      return null;
+  }
+}
+
+function salvageTopSecretCitation(
+  value: unknown,
+  sources: TopSecretSourceBundle[],
+): TopSecretCitation | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const title = readLooseString(record.title);
+  const url = readLooseString(record.url);
+  const publisher = readLooseString(record.publisher);
+
+  if (!title || !url || !publisher) {
+    return null;
+  }
+
+  if (!isAuthoritativeTopSecretCitation({ publisher, title, url })) {
+    return null;
+  }
+
+  const matchedSource = sources.find(
+    (source) => source.url.trim().toLowerCase() === url.trim().toLowerCase(),
+  );
+
+  if (!matchedSource) {
+    return null;
+  }
+
+  return {
+    publisher: matchedSource.publisher,
+    title: matchedSource.title,
+    url: matchedSource.url,
+  };
+}
+
+function deriveSupportReferencesFromSources(
+  citations: TopSecretCitation[],
+  sources: TopSecretSourceBundle[],
+): TopSecretSupportReference[] {
+  const supports =
+    "This retained source is a starting point for research; it does not by itself validate the full pasted message.";
+
+  return citations
+    .map((citation) =>
+      sources.find(
+        (source) =>
+          source.url.trim().toLowerCase() === citation.url.trim().toLowerCase(),
+      ),
+    )
+    .filter((source): source is TopSecretSourceBundle => Boolean(source))
+    .map((source) => ({
+      sourceId: source.id,
+      supports,
+    }));
+}
+
+function salvageSupportReferences(
+  value: unknown,
+  citations: TopSecretCitation[],
+  sources: TopSecretSourceBundle[],
+): TopSecretSupportReference[] {
+  if (!Array.isArray(value)) {
+    return deriveSupportReferencesFromSources(citations, sources);
+  }
+
+  const allowedSourceIds = new Set(
+    citations
+      .map((citation) =>
+        sources.find(
+          (source) =>
+            source.url.trim().toLowerCase() === citation.url.trim().toLowerCase(),
+        )?.id,
+      )
+      .filter((sourceId): sourceId is string => Boolean(sourceId)),
+  );
+
+  const parsed = value
+    .map((reference) => {
+      if (typeof reference !== "object" || reference === null) {
+        return null;
+      }
+
+      const record = reference as Record<string, unknown>;
+      const sourceId = readLooseString(record.sourceId);
+      const supports = readLooseString(record.supports);
+
+      if (!sourceId || !supports || !allowedSourceIds.has(sourceId)) {
+        return null;
+      }
+
+      return { sourceId, supports };
+    })
+    .filter(
+      (reference): reference is TopSecretSupportReference => Boolean(reference),
+    );
+
+  return parsed.length > 0
+    ? parsed
+    : deriveSupportReferencesFromSources(citations, sources);
+}
+
+function salvageTopSecretFinding(input: {
+  claim: string;
+  finding: unknown;
+  runtimeKnowledgeEntries?: TopSecretRuntimeKnowledgeEntry[];
+  sources: TopSecretSourceBundle[];
+}) {
+  if (typeof input.finding !== "object" || input.finding === null) {
+    return null;
+  }
+
+  const record = input.finding as Record<string, unknown>;
+  const analysis = readLooseString(record.analysis, { minimumLength: 20 });
+  const conclusion = readLooseString(record.conclusion, { minimumLength: 20 });
+  const verdict =
+    readLooseVerdict(record.verdict) ?? "not_enough_reliable_evidence";
+
+  if (!analysis || !conclusion) {
+    return null;
+  }
+
+  const citations =
+    Array.isArray(record.citations)
+      ? record.citations
+          .map((citation) => salvageTopSecretCitation(citation, input.sources))
+          .filter((citation): citation is TopSecretCitation => Boolean(citation))
+      : [];
+  const fallbackCitations =
+    citations.length > 0
+      ? citations
+      : input.sources
+          .filter((source) => isAuthoritativeTopSecretSourceUrl(source.url))
+          .map(sourceBundleToCitation);
+
+  if (fallbackCitations.length === 0) {
+    return null;
+  }
+
+  const supportReferences = salvageSupportReferences(
+    record.supportReferences,
+    fallbackCitations,
+    input.sources,
+  );
+
+  const discoveredStatuteCitations = Array.isArray(record.discoveredStatuteCitations)
+    ? record.discoveredStatuteCitations
+        .map((citation) => readLooseString(citation))
+        .filter((citation): citation is string => Boolean(citation))
+    : [];
+
+  return validateTopSecretFindingAgainstSources({
+    claim: input.claim,
+    sources: input.sources,
+    finding: {
+      analysis,
+      citations: fallbackCitations,
+      claim: input.claim,
+      claimComponents: buildTopSecretClaimComponents(
+        input.claim,
+        input.runtimeKnowledgeEntries,
+      ),
+      commonSenseStatement:
+        readLooseString(record.commonSenseStatement) ??
+        buildTopSecretCommonSenseStatement(
+          input.claim,
+          input.runtimeKnowledgeEntries,
+        ),
+      conclusion,
+      discoveredStatuteCitations,
+      historicalAuthorities: detectTopSecretHistoricalAuthorities(
+        input.claim,
+        input.sources,
+      ),
+      researchContextNotes: buildTopSecretResearchContextNotes(
+        input.claim,
+        input.runtimeKnowledgeEntries,
+      ),
+      sourceChecks: buildSourceChecks({
+        sources: input.sources,
+        supportReferences,
+      }),
+      statuteAnalyses: buildTopSecretStatuteAnalyses({
+        discoveredCitations: [
+          ...discoveredStatuteCitations,
+          ...input.sources.flatMap((source) => source.detectedCitations),
+          ...fallbackCitations.flatMap((citation) => [citation.title, citation.url]),
+          analysis,
+          conclusion,
+          input.claim,
+        ],
+        message: input.claim,
+        sourceBundles: input.sources,
+      }),
+      supportReferences,
+      verdict,
+    },
+  });
+}
+
 function getTopSecretSystemPrompt(claims: string[]) {
   const hasFederalStatuteClaim = claims.some(doesClaimLikelyInvolveFederalStatute);
 
@@ -515,6 +758,23 @@ function parseProviderFindings(input: {
           path: issue.path.join("."),
         })),
       });
+
+      const salvagedFinding = salvageTopSecretFinding({
+        claim,
+        finding,
+        runtimeKnowledgeEntries: input.runtimeKnowledgeEntries,
+        sources,
+      });
+
+      if (salvagedFinding) {
+        return {
+          ...salvagedFinding,
+          sourceChecks: buildSourceChecks({
+            sources,
+            supportReferences: salvagedFinding.supportReferences,
+          }),
+        };
+      }
 
       return {
         ...buildNeutralStubFinding(claim, sources, input.runtimeKnowledgeEntries),

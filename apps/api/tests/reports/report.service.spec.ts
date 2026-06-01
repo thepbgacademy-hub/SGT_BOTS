@@ -198,4 +198,74 @@ describe("createReportService", () => {
 
     expect(queued.artifact.fileName).toBe("johnQ1234_top_secret_review.pdf");
   });
+
+  it("purges artifacts older than six hours when hydrating from disk", () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "artifact-retention-"));
+    process.chdir(tempRoot);
+
+    const createdAt = new Date("2026-05-31T00:00:00.000Z").getTime();
+    const cleanupAt = createdAt + 6 * 60 * 60 * 1000 + 1;
+
+    const reportService = createReportService({
+      analyticsService: createAnalyticsService(),
+      now: () => createdAt,
+      reportQueue: {
+        enqueueRenderReportJob(input) {
+          return {
+            artifactId: input.artifactId,
+            status: "queued" as const,
+          };
+        },
+      },
+      uploadService: createUploadService(),
+    });
+
+    const queued = reportService.queueTopSecretReportPdfDraft({
+      botId: "verifier",
+      fileNameBase: "cleanup_me",
+      previewHtml: "<html><body>Cleanup</body></html>",
+      previewSnapshot: {
+        findings: [],
+        generatedDate: "May 31, 2026",
+        templateSlug: "top_secret_fact_check",
+      },
+      sessionId: "session-cleanup",
+      userId: "user-cleanup",
+    });
+
+    reportService.markArtifactRendered({
+      artifactId: queued.artifact.id,
+      byteSize: Buffer.byteLength("%PDF-cleanup"),
+      fileBytes: Buffer.from("%PDF-cleanup"),
+    });
+
+    const diskPath = queued.artifact.diskPath;
+    const metadataPath = `${diskPath}.json`;
+
+    expect(fs.existsSync(diskPath)).toBe(true);
+    expect(fs.existsSync(metadataPath)).toBe(true);
+
+    const rehydratedService = createReportService({
+      analyticsService: createAnalyticsService(),
+      now: () => cleanupAt,
+      reportQueue: {
+        enqueueRenderReportJob(input) {
+          return {
+            artifactId: input.artifactId,
+            status: "queued" as const,
+          };
+        },
+      },
+      uploadService: createUploadService(),
+    });
+
+    expect(
+      rehydratedService.listArtifactsForSession({
+        sessionId: "session-cleanup",
+        userId: "user-cleanup",
+      }),
+    ).toEqual([]);
+    expect(fs.existsSync(diskPath)).toBe(false);
+    expect(fs.existsSync(metadataPath)).toBe(false);
+  });
 });

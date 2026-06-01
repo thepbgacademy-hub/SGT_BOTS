@@ -506,9 +506,7 @@ describe("Top Secret service", () => {
       expect.objectContaining({ claimIndex: 0 }),
     );
     expect(findings[0]).toMatchObject({
-      analysis: expect.stringContaining(
-        "provider response did not keep the required report structure",
-      ),
+      analysis: "This malformed finding is missing the required citations array.",
       verdict: "not_enough_reliable_evidence",
     });
     expect(findings[1]).toMatchObject({
@@ -516,6 +514,91 @@ describe("Top Secret service", () => {
         "TreasuryDirect account claims should be checked with official sources.",
       verdict: "partially_verified",
     });
+  });
+
+  it("salvages useful provider analysis when only nested finding fields are malformed", async () => {
+    const service = createTopSecretService({
+      mode: "live",
+      fetch: async (url) => {
+        if (!String(url).includes("api.openai.com")) {
+          return new Response(
+            "<html><body>16 CFR 436.5 covers franchise disclosures. The retained legal text says franchisors must give a disclosure document with specific required items before a sale. This source text is long enough for retention.</body></html>",
+            {
+              status: 200,
+              headers: { "content-type": "text/html" },
+            },
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    findings: [
+                      {
+                        analysis:
+                          "Body: The pasted message is directionally pointing to a real franchise disclosure rule, but it still needs the actual regulation text checked item by item before treating all twenty-three claimed items as proven.",
+                        citations: [
+                          {
+                            title: 23,
+                            url: null,
+                            publisher: false,
+                          },
+                        ],
+                        claim:
+                          "16 CFR 436.5 requires 23 specific disclosure items for franchise purchasers.",
+                        conclusion:
+                          "Conclusion: So for this message, the evidence points to this conclusion: the regulation should be read directly to confirm whether the claimed twenty-three items appear there and in what scope.",
+                        supportReferences: ["source-1"],
+                        statuteAnalyses: ["broken"],
+                        verdict: "partially_verified",
+                      },
+                    ],
+                  }),
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
+      },
+    });
+
+    const [finding] = await service.generateFindings({
+      claims: [
+        "16 CFR 436.5 requires 23 specific disclosure items for franchise purchasers.",
+      ],
+      sessionSecret,
+    });
+
+    expect(finding.analysis).toContain(
+      "directionally pointing to a real franchise disclosure rule",
+    );
+    expect(finding.analysis).not.toContain("Body:");
+    expect(finding.analysis).not.toContain(
+      "provider response did not keep the required report structure",
+    );
+    expect(finding.conclusion).not.toContain("Conclusion:");
+    expect(finding.verdict).toBe("partially_verified");
+    expect(finding.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: expect.stringContaining("ecfr.gov/current/title-16"),
+        }),
+      ]),
+    );
+    expect(finding.statuteAnalyses).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          citation: "16 C.F.R. Sec. 436.5",
+        }),
+      ]),
+    );
   });
 
   it("adds historical authority notes for secondary legal sources", async () => {
