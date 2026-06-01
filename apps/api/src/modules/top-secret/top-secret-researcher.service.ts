@@ -170,10 +170,51 @@ function extractFederalRegulationCitations(message: string) {
   return [...citations.values()];
 }
 
+function extractFederalRegulationPartCitations(message: string) {
+  const citations = new Map<
+    string,
+    {
+      citation: string;
+      part: string;
+      title: string;
+      url: string;
+    }
+  >();
+
+  for (const match of message.matchAll(
+    /\b(?<title>\d+)\s+c\.?f\.?r\.?\s+parts?\s+(?<parts>\d+(?:\s*(?:,|and)\s*\d+)*)/giu,
+  )) {
+    const title = match.groups?.title ?? "";
+    const parts = match.groups?.parts ?? "";
+
+    if (!title || !parts) {
+      continue;
+    }
+
+    for (const part of parts
+      .split(/\s*(?:,|and)\s*/iu)
+      .map((value) => value.trim())
+      .filter(Boolean)) {
+      const citation = `${title} C.F.R. Part ${part}`;
+      citations.set(citation, {
+        citation,
+        part,
+        title,
+        url: `https://www.ecfr.gov/current/title-${title}/part-${part}`,
+      });
+    }
+  }
+
+  return [...citations.values()];
+}
+
 function extractTopSecretLegalCitations(message: string) {
   return [
     ...extractFederalStatuteCitations(message).map((citation) => citation.citation),
     ...extractFederalRegulationCitations(message).map(
+      (citation) => citation.citation,
+    ),
+    ...extractFederalRegulationPartCitations(message).map(
       (citation) => citation.citation,
     ),
   ];
@@ -190,6 +231,8 @@ export function buildTopSecretCandidateSourceDescriptors(
   const candidates: CandidateSourceDescriptor[] = [];
   const explicitFederalStatutes = extractFederalStatuteCitations(claim);
   const explicitFederalRegulations = extractFederalRegulationCitations(claim);
+  const explicitFederalRegulationParts =
+    extractFederalRegulationPartCitations(claim);
 
   if (isCursiveCreditReportDomainClaim(claim)) {
     return [];
@@ -228,8 +271,19 @@ export function buildTopSecretCandidateSourceDescriptors(
     });
   }
 
+  for (const citation of explicitFederalRegulationParts) {
+    candidates.push({
+      publisher: "Electronic Code of Federal Regulations",
+      sourceType: "regulation",
+      title: citation.citation,
+      url: citation.url,
+    });
+  }
+
   const hasExplicitLegalCitation =
-    explicitFederalStatutes.length > 0 || explicitFederalRegulations.length > 0;
+    explicitFederalStatutes.length > 0 ||
+    explicitFederalRegulations.length > 0 ||
+    explicitFederalRegulationParts.length > 0;
 
   if (
     !hasExplicitLegalCitation &&
@@ -433,7 +487,23 @@ export async function retrieveTopSecretSourceBundles(input: {
       id: `source-${index + 1}`,
     }));
 
-  return bundles.length > 0 ? bundles : createTopSecretStubSourceBundles();
+  if (bundles.length > 0) {
+    return bundles;
+  }
+
+  if (candidates.length > 0) {
+    return candidates.map((candidate, index) => ({
+      ...candidate,
+      currentnessStatus: assessTopSecretSourceCurrentness(candidate),
+      detectedCitations: extractTopSecretLegalCitations(candidate.title),
+      id: `source-${index + 1}`,
+      retrievedText:
+        `Runtime retrieval could not fetch the governing source text from ${candidate.url} during this run. ` +
+        "Keep the analysis anchored to this citation instead of substituting unrelated agency background.",
+    }));
+  }
+
+  return createTopSecretStubSourceBundles();
 }
 
 export function sourceBundleToCitation(

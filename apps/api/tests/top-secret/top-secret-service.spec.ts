@@ -732,6 +732,175 @@ describe("Top Secret service", () => {
     );
   });
 
+  it("retrieves cited CFR parts instead of falling back to unrelated default sources", async () => {
+    let capturedUrls: string[] = [];
+    const service = createTopSecretService({
+      mode: "live",
+      fetch: async (url, init) => {
+        if (!String(url).includes("api.openai.com")) {
+          return new Response(
+            "<html><body>Part 436 regulates franchise disclosure duties and this source text is long enough for retention.</body></html>",
+            {
+              status: 200,
+              headers: { "content-type": "text/html" },
+            },
+          );
+        }
+
+        const capturedRequest = JSON.parse(String(init?.body ?? "{}")) as {
+          messages?: Array<{ content: string }>;
+        };
+        const userPayload = JSON.parse(
+          capturedRequest.messages?.[1]?.content ?? "{}",
+        ) as {
+          sourceBundlesByClaim?: Array<Array<{ url: string }>>;
+        };
+        capturedUrls =
+          userPayload.sourceBundlesByClaim?.[0]?.map((source) => source.url) ?? [];
+
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    findings: [
+                      {
+                        analysis:
+                          "The cited FTC franchise regulation should be checked from the retained CFR part text before adding broader theories.",
+                        citations: [
+                          {
+                            publisher: "Electronic Code of Federal Regulations",
+                            title: "16 C.F.R. Part 436",
+                            url: "https://www.ecfr.gov/current/title-16/part-436",
+                          },
+                        ],
+                        claim:
+                          "16 CFR Parts 436 and 437 prove a broader franchise-law theory.",
+                        conclusion:
+                          "The cited CFR part text should be checked directly before the larger message is accepted.",
+                        supportReferences: [
+                          {
+                            sourceId: "source-1",
+                            supports:
+                              "The retained eCFR part text is the proper starting point for this message.",
+                          },
+                        ],
+                        verdict: "not_enough_reliable_evidence",
+                      },
+                    ],
+                  }),
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
+      },
+    });
+
+    await service.generateFindings({
+      claims: ["16 CFR Parts 436 and 437 prove a broader franchise-law theory."],
+      sessionSecret,
+    });
+
+    expect(capturedUrls).toEqual(
+      expect.arrayContaining([
+        "https://www.ecfr.gov/current/title-16/part-436",
+        "https://www.ecfr.gov/current/title-16/part-437",
+      ]),
+    );
+    expect(capturedUrls).not.toEqual(
+      expect.arrayContaining([
+        "https://www.law.cornell.edu/uscode/text/26/61",
+        "https://www.irs.gov/publications/p17",
+        "https://www.treasurydirect.gov/marketable-securities/",
+        "https://www.ssa.gov/OP_Home/ssact/ssact.htm",
+      ]),
+    );
+  });
+
+  it("keeps explicit citation placeholders instead of unrelated defaults when retrieval fails", async () => {
+    let capturedUrls: string[] = [];
+    const service = createTopSecretService({
+      mode: "live",
+      fetch: async (url, init) => {
+        if (!String(url).includes("api.openai.com")) {
+          return new Response("missing", { status: 404 });
+        }
+
+        const capturedRequest = JSON.parse(String(init?.body ?? "{}")) as {
+          messages?: Array<{ content: string }>;
+        };
+        const userPayload = JSON.parse(
+          capturedRequest.messages?.[1]?.content ?? "{}",
+        ) as {
+          sourceBundlesByClaim?: Array<Array<{ title: string; url: string; retrievedText: string }>>;
+        };
+        const sources = userPayload.sourceBundlesByClaim?.[0] ?? [];
+        capturedUrls = sources.map((source) => source.url);
+        expect(sources[0]?.retrievedText).toContain(
+          "Runtime retrieval could not fetch the governing source text",
+        );
+
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    findings: [
+                      {
+                        analysis:
+                          "The cited CFR part could not be retrieved during this run, so the claim cannot be confirmed from unrelated sources.",
+                        citations: [
+                          {
+                            publisher: "Electronic Code of Federal Regulations",
+                            title: "16 C.F.R. Part 436",
+                            url: "https://www.ecfr.gov/current/title-16/part-436",
+                          },
+                        ],
+                        claim:
+                          "16 CFR Parts 436 and 437 prove a broader franchise-law theory.",
+                        conclusion:
+                          "Without the governing CFR part text, the larger message cannot be verified here.",
+                        supportReferences: [
+                          {
+                            sourceId: "source-1",
+                            supports:
+                              "This placeholder keeps the review anchored to the cited regulation instead of unrelated defaults.",
+                          },
+                        ],
+                        verdict: "not_enough_reliable_evidence",
+                      },
+                    ],
+                  }),
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
+      },
+    });
+
+    await service.generateFindings({
+      claims: ["16 CFR Parts 436 and 437 prove a broader franchise-law theory."],
+      sessionSecret,
+    });
+
+    expect(capturedUrls).toEqual([
+      "https://www.ecfr.gov/current/title-16/part-436",
+      "https://www.ecfr.gov/current/title-16/part-437",
+    ]);
+  });
+
   it("adds historical authority notes for secondary legal sources", async () => {
     const service = createTopSecretService({ mode: "stub" });
     const findings = await service.generateFindings({

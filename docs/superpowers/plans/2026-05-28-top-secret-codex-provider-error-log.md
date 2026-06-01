@@ -199,3 +199,13 @@
 **Fix applied:** Added `claimChecks` to the Top Secret finding contract, passed atomic assertions into provider requests, instructed the model to acknowledge any true fragment before explaining the overread, and added a `Point-by-point check` section to the PDF. When a message cites a specific federal statute or regulation, retrieval now prioritizes that cited legal text and suppresses unrelated default background sources.
 
 **Rule going forward:** Top Secret is not just a legal memo generator. When a pasted message contains multiple factual points or cites a specific statute, the workflow must compare the message claim by claim against the retained source text and show the reader what was supported, overstated, misunderstood, or not found in the source.
+
+## 2026-06-01 - CFR Part Citations Were Falling Through To Unrelated Default Source Bundles
+
+**Context:** A live Top Secret report about `16 CFR Parts 436 and 437` still came back incoherent after the point-by-point claim-audit deploy. The saved artifact metadata showed the report was analyzing the message against `26 U.S.C. Sec. 61`, IRS Publication 17, TreasuryDirect, and the Social Security Act instead of the FTC franchise rule.
+
+**Problem:** The retrieval adapter only recognized section-style CFR citations such as `31 CFR 363.6`. It did not recognize part-style citations such as `16 CFR Parts 436 and 437`. When retrieval found no candidates, Top Secret silently fell back to the generic IRS/Treasury/SSA stub bundle, which made the provider reason from the wrong evidence and produce nonsense.
+
+**Fix applied:** Added explicit CFR `Part/Parts` citation extraction, generated eCFR part URLs such as `https://www.ecfr.gov/current/title-16/part-436`, and changed the no-fetch fallback path so explicit legal citations now stay anchored to citation-specific placeholder sources instead of unrelated generic defaults.
+
+**Rule going forward:** If the pasted message names a specific statute, section, regulation, or CFR part, failure to retrieve that source must not trigger a generic fallback bundle from another domain of law. Keep the evidence bundle anchored to the named citation even when runtime retrieval fails.
