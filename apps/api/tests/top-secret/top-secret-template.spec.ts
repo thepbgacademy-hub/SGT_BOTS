@@ -10,6 +10,20 @@ describe("Top Secret report template", () => {
         {
           analysis:
             "The claim must be compared against the operative statute and IRS guidance before relying on it.",
+          claimChecks: [
+            {
+              assertion: "The message relies on 26 U.S.C. Sec. 61 to say income tax is voluntary.",
+              explanation:
+                "The retained statute text defines gross income, but it does not say filing or payment is optional.",
+              status: "misunderstood",
+            },
+            {
+              assertion: "Voluntary compliance means there is no legal duty.",
+              explanation:
+                "That phrase describes the reporting system, not an absence of legal obligation.",
+              status: "overstated",
+            },
+          ],
           commonSenseStatement:
             "Read the source and ask whether it says the full online claim, or only a smaller piece of it.",
           citations: [
@@ -76,6 +90,9 @@ describe("Top Secret report template", () => {
     expect(html).toContain("Income tax is voluntary.");
     expect(html).toContain("Read the source and ask whether");
     expect(html).toContain("In plain language");
+    expect(html).toContain("Point-by-point check");
+    expect(html).toContain("Misunderstood");
+    expect(html).toContain("Overstated");
     expect(html).toContain("So for this message, the evidence points to this conclusion");
     expect(html).toContain("message appears to contain a real idea");
     expect(html).toContain("Historical or secondary authority");
@@ -97,11 +114,8 @@ describe("Top Secret report template", () => {
     expect(html).toContain("Reading the legal text");
     expect(html).toContain("Currentness: Not Verified");
     expect(html).toContain("Source status check");
-    expect(html).toContain("Legal hierarchy");
-    expect(html).toContain("Regulatory ecosystem");
     expect(html).toContain("Definitions to check");
     expect(html).toContain("Operator words to parse");
-    expect(html).toContain("Canons and interpretation tools");
     expect(html).toContain("What the statute does not say");
     expect(html).toContain("Income tax is voluntary under 26 USC 61.");
     expect(html).toContain("law.cornell.edu");

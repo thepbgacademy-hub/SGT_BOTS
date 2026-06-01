@@ -2,6 +2,7 @@ import type { SessionSecret } from "../sessions/session.store";
 import { requestCodexJson } from "../providers/codex-oauth.service";
 import {
   TopSecretFindingSchema,
+  type TopSecretClaimCheck,
   type TopSecretCitation,
   type TopSecretFinding,
   type TopSecretHistoricalAuthority,
@@ -319,6 +320,64 @@ function buildSourceChecks(input: {
   }));
 }
 
+function splitTopSecretAssertionList(value: string) {
+  return value
+    .split(/\r?\n+/u)
+    .flatMap((line) => line.split(/\s*;\s*/u))
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function deriveAtomicTopSecretAssertions(claim: string) {
+  const directListMatch = claim.match(
+    /(?:includes?|contains?|lists?|requires?)\s+(?:(?:the\s+)?following\s*:)\s*(.+)$/iu,
+  );
+  const rawSegments = directListMatch
+    ? directListMatch[1]
+        .split(/\s*,\s*(?=(?:[a-z0-9(]|["']))/iu)
+        .map((segment) => segment.trim())
+    : splitTopSecretAssertionList(claim)
+        .flatMap((segment) =>
+          segment.includes(":")
+            ? segment.split(/:\s*/u).map((part) => part.trim())
+            : [segment],
+        )
+        .flatMap((segment) =>
+          segment.length > 140 && /,\s+/u.test(segment)
+            ? segment.split(/\s*,\s*(?=(?:[a-z0-9(]|["']))/iu)
+            : [segment],
+        )
+        .flatMap((segment) =>
+          segment.length > 220
+            ? segment.split(/(?<=[.!?])\s+(?=[A-Z0-9"])/u)
+            : [segment],
+        )
+        .map((segment) => segment.trim());
+
+  const assertions: string[] = [];
+
+  for (const segment of rawSegments) {
+    const normalized = segment
+      .replace(/^\s*(?:\d+[.)]|[-*•])\s*/u, "")
+      .replace(/\s+/gu, " ")
+      .trim();
+
+    if (!normalized || normalized.length < 12) {
+      continue;
+    }
+
+    if (!assertions.includes(normalized)) {
+      assertions.push(normalized);
+    }
+
+    if (assertions.length >= 8) {
+      break;
+    }
+  }
+
+  return assertions;
+}
+
 function normalizeUserVisibleTopSecretText(value: string) {
   return value
     .replace(
@@ -356,6 +415,21 @@ function readLooseVerdict(value: unknown): TopSecretFinding["verdict"] | null {
     case "misunderstood":
     case "false":
     case "not_enough_reliable_evidence":
+      return value;
+    default:
+      return null;
+  }
+}
+
+function readLooseClaimCheckStatus(
+  value: unknown,
+): TopSecretClaimCheck["status"] | null {
+  switch (value) {
+    case "supported":
+    case "partially_supported":
+    case "misunderstood":
+    case "overstated":
+    case "not_found_in_source":
       return value;
     default:
       return null;
@@ -464,6 +538,53 @@ function salvageSupportReferences(
     : deriveSupportReferencesFromSources(citations, sources);
 }
 
+function salvageClaimChecks(value: unknown) {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const claimChecks = value
+    .map((entry) => {
+      if (typeof entry !== "object" || entry === null) {
+        return null;
+      }
+
+      const record = entry as Record<string, unknown>;
+      const assertion = readLooseString(record.assertion, { minimumLength: 8 });
+      const explanation = readLooseString(record.explanation, {
+        minimumLength: 12,
+      });
+      const status = readLooseClaimCheckStatus(record.status);
+
+      if (!assertion || !explanation || !status) {
+        return null;
+      }
+
+      return {
+        assertion,
+        explanation,
+        status,
+      } satisfies TopSecretClaimCheck;
+    })
+    .filter((entry): entry is TopSecretClaimCheck => Boolean(entry));
+
+  return claimChecks.length > 0 ? claimChecks : undefined;
+}
+
+function normalizeClaimChecks(
+  claimChecks: TopSecretClaimCheck[] | undefined,
+): TopSecretClaimCheck[] | undefined {
+  if (!claimChecks?.length) {
+    return undefined;
+  }
+
+  return claimChecks.map((claimCheck) => ({
+    assertion: normalizeUserVisibleTopSecretText(claimCheck.assertion),
+    explanation: normalizeUserVisibleTopSecretText(claimCheck.explanation),
+    status: claimCheck.status,
+  }));
+}
+
 function salvageTopSecretFinding(input: {
   claim: string;
   finding: unknown;
@@ -506,6 +627,7 @@ function salvageTopSecretFinding(input: {
     fallbackCitations,
     input.sources,
   );
+  const claimChecks = normalizeClaimChecks(salvageClaimChecks(record.claimChecks));
 
   const discoveredStatuteCitations = Array.isArray(record.discoveredStatuteCitations)
     ? record.discoveredStatuteCitations
@@ -520,6 +642,7 @@ function salvageTopSecretFinding(input: {
       analysis,
       citations: fallbackCitations,
       claim: input.claim,
+      claimChecks,
       claimComponents: buildTopSecretClaimComponents(
         input.claim,
         input.runtimeKnowledgeEntries,
@@ -568,7 +691,11 @@ function getTopSecretSystemPrompt(claims: string[]) {
   return [
     "You are Top Secret, a neutral fact-checking and legal-research assistant.",
     "Return only valid JSON with a findings array.",
-    "Each finding must have claim, analysis, conclusion, verdict, citations, discoveredStatuteCitations, and statuteAnalyses when the pasted message or your research finds a federal statute citation.",
+    "Each finding must have claim, analysis, conclusion, verdict, citations, claimChecks, discoveredStatuteCitations, and statuteAnalyses when the pasted message or your research finds a federal statute citation.",
+    "Each finding must include 2 to 8 claimChecks when the message contains multiple assertions, lists, or a cited statute. Each claimCheck must cover one material point from the pasted message.",
+    "Each claimCheck must say whether that point is supported, partially_supported, misunderstood, overstated, or not_found_in_source.",
+    "If a message contains a true fragment mixed with a wrong conclusion, acknowledge the accurate fragment before explaining the overread.",
+    "Do not replace the comparison with general statute-construction commentary. The reader needs to know what the message got right, what it added, and what the cited text does not say.",
     "Each finding must include supportReferences using only source IDs from the supplied sourceBundles.",
     "Each finding should include one commonSenseStatement sentence that helps the user compare the claim to ordinary real-world use without sarcasm, condescension, or unsupported certainty.",
     "The commonSenseStatement value must be the sentence itself. Do not prefix it with Common sense:",
@@ -577,6 +704,7 @@ function getTopSecretSystemPrompt(claims: string[]) {
     "Do not talk in first person. Do not narrate what Top Secret is doing inside the finding body.",
     "Do not answer from model memory. Reason only over the supplied sourceBundles.",
     "Do not add citations, cases, statutes, agencies, dates, or claims not present in sourceBundles.",
+    "When the pasted message cites a specific statute or regulation, start with that cited legal text in the sourceBundles before broader background sources. Compare the message against the exact words of that citation first.",
     "Verdict must be one of: true, partially_verified, misunderstood, false, not_enough_reliable_evidence.",
     "The report is educational research, not legal, tax, or financial advice.",
     "Do not punish, shame, ridicule, or stereotype the user for the pasted belief. Refute only the unsupported understanding, using simple terms and evidence from retained sources.",
@@ -587,6 +715,7 @@ function getTopSecretSystemPrompt(claims: string[]) {
 }
 
 function buildOpenAiTopSecretRequest(input: {
+  atomicAssertionsByClaim: string[][];
   claims: string[];
   sourceBundlesByClaim: TopSecretSourceBundle[][];
 }) {
@@ -603,6 +732,7 @@ function buildOpenAiTopSecretRequest(input: {
       {
         role: "user",
         content: JSON.stringify({
+          atomicAssertionsByClaim: input.atomicAssertionsByClaim,
           claims: input.claims,
           sourceBundlesByClaim: input.sourceBundlesByClaim,
         }),
@@ -614,6 +744,7 @@ function buildOpenAiTopSecretRequest(input: {
 
 async function requestOpenAiFindings(input: {
   apiKey: string;
+  atomicAssertionsByClaim: string[][];
   claims: string[];
   fetchImpl: typeof fetch;
   sourceBundlesByClaim: TopSecretSourceBundle[][];
@@ -626,6 +757,7 @@ async function requestOpenAiFindings(input: {
     },
     body: JSON.stringify(
       buildOpenAiTopSecretRequest({
+        atomicAssertionsByClaim: input.atomicAssertionsByClaim,
         claims: input.claims,
         sourceBundlesByClaim: input.sourceBundlesByClaim,
       }),
@@ -650,6 +782,7 @@ async function requestOpenAiFindings(input: {
 
 async function requestAnthropicFindings(input: {
   apiKey: string;
+  atomicAssertionsByClaim: string[][];
   claims: string[];
   fetchImpl: typeof fetch;
   sourceBundlesByClaim: TopSecretSourceBundle[][];
@@ -672,6 +805,7 @@ async function requestAnthropicFindings(input: {
         {
           role: "user",
           content: JSON.stringify({
+            atomicAssertionsByClaim: input.atomicAssertionsByClaim,
             claims: input.claims,
             sourceBundlesByClaim: input.sourceBundlesByClaim,
           }),
@@ -698,6 +832,7 @@ async function requestAnthropicFindings(input: {
 
 async function requestCodexFindings(input: {
   apiKey: string;
+  atomicAssertionsByClaim: string[][];
   claims: string[];
   fetchImpl: typeof fetch;
   onCredentialRefresh?: (apiKey: string) => void;
@@ -712,6 +847,7 @@ async function requestCodexFindings(input: {
       input.onCredentialRefresh?.(JSON.stringify(credential)),
     systemPrompt: getTopSecretSystemPrompt(input.claims),
     userPrompt: JSON.stringify({
+      atomicAssertionsByClaim: input.atomicAssertionsByClaim,
       claims: input.claims,
       sourceBundlesByClaim: input.sourceBundlesByClaim,
     }),
@@ -799,6 +935,7 @@ function parseProviderFindings(input: {
       sources,
       finding: {
         ...parsed,
+        claimChecks: normalizeClaimChecks(parsed.claimChecks),
         claim,
         commonSenseStatement:
           parsed.commonSenseStatement ??
@@ -869,6 +1006,7 @@ export function createTopSecretService(deps?: {
       sessionSecret: SessionSecret;
     }): Promise<TopSecretFinding[]> {
       const claims = parseTopSecretClaims({ claims: input.claims });
+      const atomicAssertionsByClaim = claims.map(deriveAtomicTopSecretAssertions);
       const sourceBundlesByClaim = await Promise.all(
         claims.map((claim) =>
           retrieveTopSecretSourceBundles({
@@ -893,6 +1031,7 @@ export function createTopSecretService(deps?: {
         input.sessionSecret.provider === "anthropic"
           ? await requestAnthropicFindings({
               apiKey: input.sessionSecret.apiKey,
+              atomicAssertionsByClaim,
               claims,
               fetchImpl,
               sourceBundlesByClaim,
@@ -900,6 +1039,7 @@ export function createTopSecretService(deps?: {
           : input.sessionSecret.provider === "openai_codex"
             ? await requestCodexFindings({
                 apiKey: input.sessionSecret.apiKey,
+                atomicAssertionsByClaim,
                 claims,
                 fetchImpl,
                 onCredentialRefresh: (apiKey) => {
@@ -909,6 +1049,7 @@ export function createTopSecretService(deps?: {
               })
           : await requestOpenAiFindings({
               apiKey: input.sessionSecret.apiKey,
+              atomicAssertionsByClaim,
               claims,
               fetchImpl,
               sourceBundlesByClaim,

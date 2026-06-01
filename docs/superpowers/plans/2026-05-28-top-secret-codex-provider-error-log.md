@@ -189,3 +189,13 @@
 **Fix applied:** Rebuilt and redeployed from the full `Dockerfile.backend`, then restarted only `sgt-bots-backend`. Public and container-local health checks returned to `{\"status\":\"ok\"}` afterward.
 
 **Rule going forward:** Any backend change that touches report rendering or queue-backed code paths should default to the full backend Docker build unless dependency parity is already proven. Do not use the hotfix Dockerfile for queue/report work.
+
+## 2026-05-31 - Top Secret Needed Atomic Claim Checks, Not Just Memo-Style Analysis
+
+**Context:** After the salvage fix, the user reviewed a better-looking Top Secret report but still found it too generic. A pasted message that cited a statute was not being checked point by point against that statute. The report drifted into broad legal-reading commentary instead of telling the reader which parts of the message were actually supported, overstated, misunderstood, or simply not present in the cited text.
+
+**Problem:** The Top Secret prompt and output contract were still optimized for a polished memo-style finding. Retrieval could fetch the cited statute, but the model was not required to decompose the pasted message into atomic assertions or compare each one against the retained source text. That made the result feel fluffy even when the retrieval layer had good source material.
+
+**Fix applied:** Added `claimChecks` to the Top Secret finding contract, passed atomic assertions into provider requests, instructed the model to acknowledge any true fragment before explaining the overread, and added a `Point-by-point check` section to the PDF. When a message cites a specific federal statute or regulation, retrieval now prioritizes that cited legal text and suppresses unrelated default background sources.
+
+**Rule going forward:** Top Secret is not just a legal memo generator. When a pasted message contains multiple factual points or cites a specific statute, the workflow must compare the message claim by claim against the retained source text and show the reader what was supported, overstated, misunderstood, or not found in the source.

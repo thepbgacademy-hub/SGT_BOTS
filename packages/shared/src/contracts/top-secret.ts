@@ -72,6 +72,18 @@ export const TopSecretClaimComponentSchema = z.object({
   summary: z.string().min(1),
 });
 
+export const TopSecretClaimCheckSchema = z.object({
+  assertion: z.string().min(1),
+  explanation: z.string().min(1),
+  status: z.enum([
+    "supported",
+    "partially_supported",
+    "misunderstood",
+    "overstated",
+    "not_found_in_source",
+  ]),
+});
+
 export const TopSecretResearchContextNoteSchema = z.object({
   topic: z.enum([
     "all_caps_name",
@@ -137,6 +149,7 @@ export const TopSecretStatuteAnalysisSchema = z.object({
 export const TopSecretFindingSchema = z.object({
   claim: z.string().min(1),
   analysis: z.string().min(1),
+  claimChecks: z.array(TopSecretClaimCheckSchema).optional(),
   commonSenseStatement: z.string().min(1).optional(),
   conclusion: z.string().min(1),
   verdict: TopSecretVerdictSchema,
@@ -168,6 +181,7 @@ export type TopSecretHistoricalAuthority = z.infer<
 export type TopSecretClaimComponent = z.infer<
   typeof TopSecretClaimComponentSchema
 >;
+export type TopSecretClaimCheck = z.infer<typeof TopSecretClaimCheckSchema>;
 export type TopSecretResearchContextNote = z.infer<
   typeof TopSecretResearchContextNoteSchema
 >;

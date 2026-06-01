@@ -188,12 +188,14 @@ export function buildTopSecretCandidateSourceDescriptors(
 ): CandidateSourceDescriptor[] {
   const lowerClaim = claim.toLowerCase();
   const candidates: CandidateSourceDescriptor[] = [];
+  const explicitFederalStatutes = extractFederalStatuteCitations(claim);
+  const explicitFederalRegulations = extractFederalRegulationCitations(claim);
 
   if (isCursiveCreditReportDomainClaim(claim)) {
     return [];
   }
 
-  for (const citation of extractFederalStatuteCitations(claim)) {
+  for (const citation of explicitFederalStatutes) {
     const sectionPath = sectionPathFromFederalStatute(citation.section);
 
     candidates.push(
@@ -215,7 +217,7 @@ export function buildTopSecretCandidateSourceDescriptors(
     );
   }
 
-  for (const citation of extractFederalRegulationCitations(claim)) {
+  for (const citation of explicitFederalRegulations) {
     const sectionPath = sectionPathFromFederalRegulation(citation.section);
 
     candidates.push({
@@ -226,7 +228,11 @@ export function buildTopSecretCandidateSourceDescriptors(
     });
   }
 
+  const hasExplicitLegalCitation =
+    explicitFederalStatutes.length > 0 || explicitFederalRegulations.length > 0;
+
   if (
+    !hasExplicitLegalCitation &&
     /\b(?:tax|irs|income|internal revenue|1040|w-?2|1099|federal return)\b/iu.test(
       lowerClaim,
     )
@@ -239,7 +245,7 @@ export function buildTopSecretCandidateSourceDescriptors(
     });
   }
 
-  if (/\b1041[-\s]?v\b/iu.test(lowerClaim)) {
+  if (!hasExplicitLegalCitation && /\b1041[-\s]?v\b/iu.test(lowerClaim)) {
     candidates.push({
       publisher: "Internal Revenue Service",
       sourceType: "official_explainer",
@@ -248,7 +254,7 @@ export function buildTopSecretCandidateSourceDescriptors(
     });
   }
 
-  if (/\b1099\b/iu.test(lowerClaim)) {
+  if (!hasExplicitLegalCitation && /\b1099\b/iu.test(lowerClaim)) {
     candidates.push({
       publisher: "Internal Revenue Service",
       sourceType: "official_explainer",
@@ -257,11 +263,15 @@ export function buildTopSecretCandidateSourceDescriptors(
     });
   }
 
-  if (/\b(?:treasury|treasurydirect|bond|securities)\b/iu.test(lowerClaim)) {
+  if (
+    !hasExplicitLegalCitation &&
+    /\b(?:treasury|treasurydirect|bond|securities)\b/iu.test(lowerClaim)
+  ) {
     candidates.push(DEFAULT_CANDIDATES[1]);
   }
 
   if (
+    !hasExplicitLegalCitation &&
     /\bno (?:such thing as )?real money\b|\bonly congress\b.*\b(?:create|coin|make)\s+money\b|\bfederal reserve\b.*\b(?:not|cannot|can't)\b.*\bmoney\b|\bfederal reserve notes?\b.*\bnot\s+(?:real\s+)?money\b/iu.test(
       lowerClaim,
     )
@@ -288,7 +298,10 @@ export function buildTopSecretCandidateSourceDescriptors(
     );
   }
 
-  if (/\b(?:social security|ssa|benefit|ssn|social security act)\b/iu.test(lowerClaim)) {
+  if (
+    !hasExplicitLegalCitation &&
+    /\b(?:social security|ssa|benefit|ssn|social security act)\b/iu.test(lowerClaim)
+  ) {
     candidates.push(DEFAULT_CANDIDATES[2]);
   }
 
@@ -303,11 +316,32 @@ export function buildTopSecretCandidateSourceDescriptors(
     });
   }
 
-  return dedupeCandidates(
+  const deduped = dedupeCandidates(
     candidates.filter((candidate) =>
       isAuthoritativeTopSecretSourceUrl(candidate.url),
     ),
-  ).slice(0, 5);
+  );
+
+  if (hasExplicitLegalCitation) {
+    return deduped
+      .sort((left, right) => {
+        const leftScore =
+          Number(left.url.includes("uscode.house.gov")) * 4 +
+          Number(left.url.includes("ecfr.gov/current/")) * 4 +
+          Number(left.url.includes("law.cornell.edu/uscode/text/")) * 3 +
+          Number(left.sourceType === "court_case");
+        const rightScore =
+          Number(right.url.includes("uscode.house.gov")) * 4 +
+          Number(right.url.includes("ecfr.gov/current/")) * 4 +
+          Number(right.url.includes("law.cornell.edu/uscode/text/")) * 3 +
+          Number(right.sourceType === "court_case");
+
+        return rightScore - leftScore;
+      })
+      .slice(0, 4);
+  }
+
+  return deduped.slice(0, 5);
 }
 
 function shouldSearchCourtAuthorities(claim: string) {

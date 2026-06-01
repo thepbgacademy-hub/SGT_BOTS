@@ -134,6 +134,10 @@ describe("Top Secret service", () => {
 
   it("detects federal statute claims and applies statutory analysis instructions", async () => {
     let capturedSystemPrompt = "";
+    let capturedUserPayload: {
+      atomicAssertionsByClaim?: string[][];
+      sourceBundlesByClaim?: Array<Array<{ id: string; url: string }>>;
+    } = {};
     const service = createTopSecretService({
       mode: "live",
       fetch: async (url, init) => {
@@ -151,6 +155,9 @@ describe("Top Secret service", () => {
           messages?: Array<{ role: string; content: string }>;
         };
         capturedSystemPrompt = capturedRequest.messages?.[0]?.content ?? "";
+        capturedUserPayload = JSON.parse(
+          capturedRequest.messages?.[1]?.content ?? "{}",
+        ) as typeof capturedUserPayload;
 
         return new Response(
           JSON.stringify({
@@ -227,6 +234,15 @@ describe("Top Secret service", () => {
     expect(capturedSystemPrompt).toContain(
       "title, code, section, subsection, paragraph, and subparagraph",
     );
+    expect(capturedSystemPrompt).toContain(
+      "Each finding must include 2 to 8 claimChecks",
+    );
+    expect(capturedSystemPrompt).toContain(
+      "Compare the message against the exact words of that citation first.",
+    );
+    expect(capturedUserPayload.atomicAssertionsByClaim?.[0]).toEqual([
+      "The Social Security Act makes benefits unavailable under 42 U.S.C. 402.",
+    ]);
   });
 
   it("retains eCFR regulation sources for provider research", async () => {
@@ -540,6 +556,22 @@ describe("Top Secret service", () => {
                       {
                         analysis:
                           "Body: The pasted message is directionally pointing to a real franchise disclosure rule, but it still needs the actual regulation text checked item by item before treating all twenty-three claimed items as proven.",
+                        claimChecks: [
+                          {
+                            assertion:
+                              "16 CFR 436.5 is a real franchise disclosure rule.",
+                            explanation:
+                              "The retained regulation source does cover franchise disclosure requirements before a sale.",
+                            status: "supported",
+                          },
+                          {
+                            assertion:
+                              "All twenty-three claimed items are proven by the pasted message alone.",
+                            explanation:
+                              "The retained source still has to be checked item by item before treating the whole list as established.",
+                            status: "overstated",
+                          },
+                        ],
                         citations: [
                           {
                             title: 23,
@@ -585,6 +617,16 @@ describe("Top Secret service", () => {
     );
     expect(finding.conclusion).not.toContain("Conclusion:");
     expect(finding.verdict).toBe("partially_verified");
+    expect(finding.claimChecks).toEqual([
+      expect.objectContaining({
+        assertion: "16 CFR 436.5 is a real franchise disclosure rule.",
+        status: "supported",
+      }),
+      expect.objectContaining({
+        assertion: "All twenty-three claimed items are proven by the pasted message alone.",
+        status: "overstated",
+      }),
+    ]);
     expect(finding.citations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -597,6 +639,95 @@ describe("Top Secret service", () => {
         expect.objectContaining({
           citation: "16 C.F.R. Sec. 436.5",
         }),
+      ]),
+    );
+  });
+
+  it("keeps retrieval focused on the cited statute when the message names a specific federal citation", async () => {
+    let capturedUrls: string[] = [];
+    const service = createTopSecretService({
+      mode: "live",
+      fetch: async (url, init) => {
+        if (!String(url).includes("api.openai.com")) {
+          return new Response(
+            "<html><body>22 U.S.C. 2715c is a federal statute and this retained text is long enough for runtime analysis.</body></html>",
+            {
+              status: 200,
+              headers: { "content-type": "text/html" },
+            },
+          );
+        }
+
+        const capturedRequest = JSON.parse(String(init?.body ?? "{}")) as {
+          messages?: Array<{ content: string }>;
+        };
+        const userPayload = JSON.parse(
+          capturedRequest.messages?.[1]?.content ?? "{}",
+        ) as {
+          sourceBundlesByClaim?: Array<Array<{ url: string }>>;
+        };
+        capturedUrls =
+          userPayload.sourceBundlesByClaim?.[0]?.map((source) => source.url) ?? [];
+
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    findings: [
+                      {
+                        analysis:
+                          "The cited statute should be read directly before adding broader agency theories to the message.",
+                        citations: [
+                          {
+                            publisher: "Office of the Law Revision Counsel",
+                            title: "22 U.S.C. Sec. 2715c - Official current U.S. Code",
+                            url: "https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title22-section2715c&num=0&edition=prelim",
+                          },
+                        ],
+                        claim:
+                          "22 U.S.C. Sec. 2715c proves a broader Treasury and SSA theory.",
+                        conclusion:
+                          "The statute text should be checked first before adding claims about other agencies.",
+                        supportReferences: [
+                          {
+                            sourceId: "source-1",
+                            supports:
+                              "The official statute text is the primary source for this claim.",
+                          },
+                        ],
+                        verdict: "not_enough_reliable_evidence",
+                      },
+                    ],
+                  }),
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
+      },
+    });
+
+    await service.generateFindings({
+      claims: ["22 U.S.C. Sec. 2715c proves a broader Treasury and SSA theory."],
+      sessionSecret,
+    });
+
+    expect(capturedUrls).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("uscode.house.gov/view.xhtml"),
+        "https://www.law.cornell.edu/uscode/text/22/2715c",
+      ]),
+    );
+    expect(capturedUrls).not.toEqual(
+      expect.arrayContaining([
+        "https://www.treasurydirect.gov/marketable-securities/",
+        "https://www.ssa.gov/OP_Home/ssact/ssact.htm",
       ]),
     );
   });

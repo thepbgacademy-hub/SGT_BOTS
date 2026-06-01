@@ -1,5 +1,6 @@
 import type {
   TopSecretCitation,
+  TopSecretClaimCheck,
   TopSecretFinding,
 } from "../../../../../../packages/shared/src/contracts/top-secret";
 
@@ -169,6 +170,48 @@ function renderClaimComponents(finding: TopSecretFinding) {
   `;
 }
 
+function formatClaimCheckStatus(value: TopSecretClaimCheck["status"]) {
+  switch (value) {
+    case "supported":
+      return "Supported";
+    case "partially_supported":
+      return "Supported in part";
+    case "misunderstood":
+      return "Misunderstood";
+    case "overstated":
+      return "Overstated";
+    case "not_found_in_source":
+      return "Not found in source";
+  }
+}
+
+function renderClaimChecks(finding: TopSecretFinding) {
+  if (!finding.claimChecks?.length) {
+    return "";
+  }
+
+  return `
+      <div class="claim-checks">
+        <p><strong>Point-by-point check</strong></p>
+        <ol>
+          ${finding.claimChecks
+            .map(
+              (claimCheck) => `
+            <li>
+              <p><strong>${escapeHtml(claimCheck.assertion)}</strong></p>
+              <p class="claim-check-status">${escapeHtml(
+                formatClaimCheckStatus(claimCheck.status),
+              )}</p>
+              <p>${escapeHtml(claimCheck.explanation)}</p>
+            </li>
+          `,
+            )
+            .join("")}
+        </ol>
+      </div>
+  `;
+}
+
 function renderList(title: string, items: string[]) {
   return `
     <div class="statute-list">
@@ -226,21 +269,12 @@ function renderStatuteAnalyses(finding: TopSecretFinding) {
             <p>${escapeHtml(analysis.plainEnglishSummary)}</p>
             <p><em>${escapeHtml(analysis.whyMessageMayBeMisunderstood)}</em></p>
             ${renderCurrentnessVerification(analysis)}
-            ${renderList("Legal hierarchy", analysis.legalHierarchy)}
-            ${renderList("Regulatory ecosystem", analysis.regulatoryEcosystem)}
-            ${renderList("Structure first", analysis.structureFirst)}
             ${renderList("Definitions to check", analysis.definitionsToCheck)}
             ${renderList("Operator words to parse", analysis.operatorWordsToParse)}
             ${renderList("Cross-references", analysis.crossReferences)}
-            ${renderList("Canons and interpretation tools", analysis.canonsApplied)}
-            ${renderList("Requirement types", analysis.requirementTypes)}
-            ${renderList("Exemptions and preemption", analysis.exemptionsAndPreemption)}
-            ${renderList("Applicability analysis", analysis.applicabilityAnalysis)}
-            ${renderList("Enforcement analysis", analysis.enforcementAnalysis)}
             ${renderList("What the statute does not say", analysis.notableAbsences)}
             ${renderList("Consistency checks", analysis.consistencyChecks)}
             ${renderList("Verification path", analysis.verificationPath)}
-            ${renderList("Quick reading checklist", analysis.readingChecklist)}
           </section>
         `,
           )
@@ -288,6 +322,7 @@ function renderFinding(finding: TopSecretFinding, index: number) {
       <div class="analysis">
         <p>${escapeHtml(finding.analysis)}</p>
       </div>
+      ${renderClaimChecks(finding)}
       <p class="conclusion"><em>${escapeHtml(formatConclusion(finding.conclusion))}</em></p>
       <p class="verdict"><strong>Verdict:</strong> ${escapeHtml(
         formatVerdict(finding.verdict),
@@ -442,6 +477,32 @@ export function renderTopSecretReportHtml(input: TopSecretReportTemplateInput) {
         font-size: 9.2pt;
         margin-top: 10px;
         padding-top: 8px;
+      }
+
+      .claim-checks {
+        border-top: 1px solid #eadca7;
+        font-family: Arial, sans-serif;
+        font-size: 9.2pt;
+        margin-top: 10px;
+        padding-top: 8px;
+      }
+
+      .claim-checks p {
+        margin: 0 0 4px;
+      }
+
+      .claim-checks ol {
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      .claim-checks li {
+        margin: 0 0 8px;
+      }
+
+      .claim-check-status {
+        color: #3b321e;
+        font-weight: 700;
       }
 
       .claim-components p {
