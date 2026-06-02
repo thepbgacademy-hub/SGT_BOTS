@@ -75,9 +75,87 @@ function findWikiPageBySlug(slug: string, pages: RoriWikiPage[]) {
   return pages.find((page) => page.slug === slug && page.status === "published");
 }
 
+function findWikiPageByAliases(slugs: string[], pages: RoriWikiPage[]) {
+  return pages.find(
+    (page) => slugs.includes(page.slug) && page.status === "published",
+  );
+}
+
+function findWikiPageByKeyword(
+  pattern: RegExp,
+  pages: RoriWikiPage[],
+) {
+  return pages.find((page) => {
+    if (page.status !== "published") {
+      return false;
+    }
+
+    return [page.slug, page.title, page.summary, page.body, ...page.keywords].some(
+      (value) => pattern.test(value),
+    );
+  });
+}
+
 function buildWikiReply(page: RoriWikiPage): RoriReply {
   return {
     output: page.body,
+    citations: [wikiCitation(page)],
+  };
+}
+
+function hasPricingQuestion(normalizedContent: string) {
+  return /\b(cost|costs|price|prices|pricing|how much|monthly|tuition|levels cost)\b/i.test(
+    normalizedContent,
+  );
+}
+
+function extractPricingRows(page: RoriWikiPage) {
+  return page.body
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^\|/.test(line))
+    .slice(2)
+    .map((line) => line.split("|").map((cell) => cell.trim()).filter(Boolean))
+    .filter((cells) => cells.length >= 4)
+    .map(([level, monthlyPrice, credits, notes]) => ({
+      credits,
+      level,
+      monthlyPrice,
+      notes,
+    }));
+}
+
+function buildPricingReply(page: RoriWikiPage): RoriReply {
+  const pricingRows = extractPricingRows(page);
+
+  if (pricingRows.length === 0) {
+    return buildWikiReply(page);
+  }
+
+  const [firstRow, ...remainingRows] = pricingRows;
+  const pricingSummary = [firstRow, ...remainingRows]
+    .map((row) => `${row.level} is ${row.monthlyPrice}`)
+    .join(", ");
+  const freeRow = pricingRows.find((row) => /free|public/i.test(row.level));
+  const paidLevels = pricingRows
+    .filter((row) => !/free|public/i.test(row.level))
+    .map((row) => row.level)
+    .join(", ");
+  const ultraRow = pricingRows.find((row) => /^ultra$/i.test(row.level));
+
+  const details = [
+    `Right now the Academy pricing looks like this: ${pricingSummary}.`,
+    freeRow
+      ? `${freeRow.level} does not include PBG credits, and the paid levels do include them.`
+      : paidLevels
+        ? `Paid levels ${paidLevels} include PBG credits.`
+        : null,
+    ultraRow?.notes ? `Ultra is currently described as ${ultraRow.notes.toLowerCase()}` : null,
+    "I can't open the live enrollment link inside the playground yet, but I can still point you to the right information.",
+  ].filter(Boolean);
+
+  return {
+    output: details.join(" "),
     citations: [wikiCitation(page)],
   };
 }
@@ -350,8 +428,26 @@ export function buildGroundedRoriReply(
     };
   }
 
+  if (hasPricingQuestion(normalizedContent)) {
+    const pricingPage =
+      findWikiPageByAliases(["enrollment-and-pricing", "enrollment"], wikiPages) ??
+      findWikiPageByKeyword(/\b(pricing|cost|tuition|monthly price|pbg credits)\b/i, wikiPages);
+
+    if (pricingPage) {
+      return buildPricingReply(pricingPage);
+    }
+
+    return {
+      output:
+        "I can help explain the Academy levels and pricing, but I don't want to guess at the exact amounts if the current pricing page is unavailable. If you want, ask me about enrollment levels and I'll share the guidance I do have.",
+      citations: [sourceCitation(ACADEMY_SOURCE)],
+    };
+  }
+
   if (/\benroll|enrollment|join academy|sign up|signup\b/i.test(normalizedContent)) {
-    const enrollmentPage = findWikiPageBySlug("enrollment", wikiPages);
+    const enrollmentPage =
+      findWikiPageByAliases(["enrollment", "enrollment-and-pricing"], wikiPages) ??
+      findWikiPageByKeyword(/\b(enrollment|pricing|join academy|sign up)\b/i, wikiPages);
 
     if (enrollmentPage) {
       return buildWikiReply(enrollmentPage);

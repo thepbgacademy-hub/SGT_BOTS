@@ -1077,6 +1077,147 @@ describe("bot runtime routes", () => {
     );
   }, 40000);
 
+  it("answers Academy pricing questions from the enrollment-and-pricing wiki page", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSessionWithRoriWikiRepo({
+      async searchPages() {
+        return [
+          {
+            body: `Enrollment is available year-round, 24/7.
+
+## Enrollment Levels and Pricing
+
+| Level | Monthly Price | PBG Credits | Notes |
+|---|---:|---|---|
+| Free / Public | $0 | Not included | Limited tools available. |
+| Basic | $9.99/month | Included | Entry paid enrollment level. |
+| Pro | $19.99/month | Included | Expanded access above Basic. |
+| Ultra | $49.99/month | Included | Best / most popular enrollment level. |
+| Specialist | $79.99/month | Included | Elite-level access and courses. |`,
+            keywords: ["pricing", "cost", "enrollment", "academy"],
+            slug: "enrollment-and-pricing",
+            sourceUrl: "sgt-bots://wiki/rori/enrollment-and-pricing",
+            status: "published",
+            summary: "Current Academy enrollment and pricing guidance.",
+            title: "Enrollment and Pricing",
+            updatedAt: "2026-05-29T00:00:00.000Z",
+          },
+        ];
+      },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "What are the costs?",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Free / Public is $0");
+    expect(body.output).toContain("Basic is $9.99/month");
+    expect(body.output).toContain("Ultra is $49.99/month");
+    expect(body.output).toContain("paid levels do include them");
+    expect(body.output).toContain("I can't open the live enrollment link");
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Enrollment and Pricing",
+          url: "sgt-bots://wiki/rori/enrollment-and-pricing",
+        }),
+      ]),
+    );
+  }, 40000);
+
+  it("uses the active Rori conversation to resolve a pricing follow-up", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSessionWithRoriWikiRepo({
+      async searchPages(query: string) {
+        if (/cost|pricing|how much/i.test(query)) {
+          return [
+            {
+              body: `## Enrollment Levels and Pricing
+
+| Level | Monthly Price | PBG Credits | Notes |
+|---|---:|---|---|
+| Free / Public | $0 | Not included | Limited tools available. |
+| Basic | $9.99/month | Included | Entry paid enrollment level. |
+| Pro | $19.99/month | Included | Expanded access above Basic. |
+| Ultra | $49.99/month | Included | Best / most popular enrollment level. |
+| Specialist | $79.99/month | Included | Elite-level access and courses. |`,
+              keywords: ["pricing", "cost", "enrollment"],
+              slug: "enrollment-and-pricing",
+              sourceUrl: "sgt-bots://wiki/rori/enrollment-and-pricing",
+              status: "published",
+              summary: "Current Academy pricing.",
+              title: "Enrollment and Pricing",
+              updatedAt: "2026-05-29T00:00:00.000Z",
+            },
+          ];
+        }
+
+        return [
+          {
+            body:
+              "Enrollment is available year-round, 24/7. I can help you understand the levels and the next step when you're ready.",
+            keywords: ["enrollment", "academy", "join"],
+            slug: "enrollment-and-pricing",
+            sourceUrl: "sgt-bots://wiki/rori/enrollment-and-pricing",
+            status: "published",
+            summary: "Current Academy enrollment guidance.",
+            title: "Enrollment and Pricing",
+            updatedAt: "2026-05-29T00:00:00.000Z",
+          },
+        ];
+      },
+    });
+
+    const enrollmentResponse = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "How do I enroll?",
+      },
+    });
+
+    expect(enrollmentResponse.statusCode).toBe(200);
+    const conversationId = (enrollmentResponse.json() as { conversationId: string }).conversationId;
+
+    const followUpResponse = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        conversationId,
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "What are the costs?",
+      },
+    });
+
+    const body = followUpResponse.json() as { output: string };
+
+    expect(followUpResponse.statusCode).toBe(200);
+    expect(body.output).toContain("Basic is $9.99/month");
+    expect(body.output).toContain("Pro is $19.99/month");
+  }, 40000);
+
   it("lists configured Telegram invite URLs for generic room link requests", async () => {
     const { app, sessionId, sessionToken } =
       await createAuthorizedSessionWithRoriDirectoryRepo({

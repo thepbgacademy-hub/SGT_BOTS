@@ -240,6 +240,16 @@
 
 **Rule going forward:** If the backend imports queue/report code or any dependency that may not exist in the previous base tag, deploy from the full backend Dockerfile. Use the hotfix layer only when the base image is already known to contain every transitive runtime dependency.
 
+### 2026-06-02 - Rori pricing questions fell back to generic enrollment copy
+
+**Context:** Live Rori answered direct questions like `What are the costs?` with the old generic enrollment fallback instead of the Academy pricing page.
+
+**Problem:** The reply builder only looked for an exact wiki slug of `enrollment`, while the live Academy wiki data uses `enrollment-and-pricing` for the public pricing page. Cost/pricing questions also had no dedicated response branch, so even when the right page was present in the search results the reply logic could still ignore it and fall back to generic enrollment wording.
+
+**Fix applied:** Added a pricing-question branch to `rori-kb.ts`, taught the wiki selection logic to prefer `enrollment-and-pricing` before `enrollment`, and formatted the markdown pricing table into a short concierge-style answer that includes the current monthly levels and the credits distinction. Added targeted bot-runtime coverage for direct pricing questions and the enrollment -> pricing follow-up, then hot-patched the live VPS2 backend container and restarted only `sgt-bots-backend`. Public health returned `{\"status\":\"ok\"}` after the restart.
+
+**Rule going forward:** Do not key Academy concierge answers off one exact wiki slug when the live authoring repo uses richer page names. For public pricing questions, prefer semantic page selection plus a direct answer formatter instead of dumping generic enrollment copy.
+
 ## 2026-05-31 - Rori Needed Bounded Follow-Up Memory To Feel Conversational
 
 **Context:** Live Rori concierge review after the tone and Academy wiki wording were already corrected.
