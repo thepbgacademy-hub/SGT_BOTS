@@ -12,6 +12,7 @@ import {
   RORI_WIKI_SOURCE_TITLE,
   type RoriWikiPage,
 } from "./rori-wiki";
+import type { BotPromptConfig } from "../bots/bot-prompt-config.repo";
 
 type RoriCitation = {
   sourceId: "knowledge_base";
@@ -42,6 +43,8 @@ export type RoriConversationContext = {
   lastIntent: RoriConversationIntent | null;
   lastUserMessage: string | null;
 };
+
+export type RoriPromptConfig = BotPromptConfig;
 
 const ACADEMY_SOURCE: RoriSource = {
   id: "rori-academy-concierge",
@@ -164,6 +167,27 @@ function buildAfterEnrollmentReply(): RoriReply {
   return {
     output:
       "After you enroll, I'll help you with the next practical steps and make sure you know where to go from there. In the playground I keep that part high level, so I won't expose student-only access details here, but I can still explain what to expect and who to contact if you need help.",
+    citations: [sourceCitation(ACADEMY_SOURCE)],
+  };
+}
+
+function buildConfiguredFallbackReply(
+  promptConfig: RoriPromptConfig | undefined,
+  fallback: string,
+): RoriReply {
+  return {
+    output: promptConfig?.fallbackPolicy?.trim() || fallback,
+    citations: [sourceCitation(ACADEMY_SOURCE)],
+  };
+}
+
+function buildOffTopicReply(
+  promptConfig: RoriPromptConfig | undefined,
+): RoriReply {
+  return {
+    output:
+      promptConfig?.offTopicPolicy?.trim() ||
+      "I'm here to help with the Academy, enrollment, support rooms, workshops, and the Playground tools. Tell me what you're trying to do and I'll point you toward the closest fit I can help with.",
     citations: [sourceCitation(ACADEMY_SOURCE)],
   };
 }
@@ -361,6 +385,7 @@ export function buildGroundedRoriReply(
   grounding: {
     conversationContext?: RoriConversationContext;
     directory?: RoriAcademyDirectory;
+    promptConfig?: RoriPromptConfig;
     telegramRooms?: RoriAcademyDirectory["telegramRooms"];
     workshops?: RoriAcademyDirectory["workshops"];
     wikiPages?: RoriWikiPage[];
@@ -376,6 +401,7 @@ export function buildGroundedRoriReply(
       grounding.telegramRooms ?? FALLBACK_RORI_ACADEMY_DIRECTORY.telegramRooms,
     workshops: grounding.workshops ?? FALLBACK_RORI_ACADEMY_DIRECTORY.workshops,
   };
+  const promptConfig = grounding.promptConfig;
   const wikiPages = grounding.wikiPages ?? FALLBACK_RORI_WIKI_PAGES;
 
   if (hasTelegramRoomRoutingQuestion(normalizedContent)) {
@@ -480,10 +506,25 @@ export function buildGroundedRoriReply(
     };
   }
 
+  if (!classifyRoriIntent(normalizedContent) && !hasPricingQuestion(normalizedContent)) {
+    return buildOffTopicReply(promptConfig);
+  }
+
+  if (/\b(help|question|info|information|more)\b/i.test(normalizedContent) && wikiPages.length === 0) {
+    return buildConfiguredFallbackReply(
+      promptConfig,
+      "I'm here to help with PBG Academy enrollment, workshop details, Telegram rooms, and choosing the right Playground tool. Tell me what you're trying to do and I'll point you in the right direction.",
+    );
+  }
+
   return {
-    output: wikiPages[0]?.body ??
-      "I can help with PBG Academy enrollment, workshop details, Telegram rooms, and choosing the right Playground tool. Tell me what you're trying to do and I'll point you in the right direction.",
-    citations: wikiPages[0] ? [wikiCitation(wikiPages[0])] : [sourceCitation(ACADEMY_SOURCE)],
+    output:
+      wikiPages[0]?.body ??
+      (promptConfig?.fallbackPolicy?.trim() ||
+        "I can help with PBG Academy enrollment, workshop details, Telegram rooms, and choosing the right Playground tool. Tell me what you're trying to do and I'll point you in the right direction."),
+    citations: wikiPages[0]
+      ? [wikiCitation(wikiPages[0])]
+      : [sourceCitation(ACADEMY_SOURCE)],
   };
 }
 

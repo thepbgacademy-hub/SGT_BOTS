@@ -7,6 +7,10 @@ import {
 import { readEnv, type AppEnv } from "./config/env";
 import { createAnalyticsService } from "./modules/analytics/analytics.service";
 import {
+  createBotPromptConfigRepo,
+  type BotPromptConfigRepo,
+} from "./modules/bots/bot-prompt-config.repo";
+import {
   createInMemoryBotRegistryRepo,
   createSupabaseBotRegistryRepo,
   type BotRegistryRepo,
@@ -95,6 +99,7 @@ export async function buildApp(options?: {
   env?: AppEnv;
   now?: () => number;
   botRegistryRepo?: BotRegistryRepo;
+  botPromptConfigRepo?: BotPromptConfigRepo;
   profileRepo?: ProfileRepo;
   sessionMetadataRepo?: SessionMetadataRepo;
   sessionSecretStore?: SessionSecretStore;
@@ -161,6 +166,8 @@ export async function buildApp(options?: {
   app.decorate(
     "chatService",
     createChatService({
+      botPromptConfigRepo:
+        options?.botPromptConfigRepo ?? createBotPromptConfigRepo(appEnv),
       now: options?.now,
       roriDirectoryRepo:
         options?.roriDirectoryRepo ?? createRoriDirectoryRepo(appEnv),

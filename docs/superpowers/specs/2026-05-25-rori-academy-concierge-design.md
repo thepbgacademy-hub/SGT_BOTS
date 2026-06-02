@@ -116,6 +116,7 @@ Rori does not create artifacts. It does not write report files. It does not use 
   - `rori.rori_academy_wiki_pages`
   - `rori.rori_telegram_rooms`
   - `rori.rori_academy_events`
+- Shared bot persona and guardrail configuration should live separately from the wiki content in `public.academy_bot_prompt_configs`, so a bot's tone and boundary rules can evolve without rewriting Academy knowledge pages.
 - Shared Playground session, profile, and artifact tables remain separate under the `playground_` naming convention in `public`.
 
 ## Error Handling

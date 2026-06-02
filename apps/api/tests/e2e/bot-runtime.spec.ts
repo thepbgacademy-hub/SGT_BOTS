@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BOT_MANIFESTS } from "../../../../packages/shared/src/bots/manifests";
 import { buildApp } from "../../src/app";
+import type { BotPromptConfigRepo } from "../../src/modules/bots/bot-prompt-config.repo";
 import { readEnv } from "../../src/config/env";
 import { createInMemoryProfileRepo } from "../../src/modules/profiles/profile.repo";
 import { createInMemorySessionMetadataRepo } from "../../src/modules/sessions/session.repo";
@@ -190,6 +191,65 @@ async function createAuthorizedSessionWithRoriWikiRepo(roriWikiRepo: RoriWikiRep
   };
 }
 
+async function createAuthorizedSessionWithBotPromptConfigRepo(
+  botPromptConfigRepo: BotPromptConfigRepo,
+) {
+  const initData = createSignedTelegramInitData();
+  const app = await buildApp({
+    botPromptConfigRepo,
+    env: readEnv({
+      APP_PORT: "3001",
+      TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+      TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
+      PROFILE_REPO_MODE: "memory",
+      PROVIDER_VALIDATION_MODE: "stub",
+    }),
+    profileRepo: createInMemoryProfileRepo(),
+    sessionMetadataRepo: createInMemorySessionMetadataRepo(),
+    sessionSecretStore: createInMemorySessionSecretStore(),
+  });
+
+  const profileResponse = await app.inject({
+    method: "POST",
+    url: "/api/profiles",
+    payload: {
+      initData,
+      firstName: "Ada",
+      lastName: "Lovelace",
+      preferredName: "Ada",
+    },
+  });
+  expect(profileResponse.statusCode).toBe(201);
+
+  const sessionResponse = await app.inject({
+    method: "POST",
+    url: "/api/providers/connect",
+    headers: {
+      "x-telegram-init-data": initData,
+    },
+    payload: {
+      provider: "openai",
+      apiKey: "sk-test",
+    },
+  });
+  expect(sessionResponse.statusCode).toBe(200);
+
+  const payload = sessionResponse.json() as {
+    session: {
+      id: string;
+      userId: string;
+    };
+    sessionToken: string;
+  };
+
+  return {
+    app,
+    sessionId: payload.session.id,
+    sessionToken: payload.sessionToken,
+    userId: payload.session.userId,
+  };
+}
+
 describe("bot runtime routes", () => {
   it("matches the planned phase 3 persistence schema contract", async () => {
     const sql = await readFile(
@@ -298,6 +358,27 @@ describe("bot runtime routes", () => {
     expect(sql).toContain("grant select on rori.rori_telegram_rooms to authenticated, service_role");
     expect(sql).toContain("grant select on rori.rori_academy_wiki_pages to authenticated, service_role");
     expect(sql).not.toMatch(/\bdrop table\b|\btruncate\b|\bdelete from\b/i);
+  });
+
+  it("adds shared Academy bot prompt configs with authenticated active-row reads", async () => {
+    const sql = await readFile(
+      new URL(
+        "../../../../supabase/migrations/013_academy_bot_prompt_configs.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    expect(sql).toContain("create table if not exists academy_bot_prompt_configs");
+    expect(sql).toContain("bot_id text not null");
+    expect(sql).toContain("surface text not null default 'global'");
+    expect(sql).toContain("persona_prompt text not null");
+    expect(sql).toContain("tone_rules jsonb not null default '[]'::jsonb");
+    expect(sql).toContain("guardrails jsonb not null default '[]'::jsonb");
+    expect(sql).toContain("grant select on academy_bot_prompt_configs to authenticated, service_role");
+    expect(sql).toContain("alter table academy_bot_prompt_configs enable row level security");
+    expect(sql).toContain("Authenticated users can read active Academy bot prompt configs");
+    expect(sql).toContain("'concierge_general_academy_KB'");
   });
 
   it("returns the authenticated bot catalog for an active provider session", async () => {
@@ -1216,6 +1297,48 @@ describe("bot runtime routes", () => {
     expect(followUpResponse.statusCode).toBe(200);
     expect(body.output).toContain("Basic is $9.99/month");
     expect(body.output).toContain("Pro is $19.99/month");
+  }, 40000);
+
+  it("uses the shared bot prompt config for Rori off-topic boundaries", async () => {
+    const { app, sessionId, sessionToken } =
+      await createAuthorizedSessionWithBotPromptConfigRepo({
+        async getActiveConfig() {
+          return {
+            active: true,
+            botId: "concierge_general_academy_KB",
+            escalationPolicy: "Escalate account-specific requests.",
+            fallbackPolicy:
+              "I'm here to help with Academy questions, rooms, workshops, and the Playground tools.",
+            guardrails: ["Do not make things up."],
+            offTopicPolicy:
+              "I stay focused on the Academy and the Playground tools. Tell me the goal and I'll point you to the closest lane I can help with.",
+            personaPrompt: "Be warm and direct.",
+            surface: "playground",
+            toneRules: ["Answer first."],
+            version: "rori-v1",
+          };
+        },
+      });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "Write me a poem about dragons.",
+      },
+    });
+
+    const body = response.json() as { output: string };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toBe(
+      "I stay focused on the Academy and the Playground tools. Tell me the goal and I'll point you to the closest lane I can help with.",
+    );
   }, 40000);
 
   it("lists configured Telegram invite URLs for generic room link requests", async () => {

@@ -9,6 +9,7 @@ import type {
   BotToolPermission,
 } from "../../../../../packages/shared/src/bots/capabilities";
 import type { CursiveCategoryConfig } from "../cursive/cursive.repo";
+import type { BotPromptConfigRepo } from "../bots/bot-prompt-config.repo";
 import {
   createFallbackRoriDirectoryRepo,
   type RoriAcademyDirectoryRepo,
@@ -16,6 +17,7 @@ import {
 import {
   buildGroundedRoriReply,
   buildRoriConversationContext,
+  type RoriPromptConfig,
 } from "./rori-kb";
 import {
   createFallbackRoriWikiRepo,
@@ -86,6 +88,7 @@ function buildAcademyConciergeReply(
   manifest: BotManifest,
   content: string,
   directoryRepo: RoriAcademyDirectoryRepo,
+  botPromptConfigRepo: BotPromptConfigRepo,
   wikiRepo: RoriWikiRepo,
   priorMessages: ChatMessage[] = [],
 ): Promise<RuntimeReply> {
@@ -96,11 +99,13 @@ function buildAcademyConciergeReply(
   requireToolPermission(manifest, "knowledge_base_search");
 
   return Promise.all([
+    botPromptConfigRepo.getActiveConfig(manifest.id, "playground"),
     directoryRepo.listTelegramRooms(),
     directoryRepo.listUpcomingEvents(),
     wikiRepo.searchPages(content),
-  ]).then(([telegramRooms, workshops, wikiPages]) =>
+  ]).then(([promptConfig, telegramRooms, workshops, wikiPages]) =>
     buildGroundedRoriReply(content, {
+      promptConfig: (promptConfig as RoriPromptConfig | null) ?? undefined,
       conversationContext: buildRoriConversationContext(
         priorMessages
           .filter((message) => message.role === "user")
@@ -180,6 +185,7 @@ function buildTaxLegalResearchReply(
 }
 
 export function createChatService(deps?: {
+  botPromptConfigRepo?: BotPromptConfigRepo;
   cursiveRepo?: {
     getCategoryConfig(categorySlug: string): CursiveCategoryConfig | null;
     listCategories(): readonly CursiveCategoryConfig["category"][];
@@ -200,6 +206,13 @@ export function createChatService(deps?: {
   let conversationCount = 0;
   let messageCount = 0;
   const now = deps?.now ?? (() => Date.now());
+  const botPromptConfigRepo =
+    deps?.botPromptConfigRepo ??
+    ({
+      async getActiveConfig() {
+        return null;
+      },
+    } satisfies BotPromptConfigRepo);
   const roriDirectoryRepo =
     deps?.roriDirectoryRepo ?? createFallbackRoriDirectoryRepo();
   const roriWikiRepo = deps?.roriWikiRepo ?? createFallbackRoriWikiRepo();
@@ -211,6 +224,7 @@ export function createChatService(deps?: {
         manifest,
         trimmedContent,
         roriDirectoryRepo,
+        botPromptConfigRepo,
         roriWikiRepo,
         priorMessages,
       ));
@@ -316,6 +330,7 @@ function buildRuntimeReply(
   manifest: BotManifest,
   trimmedContent: string,
   roriDirectoryRepo: RoriAcademyDirectoryRepo,
+  botPromptConfigRepo: BotPromptConfigRepo,
   roriWikiRepo: RoriWikiRepo,
   priorMessages: ChatMessage[] = [],
 ): RuntimeReplyResult {
@@ -333,6 +348,7 @@ function buildRuntimeReply(
         manifest,
         trimmedContent,
         roriDirectoryRepo,
+        botPromptConfigRepo,
         roriWikiRepo,
         priorMessages,
       );
