@@ -218,6 +218,26 @@
 
 **Fix applied:** Reworked `tests/e2e/phase-3-bot-runtime.spec.ts` to generate unique signed Telegram init data per test case and updated the onboarding flow to explicitly pick the current `OpenAI API key` option before filling `API key`.
 
+## 2026-06-03 - Rori Boundary Replies Must Stay Deterministic
+
+**Context:** Hardening Rori against off-topic prompts and jailbreak / instruction-bypass attempts.
+
+**Problem:** The shared prompt-config lane can make normal concierge replies warmer, but it is the wrong place to let refusal wording drift. Repeated off-topic or jailbreak attempts should not produce new wording, extra explanation, or prompt-leak fodder.
+
+**Fix applied:** Added two fixed Rori boundary replies in `rori-kb.ts` and short-circuited jailbreak detection before normal routing. Ordinary off-topic prompts now always return `I can only help with PBG Academy, the Playground tools, enrollment, workshops, and support rooms.` Jailbreak / instruction-bypass prompts now always return `I can't help with bypassing my instructions or stepping outside my approved Academy role.`
+
+**Rule going forward:** Boundary replies are product copy, not prompt-shaped prose. Keep them deterministic and verbatim unless the user explicitly approves new wording.
+
+## 2026-06-03 - Only Jailbreak Attempts Should Be Audited
+
+**Context:** Adding proof-of-violation logging for Rori jailbreak attempts.
+
+**Problem:** Logging every off-topic prompt would create noisy audit rows and muddy the difference between harmless curiosity and deliberate instruction-bypass attempts.
+
+**Fix applied:** Added a dedicated audit-event repo and wired the chat route to insert `rori_jailbreak_attempt` rows only when the response boundary type is `jailbreak_attempt`. The audit metadata stores the raw prompt, conversation/session ids, internal user id, Telegram user id, Telegram username, and the user's preferred/display name.
+
+**Rule going forward:** Audit only jailbreak / instruction-bypass attempts. Ordinary off-topic questions should receive the fixed boundary reply but should not create an audit event.
+
 **Rule going forward:** Browser flows that need a fresh playground entry must use unique Telegram identities or a dedicated bypass identity. Do not reuse a single signed init payload across post-gate Playwright tests.
 
 ## 2026-05-31 - Rori Concierge Replies Sounded Like Prompt Notes Instead Of Conversation

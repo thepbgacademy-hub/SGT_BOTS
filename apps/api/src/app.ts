@@ -7,6 +7,11 @@ import {
 import { readEnv, type AppEnv } from "./config/env";
 import { createAnalyticsService } from "./modules/analytics/analytics.service";
 import {
+  createInMemoryAuditEventRepo,
+  createSupabaseAuditEventRepo,
+  type AuditEventRepo,
+} from "./modules/audit/audit-event.repo";
+import {
   createBotPromptConfigRepo,
   type BotPromptConfigRepo,
 } from "./modules/bots/bot-prompt-config.repo";
@@ -76,6 +81,7 @@ declare module "fastify" {
   interface FastifyInstance {
     appEnv: AppEnv;
     analyticsService: ReturnType<typeof createAnalyticsService>;
+    auditEventRepo: AuditEventRepo;
     profileRepo: ProfileRepo;
     sessionMetadataRepo: SessionMetadataRepo;
     sessionSecretStore: SessionSecretStore;
@@ -100,6 +106,7 @@ export async function buildApp(options?: {
   now?: () => number;
   botRegistryRepo?: BotRegistryRepo;
   botPromptConfigRepo?: BotPromptConfigRepo;
+  auditEventRepo?: AuditEventRepo;
   profileRepo?: ProfileRepo;
   sessionMetadataRepo?: SessionMetadataRepo;
   sessionSecretStore?: SessionSecretStore;
@@ -117,6 +124,13 @@ export async function buildApp(options?: {
   const appEnv = options?.env ?? readEnv();
   app.decorate("appEnv", appEnv);
   app.decorate("analyticsService", createAnalyticsService({ now: options?.now }));
+  app.decorate(
+    "auditEventRepo",
+    options?.auditEventRepo ??
+      (appEnv.profileRepoMode === "memory"
+        ? createInMemoryAuditEventRepo()
+        : createSupabaseAuditEventRepo(appEnv)),
+  );
   app.decorate(
     "profileRepo",
     options?.profileRepo ??

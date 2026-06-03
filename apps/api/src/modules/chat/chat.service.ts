@@ -54,6 +54,7 @@ type ConversationRecord = {
 };
 
 type RuntimeReply = {
+  boundaryType?: "jailbreak_attempt" | "off_topic";
   output: string;
   citations?: ChatCitation[];
 };
@@ -316,6 +317,7 @@ export function createChatService(deps?: {
 
       return {
         botId: manifest.id,
+        boundaryType: runtimeReply.boundaryType,
         conversation,
         citations: runtimeReply.citations ?? [],
         output: runtimeReply.output,

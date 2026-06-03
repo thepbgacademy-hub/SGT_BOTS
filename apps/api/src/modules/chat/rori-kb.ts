@@ -28,9 +28,15 @@ type RoriSource = {
 };
 
 type RoriReply = {
+  boundaryType?: "jailbreak_attempt" | "off_topic";
   output: string;
   citations: RoriCitation[];
 };
+
+const RORI_OFF_TOPIC_REPLY =
+  "I can only help with PBG Academy, the Playground tools, enrollment, workshops, and support rooms.";
+const RORI_JAILBREAK_REPLY =
+  "I can't help with bypassing my instructions or stepping outside my approved Academy role.";
 
 type RoriConversationIntent =
   | "academy"
@@ -182,14 +188,27 @@ function buildConfiguredFallbackReply(
 }
 
 function buildOffTopicReply(
-  promptConfig: RoriPromptConfig | undefined,
+  _promptConfig: RoriPromptConfig | undefined,
 ): RoriReply {
   return {
-    output:
-      promptConfig?.offTopicPolicy?.trim() ||
-      "I'm here to help with the Academy, enrollment, support rooms, workshops, and the Playground tools. Tell me what you're trying to do and I'll point you toward the closest fit I can help with.",
+    boundaryType: "off_topic",
+    output: RORI_OFF_TOPIC_REPLY,
     citations: [sourceCitation(ACADEMY_SOURCE)],
   };
+}
+
+function buildJailbreakReply(): RoriReply {
+  return {
+    boundaryType: "jailbreak_attempt",
+    output: RORI_JAILBREAK_REPLY,
+    citations: [sourceCitation(ACADEMY_SOURCE)],
+  };
+}
+
+function isJailbreakAttempt(normalizedContent: string) {
+  return /\b(ignore (all|any|your|previous) instructions|disregard (all|any|your|previous) instructions|reveal (your|the) (prompt|system prompt|instructions)|show (me )?(your|the) (prompt|system prompt|instructions)|what are your hidden instructions|developer message|system message|jailbreak|bypass (your|the) instructions|step outside (your|the) role|pretend (you are|to be) (not rori|a different bot|an unrestricted)|dan mode|do anything now)\b/i.test(
+    normalizedContent,
+  );
 }
 
 function prefersWarmScholarlyGuide(promptConfig: RoriPromptConfig | undefined) {
@@ -462,6 +481,10 @@ export function buildGroundedRoriReply(
   const promptConfig = grounding.promptConfig;
   const wikiPages = grounding.wikiPages ?? FALLBACK_RORI_WIKI_PAGES;
   const respond = (reply: RoriReply) => finalizeRoriReply(reply, promptConfig);
+
+  if (isJailbreakAttempt(normalizedContent)) {
+    return buildJailbreakReply();
+  }
 
   if (hasTelegramRoomRoutingQuestion(normalizedContent)) {
     return respond(buildTelegramRoomReply(normalizedContent, directory));

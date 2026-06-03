@@ -70,7 +70,34 @@ export async function registerChatRoutes(app: FastifyInstance) {
         },
       });
 
-      return result;
+      if (result.boundaryType === "jailbreak_attempt") {
+        const user = await app.profileRepo.getUserById(claims.userId);
+        await app.auditEventRepo.insertEvent({
+          actor: "user",
+          created_at: new Date().toISOString(),
+          entity_id: sessionId,
+          entity_type: "session",
+          event_type: "rori_jailbreak_attempt",
+          metadata: {
+            botId: result.botId,
+            conversationId: result.conversation.id,
+            prompt: String(payload.message ?? payload.content ?? ""),
+            telegramUserId: user?.telegram_user_id ?? null,
+            telegramUsername: user?.username ?? null,
+            userId: claims.userId,
+            userName: user?.preferred_name ?? user?.first_name ?? null,
+          },
+        });
+      }
+
+      return {
+        assistantMessage: result.assistantMessage,
+        botId: result.botId,
+        citations: result.citations,
+        conversation: result.conversation,
+        output: result.output,
+        userMessage: result.userMessage,
+      };
     } catch (error) {
       const message = (error as Error).message;
       return reply.code(replyForChatRuntimeError(message)).send({ message });
