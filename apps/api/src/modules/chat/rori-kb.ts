@@ -192,6 +192,64 @@ function buildOffTopicReply(
   };
 }
 
+function prefersWarmScholarlyGuide(promptConfig: RoriPromptConfig | undefined) {
+  const voiceText = [
+    promptConfig?.personaPrompt ?? "",
+    ...(promptConfig?.toneRules ?? []),
+  ].join(" ");
+
+  return /\bscholarly\b|\bteacher\b|\bguide\b/i.test(voiceText);
+}
+
+function shapeRoriOutput(
+  output: string,
+  promptConfig: RoriPromptConfig | undefined,
+) {
+  if (!promptConfig || !prefersWarmScholarlyGuide(promptConfig)) {
+    return output;
+  }
+
+  return output
+    .replace(
+      /^Here are the PBG Telegram rooms I can point you to right now:/,
+      "Here's where I'd point you right now:",
+    )
+    .replace(
+      /^Here are the current PBG Telegram rooms:/,
+      "Here's the current room picture:",
+    )
+    .replace(
+      /^I can help with PBG Academy enrollment\./,
+      "Here's the straightforward version on enrollment.",
+    )
+    .replace(
+      /^I can help explain the Academy levels and pricing,/,
+      "Here's the straightforward version on pricing,",
+    )
+    .replace(
+      /^I can help you choose the right tool\./,
+      "Here's how I'd sort that.",
+    )
+    .replace(
+      /^The best match is /,
+      "The best fit here is ",
+    )
+    .replace(
+      /^Right now the Academy pricing looks like this:/,
+      "Here's the straightforward version on pricing:",
+    );
+}
+
+function finalizeRoriReply(
+  reply: RoriReply,
+  promptConfig: RoriPromptConfig | undefined,
+): RoriReply {
+  return {
+    ...reply,
+    output: shapeRoriOutput(reply.output, promptConfig),
+  };
+}
+
 function classifyRoriIntent(content: string): RoriConversationIntent | null {
   const normalizedContent = content.toLowerCase();
 
@@ -403,29 +461,30 @@ export function buildGroundedRoriReply(
   };
   const promptConfig = grounding.promptConfig;
   const wikiPages = grounding.wikiPages ?? FALLBACK_RORI_WIKI_PAGES;
+  const respond = (reply: RoriReply) => finalizeRoriReply(reply, promptConfig);
 
   if (hasTelegramRoomRoutingQuestion(normalizedContent)) {
-    return buildTelegramRoomReply(normalizedContent, directory);
+    return respond(buildTelegramRoomReply(normalizedContent, directory));
   }
 
   const routedReply = toolRoute(normalizedContent);
 
   if (routedReply) {
-    return routedReply;
+    return respond(routedReply);
   }
 
   if (/\b(which|what) (tool|bot)|tool should i use|use for\b/i.test(normalizedContent)) {
     const toolGuidePage = findWikiPageBySlug("tool-guide", wikiPages);
 
     if (toolGuidePage) {
-      return buildWikiReply(toolGuidePage);
+      return respond(buildWikiReply(toolGuidePage));
     }
 
-      return {
+      return respond({
         output:
           "I can help you choose the right tool. Use Cursive for credit bureau and dispute work, Top Secret for checking online claims, Condor for tax or legal research, and ShAzZaM for forms or guided intake.",
         citations: [sourceCitation(TOOL_ROUTING_SOURCE)],
-      };
+      });
   }
 
   if (
@@ -433,7 +492,7 @@ export function buildGroundedRoriReply(
       normalizedContent,
     )
   ) {
-    return buildAfterEnrollmentReply();
+    return respond(buildAfterEnrollmentReply());
   }
 
   if (
@@ -448,10 +507,10 @@ export function buildGroundedRoriReply(
       ? ""
       : " I can't open the registration link in the playground yet, but an Academy admin or Ambassador can give it to you.";
 
-    return {
+    return respond({
       output: `${formatWorkshopDirectorySummary(directory.workshops)}${liveLinkNote}`,
       citations: [sourceCitation(RORI_DIRECTORY_SOURCE)],
-    };
+    });
   }
 
   if (hasPricingQuestion(normalizedContent)) {
@@ -460,14 +519,14 @@ export function buildGroundedRoriReply(
       findWikiPageByKeyword(/\b(pricing|cost|tuition|monthly price|pbg credits)\b/i, wikiPages);
 
     if (pricingPage) {
-      return buildPricingReply(pricingPage);
+      return respond(buildPricingReply(pricingPage));
     }
 
-    return {
+    return respond({
       output:
         "I can help explain the Academy levels and pricing, but I don't want to guess at the exact amounts if the current pricing page is unavailable. If you want, ask me about enrollment levels and I'll share the guidance I do have.",
       citations: [sourceCitation(ACADEMY_SOURCE)],
-    };
+    });
   }
 
   if (/\benroll|enrollment|join academy|sign up|signup\b/i.test(normalizedContent)) {
@@ -476,14 +535,14 @@ export function buildGroundedRoriReply(
       findWikiPageByKeyword(/\b(enrollment|pricing|join academy|sign up)\b/i, wikiPages);
 
     if (enrollmentPage) {
-      return buildWikiReply(enrollmentPage);
+      return respond(buildWikiReply(enrollmentPage));
     }
 
-    return {
+    return respond({
       output:
         "I can help with PBG Academy enrollment. I can't open the live enrollment link inside the playground yet, but I can still point you to the right information and the right person when you're ready.",
       citations: [sourceCitation(ACADEMY_SOURCE)],
-    };
+    });
   }
 
   if (/\bworkshops?|events?|classes?|register|registration\b/i.test(normalizedContent)) {
@@ -491,33 +550,33 @@ export function buildGroundedRoriReply(
       ? " I can't open the registration link in the playground yet, but an Academy admin or Ambassador can share it."
       : "";
 
-    return {
+    return respond({
       output: `${formatWorkshopDirectorySummary(directory.workshops)}${liveLinkNote}`,
       citations: [sourceCitation(RORI_DIRECTORY_SOURCE)],
-    };
+    });
   }
 
   if (/\btelegram|rooms?|channels?|group chat|chat room\b/i.test(normalizedContent)) {
     const roomGuidance = `Here are the current PBG Telegram rooms: ${formatTelegramRoomList(directory.telegramRooms)}`;
 
-    return {
+    return respond({
       output: roomGuidance,
       citations: [sourceCitation(RORI_DIRECTORY_SOURCE)],
-    };
+    });
   }
 
   if (!classifyRoriIntent(normalizedContent) && !hasPricingQuestion(normalizedContent)) {
-    return buildOffTopicReply(promptConfig);
+    return respond(buildOffTopicReply(promptConfig));
   }
 
   if (/\b(help|question|info|information|more)\b/i.test(normalizedContent) && wikiPages.length === 0) {
-    return buildConfiguredFallbackReply(
+    return respond(buildConfiguredFallbackReply(
       promptConfig,
       "I'm here to help with PBG Academy enrollment, workshop details, Telegram rooms, and choosing the right Playground tool. Tell me what you're trying to do and I'll point you in the right direction.",
-    );
+    ));
   }
 
-  return {
+  return respond({
     output:
       wikiPages[0]?.body ??
       (promptConfig?.fallbackPolicy?.trim() ||
@@ -525,7 +584,7 @@ export function buildGroundedRoriReply(
     citations: wikiPages[0]
       ? [wikiCitation(wikiPages[0])]
       : [sourceCitation(ACADEMY_SOURCE)],
-  };
+  });
 }
 
 export { buildRoriConversationContext };

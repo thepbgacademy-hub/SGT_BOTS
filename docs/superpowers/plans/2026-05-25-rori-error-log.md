@@ -250,6 +250,16 @@
 
 **Rule going forward:** Do not key Academy concierge answers off one exact wiki slug when the live authoring repo uses richer page names. For public pricing questions, prefer semantic page selection plus a direct answer formatter instead of dumping generic enrollment copy.
 
+### 2026-06-03 - Rori needed a real shared persona layer, not just wiki tone
+
+**Context:** After the shared `academy_bot_prompt_configs` table was introduced, Rori still felt a little cold and helpdesk-like even though the Academy wiki already described the right voice.
+
+**Problem:** The wiki was carrying the facts and some tone guidance, but the runtime still leaned on deterministic branch copy that sounded flatter than intended. The first prompt-config pass only affected fallback and off-topic answers, so room lists, pricing phrasing, enrollment copy, and tool-routing guidance could still feel more functional than conversational.
+
+**Fix applied:** Strengthened the shared Rori `playground` config row to a `warm scholarly guide` persona, updated the local fallback config to match, and added a small response-shaping pass in `rori-kb.ts` so generic replies are softened into calmer, more teacher-like phrasing without inventing new facts. Reapplied the live prompt-config row on VPS2, hot-patched the live backend container with the updated Rori knowledge-base file, and restarted only `sgt-bots-backend`. Focused prompt-config tests, targeted Rori bot-runtime tests, API lint, and API build all passed; public health returned `{\"status\":\"ok\"}` afterward.
+
+**Rule going forward:** Treat wiki pages as the source of truth for Academy facts and policies, but keep bot persona, tone, and reply-behavior tuning in shared prompt-config data plus small runtime shaping. Do not expect a content header alone to carry the full bot personality.
+
 ## 2026-05-31 - Rori Needed Bounded Follow-Up Memory To Feel Conversational
 
 **Context:** Live Rori concierge review after the tone and Academy wiki wording were already corrected.
