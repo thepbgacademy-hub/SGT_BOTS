@@ -214,6 +214,36 @@ function buildPricingReply(page: RoriWikiPage): RoriReply {
   };
 }
 
+function buildProgramsReply(page: RoriWikiPage): RoriReply {
+  if (/\n\n|\|---|(?:^|\n)[-*]\s+/u.test(page.body)) {
+    return buildWikiReply(page);
+  }
+
+  let formattedBody = page.body
+    .replace(/ (?=PBG Academy offers both )/u, "\n\n")
+    .replace(/ (?=Public learners can explore )/u, "\n\n")
+    .replace(/ (?=Completing a Mission does not guarantee )/u, "\n\n");
+
+  if (!formattedBody.includes("\n\n")) {
+    const sentences = page.body.split(/(?<=[.!?])\s+(?=[A-Z])/u);
+
+    if (sentences.length >= 4) {
+      formattedBody = [
+        sentences.slice(0, 2).join(" "),
+        sentences.slice(2, 4).join(" "),
+        sentences.slice(4).join(" "),
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+    }
+  }
+
+  return {
+    output: formattedBody,
+    citations: [wikiCitation(page)],
+  };
+}
+
 function hasProgramsQuestion(normalizedContent: string) {
   return /\b(course|courses|study|learn|program|programs|curriculum|mission|missions)\b/i.test(
     normalizedContent,
@@ -713,7 +743,7 @@ export function buildGroundedRoriReply(
       findWikiPageByKeyword(/\b(programs?|curriculum|missions?|courses?|study|learn)\b/i, wikiPages);
 
     if (programsPage) {
-      return respond(buildWikiReply(programsPage));
+      return respond(buildProgramsReply(programsPage));
     }
   }
 

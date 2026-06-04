@@ -1060,6 +1060,46 @@ describe("bot runtime routes", () => {
     );
   }, 40000);
 
+  it("formats longer programs answers into readable paragraphs", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSessionWithRoriWikiRepo({
+      async searchPages() {
+        return [
+          {
+            body:
+              "At PBG Academy, courses are called Missions. A Mission is a structured learning path that helps Cadets study specific topics through source-based education, tools, discussions, and comprehension testing. PBG Academy offers both general knowledge course missions and deeper tuition-based missions. Public learners can explore selected entry-level materials and some Playground tools, while enrolled Cadets unlock deeper courses, more tools, and added benefits depending on level. Completing a Mission does not guarantee any legal, tax, credit, banking, securities, commercial, or financial outcome.",
+            keywords: ["programs", "curriculum", "missions", "courses", "study", "learn"],
+            slug: "programs-and-curriculum",
+            sourceUrl: "sgt-bots://wiki/rori/programs-and-curriculum",
+            status: "published",
+            summary: "Current Academy programs and curriculum guidance.",
+            title: "Programs and Curriculum",
+            updatedAt: "2026-06-03T00:00:00.000Z",
+          },
+        ];
+      },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "What can I study here?",
+      },
+    });
+
+    const body = response.json() as { output: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("At PBG Academy, courses are called Missions.");
+    expect(body.output).toContain("\n\nPBG Academy offers both general knowledge course missions");
+    expect(body.output).toContain("\n\nPublic learners can explore selected entry-level materials");
+    expect(body.output).toContain("\n\nCompleting a Mission does not guarantee");
+  }, 40000);
+
   it("lists admin-maintained Telegram room purposes and does not invent invite links", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
 

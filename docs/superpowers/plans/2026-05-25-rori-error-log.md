@@ -309,3 +309,13 @@
 **Fix applied:** Updated the Rori workspace chat CSS to use `white-space: pre-line` on `.rori-shell .message-copy`, which preserves backend paragraph breaks without switching the chat into an uncontrolled preformatted block.
 
 **Rule going forward:** If a reply-formatting change seems correct in backend tests but still looks cramped in Telegram, inspect the mini app text rendering before adding more backend formatting logic. Fix the layer that is actually flattening the message.
+
+## 2026-06-04 - Programs Answers Needed Their Own Teaching Rhythm
+
+**Context:** After pricing and support replies were cleaned up, the `What can I study here?` answer still felt too much like a catalog paragraph even though the content itself was accurate.
+
+**Problem:** The generic wiki reply path was fine for short pages, but longer `Programs and Curriculum` prose needed its own pacing. Without that, the answer still read like brochure copy.
+
+**Fix applied:** Added a dedicated `buildProgramsReply(...)` formatter in `rori-kb.ts` that breaks long programs/courses answers into smaller sections before the general response shaping runs. Added focused bot-runtime coverage for the longer `What can I study here?` variant so future edits do not collapse it back into one dense block.
+
+**Rule going forward:** When an answer family regularly carries longer educational copy, give it a light domain-specific formatter instead of forcing the generic wiki reply path to do all the work.
