@@ -1564,6 +1564,10 @@ h2 {
   background: rgba(18, 10, 8, 0.92);
 }
 
+.rori-shell .message-copy {
+  white-space: pre-line;
+}
+
 .rori-shell .eyebrow,
 .rori-shell .message-role {
   color: var(--rori-purple-bright);

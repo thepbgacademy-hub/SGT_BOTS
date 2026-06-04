@@ -299,3 +299,13 @@
 **Fix applied:** Added a light reply-shaping pass in `rori-kb.ts` that keeps the same grounded facts but inserts short paragraph breaks before playground limitations and between the direct answer and the follow-up guidance. Pricing replies now open with `Here's the short version on the levels right now:` and no longer restate unnecessary paid-level filler. Added focused bot-runtime coverage for paragraph-shaped pricing and support escalation replies.
 
 **Rule going forward:** Once Rori's substance is correct, prefer small answer-shaping changes over more branch logic. Warmth should come from concise phrasing, visual breathing room, and answer-first structure, not from adding more factual copy.
+
+## 2026-06-04 - The Rori Frontend Was Flattening Backend Paragraph Breaks
+
+**Context:** After the reply-shaping pass was live, the Telegram UI still showed some Rori answers as one crowded block even though the backend strings already contained blank lines.
+
+**Problem:** The Rori chat renderer was treating assistant message text like normal paragraph text, so newline characters from the backend collapsed visually in the mini app.
+
+**Fix applied:** Updated the Rori workspace chat CSS to use `white-space: pre-line` on `.rori-shell .message-copy`, which preserves backend paragraph breaks without switching the chat into an uncontrolled preformatted block.
+
+**Rule going forward:** If a reply-formatting change seems correct in backend tests but still looks cramped in Telegram, inspect the mini app text rendering before adding more backend formatting logic. Fix the layer that is actually flattening the message.
