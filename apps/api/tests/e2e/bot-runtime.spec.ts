@@ -254,6 +254,67 @@ async function createAuthorizedSessionWithBotPromptConfigRepo(
   };
 }
 
+async function createAuthorizedSessionWithRoriWikiAndPromptConfig(
+  roriWikiRepo: RoriWikiRepo,
+  botPromptConfigRepo: BotPromptConfigRepo,
+) {
+  const initData = createSignedTelegramInitData();
+  const app = await buildApp({
+    botPromptConfigRepo,
+    env: readEnv({
+      APP_PORT: "3001",
+      TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+      TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
+      PROFILE_REPO_MODE: "memory",
+      PROVIDER_VALIDATION_MODE: "stub",
+    }),
+    profileRepo: createInMemoryProfileRepo(),
+    roriWikiRepo,
+    sessionMetadataRepo: createInMemorySessionMetadataRepo(),
+    sessionSecretStore: createInMemorySessionSecretStore(),
+  });
+
+  const profileResponse = await app.inject({
+    method: "POST",
+    url: "/api/profiles",
+    payload: {
+      initData,
+      firstName: "Ada",
+      lastName: "Lovelace",
+      preferredName: "Ada",
+    },
+  });
+  expect(profileResponse.statusCode).toBe(201);
+
+  const sessionResponse = await app.inject({
+    method: "POST",
+    url: "/api/providers/connect",
+    headers: {
+      "x-telegram-init-data": initData,
+    },
+    payload: {
+      provider: "openai",
+      apiKey: "sk-test",
+    },
+  });
+  expect(sessionResponse.statusCode).toBe(200);
+
+  const payload = sessionResponse.json() as {
+    session: {
+      id: string;
+      userId: string;
+    };
+    sessionToken: string;
+  };
+
+  return {
+    app,
+    sessionId: payload.session.id,
+    sessionToken: payload.sessionToken,
+    userId: payload.session.userId,
+  };
+}
+
 async function createAuthorizedSessionWithAuditEventRepo(
   auditEventRepo: InMemoryAuditEventRepo,
 ) {
@@ -950,6 +1011,55 @@ describe("bot runtime routes", () => {
     expect(body.output).toContain("General Academy questions");
   }, 40000);
 
+  it("answers Academy study and course questions from the programs wiki", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSessionWithRoriWikiRepo({
+      async searchPages() {
+        return [
+          {
+            body:
+              "At PBG Academy, our courses are called Missions. A Mission is a structured learning path where Cadets use tactical concepts to approach specific learning objectives. We offer general knowledge course missions and tuition-based, in-depth mission courses.",
+            keywords: ["programs", "curriculum", "missions", "courses", "study", "learn"],
+            slug: "programs-and-curriculum",
+            sourceUrl: "sgt-bots://wiki/rori/programs-and-curriculum",
+            status: "published",
+            summary: "Current Academy programs and curriculum guidance.",
+            title: "Programs and Curriculum",
+            updatedAt: "2026-06-03T00:00:00.000Z",
+          },
+        ];
+      },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "What courses can I take?",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("our courses are called Missions");
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Programs and Curriculum",
+          url: "sgt-bots://wiki/rori/programs-and-curriculum",
+        }),
+      ]),
+    );
+  }, 40000);
+
   it("lists admin-maintained Telegram room purposes and does not invent invite links", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
 
@@ -1283,6 +1393,256 @@ describe("bot runtime routes", () => {
         }),
       ]),
     );
+  }, 40000);
+
+  it("answers Academy pricing questions from a concise prose pricing summary", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSessionWithRoriWikiRepo({
+      async searchPages() {
+        return [
+          {
+            body:
+              "I can help you understand how PBG Academy enrollment works, what each level costs, and what the next step looks like. Enrollment is open year-round, 24/7. Current levels include Free/Public at $0, Basic at $9.99 per month, Pro at $19.99 per month, Ultra at $49.99 per month, and Specialist at $79.99 per month. Paid levels include PBG Academy credits for tool use, while Free/Public learners can purchase credit packs separately. Stripe and PayPal are accepted for recurring enrollment, and Cash App is limited to low-cost items and selected workshops. I can't open the live enrollment link inside the playground yet, but when you're ready I can point you to the right information.",
+            keywords: ["pricing", "cost", "enrollment", "academy"],
+            slug: "enrollment",
+            sourceUrl: "sgt-bots://wiki/rori/enrollment",
+            status: "published",
+            summary: "Current Academy enrollment and pricing guidance.",
+            title: "Enrollment and Pricing",
+            updatedAt: "2026-06-03T00:00:00.000Z",
+          },
+        ];
+      },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "How much do the levels cost?",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Free/Public is $0");
+    expect(body.output).toContain("Basic is $9.99/month");
+    expect(body.output).toContain("Specialist is $79.99/month");
+    expect(body.output).toContain("paid levels do include them");
+    expect(body.output).toContain("I can't open the live enrollment link");
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Enrollment and Pricing",
+          url: "sgt-bots://wiki/rori/enrollment",
+        }),
+      ]),
+    );
+  }, 40000);
+
+  it("answers paid-level credit questions from enrollment and pricing", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSessionWithRoriWikiRepo({
+      async searchPages() {
+        return [
+          {
+            body:
+              "I can help you understand how PBG Academy enrollment works, what each level costs, and what the next step looks like. Enrollment is open year-round, 24/7. Current levels include Free/Public at $0, Basic at $9.99 per month, Pro at $19.99 per month, Ultra at $49.99 per month, and Specialist at $79.99 per month. Paid levels include PBG Academy credits for tool use, while Free/Public learners can purchase credit packs separately.",
+            keywords: ["pricing", "cost", "enrollment", "academy", "credits"],
+            slug: "enrollment",
+            sourceUrl: "sgt-bots://wiki/rori/enrollment",
+            status: "published",
+            summary: "Current Academy enrollment and pricing guidance.",
+            title: "Enrollment and Pricing",
+            updatedAt: "2026-06-03T00:00:00.000Z",
+          },
+        ];
+      },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "Do paid levels include credits?",
+      },
+    });
+
+    const body = response.json() as { output: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("paid levels do include them");
+  }, 40000);
+
+  it("formats warm scholarly pricing replies into readable paragraphs", async () => {
+    const { app, sessionId, sessionToken } =
+      await createAuthorizedSessionWithRoriWikiAndPromptConfig(
+        {
+          async searchPages() {
+            return [
+              {
+                body:
+                  "I can help you understand how PBG Academy enrollment works, what each level costs, and what the next step looks like. Enrollment is open year-round, 24/7. Current levels include Free/Public at $0, Basic at $9.99 per month, Pro at $19.99 per month, Ultra at $49.99 per month, and Specialist at $79.99 per month. Paid levels include PBG Academy credits for tool use, while Free/Public learners can purchase credit packs separately.",
+                keywords: ["pricing", "cost", "enrollment", "academy", "credits"],
+                slug: "enrollment-and-pricing",
+                sourceUrl: "sgt-bots://wiki/rori/enrollment-and-pricing",
+                status: "published",
+                summary: "Current Academy enrollment and pricing guidance.",
+                title: "Enrollment and Pricing",
+                updatedAt: "2026-06-03T00:00:00.000Z",
+              },
+            ];
+          },
+        },
+        {
+          async getActiveConfig() {
+            return {
+              active: true,
+              botId: "concierge_general_academy_KB",
+              escalationPolicy: "Escalate account-specific requests.",
+              fallbackPolicy:
+                "I'm here to help with Academy questions, rooms, workshops, and the Playground tools.",
+              guardrails: ["Do not make things up."],
+              offTopicPolicy:
+                "I stay focused on the Academy and the Playground tools. Tell me the goal and I'll point you to the closest lane I can help with.",
+              personaPrompt: "Be a warm scholarly guide for the Academy.",
+              surface: "playground",
+              toneRules: ["Answer first.", "Sound grounded and teacher-like."],
+              version: "rori-v1",
+            };
+          },
+        },
+      );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "How much do the levels cost?",
+      },
+    });
+
+    const body = response.json() as { output: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Here's the short version on the levels right now:");
+    expect(body.output).toContain("\n\n");
+    expect(body.output).toContain("I can't open the live enrollment link");
+  }, 40000);
+
+  it("routes billing and upgrade issues to the staff room directly", async () => {
+    const { app, sessionId, sessionToken } =
+      await createAuthorizedSessionWithRoriDirectoryRepo({
+        async listTelegramRooms() {
+          return [
+            {
+              category: "general",
+              id: "room-1",
+              keywords: ["general", "academy", "pricing", "enrollment", "support"],
+              label: "Rori DM",
+              linkStatus: "not_configured",
+              purpose: "General Academy questions, pricing, enrollment direction, Missions, disclaimers, and first-step guidance through the concierge bot.",
+              roomKey: "rori-dm",
+            },
+            {
+              category: "support",
+              id: "room-2",
+              keywords: ["payment", "billing", "upgrade", "leave", "absence", "conflict", "troubleshooting"],
+              label: "Lobby DM to staff",
+              linkStatus: "not_configured",
+              purpose: "Human review for payment problems, upgrade questions, leave-of-absence requests, account-specific issues, conflicts, and most troubleshooting concerns.",
+              roomKey: "lobby-dm-to-staff",
+            },
+          ];
+        },
+        async listUpcomingEvents() {
+          return [];
+        },
+      });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "Who do I talk to if I have a billing issue?",
+      },
+    });
+
+    const body = response.json() as { output: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Lobby DM to staff");
+    expect(body.output).toContain("Human review for payment problems");
+    expect(body.output).not.toContain("Here are the PBG Telegram rooms");
+  }, 40000);
+
+  it("formats support escalations into two readable paragraphs for warm Rori replies", async () => {
+    const { app, sessionId, sessionToken } =
+      await createAuthorizedSessionWithRoriDirectoryRepo({
+        async listTelegramRooms() {
+          return [
+            {
+              category: "general",
+              id: "room-1",
+              keywords: ["general", "academy", "pricing", "enrollment", "support"],
+              label: "Rori DM",
+              linkStatus: "not_configured",
+              purpose: "General Academy questions, pricing, enrollment direction, Missions, disclaimers, and first-step guidance through the concierge bot.",
+              roomKey: "rori-dm",
+            },
+            {
+              category: "support",
+              id: "room-2",
+              keywords: ["payment", "billing", "upgrade", "leave", "absence", "conflict", "troubleshooting"],
+              label: "Lobby DM to staff",
+              linkStatus: "not_configured",
+              purpose: "Human review for payment problems, upgrade questions, leave-of-absence requests, account-specific issues, conflicts, and most troubleshooting concerns.",
+              roomKey: "lobby-dm-to-staff",
+            },
+          ];
+        },
+        async listUpcomingEvents() {
+          return [];
+        },
+      });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "Who do I talk to if I have a billing issue?",
+      },
+    });
+
+    const body = response.json() as { output: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Lobby DM to staff");
+    expect(body.output).toContain("\n\n");
+    expect(body.output).toContain("I can't open the live invite");
   }, 40000);
 
   it("uses the active Rori conversation to resolve a pricing follow-up", async () => {

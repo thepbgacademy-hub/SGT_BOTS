@@ -41,6 +41,7 @@ const RORI_JAILBREAK_REPLY =
 type RoriConversationIntent =
   | "academy"
   | "enrollment"
+  | "programs"
   | "rooms"
   | "tools"
   | "workshops";
@@ -134,8 +135,59 @@ function extractPricingRows(page: RoriWikiPage) {
     }));
 }
 
+function extractPricingRowsFromSummary(page: RoriWikiPage) {
+  const summaryMatch = page.body.match(
+    /Current levels include\s+(.+?)(?:\.\s+Paid levels include|\.\s+Stripe and PayPal|\.$)/i,
+  );
+
+  if (!summaryMatch) {
+    return [];
+  }
+
+  return summaryMatch[1]
+    .replace(/,\s+and\s+/i, ", ")
+    .split(/,\s+(?=[A-Z][A-Za-z/]+)/)
+    .map((segment) => segment.trim())
+    .map((segment) => {
+      const match = segment.match(
+        /^(?<level>[A-Za-z/ ]+?)\s+at\s+\$(?<amount>\d+(?:\.\d{2})?)(?<suffix>\s+per\s+month)?$/i,
+      );
+
+      if (!match?.groups) {
+        return null;
+      }
+
+      const amount = `$${match.groups.amount}`;
+      const monthlyPrice = match.groups.suffix ? `${amount}/month` : amount;
+
+      return {
+        credits: /free|public/i.test(match.groups.level) ? "Not included" : "Included",
+        level: match.groups.level.trim(),
+        monthlyPrice,
+        notes: /free|public/i.test(match.groups.level)
+          ? "Limited tools available."
+          : "Paid enrollment level.",
+      };
+    })
+    .filter((row): row is {
+      credits: string;
+      level: string;
+      monthlyPrice: string;
+      notes: string;
+    } => Boolean(row));
+}
+
 function buildPricingReply(page: RoriWikiPage): RoriReply {
-  const pricingRows = extractPricingRows(page);
+  const pricingRows = [
+    ...extractPricingRows(page),
+    ...extractPricingRowsFromSummary(page),
+  ].filter(
+    (row, index, rows) =>
+      rows.findIndex(
+        (candidate) =>
+          candidate.level.toLowerCase() === row.level.toLowerCase(),
+      ) === index,
+  );
 
   if (pricingRows.length === 0) {
     return buildWikiReply(page);
@@ -146,20 +198,13 @@ function buildPricingReply(page: RoriWikiPage): RoriReply {
     .map((row) => `${row.level} is ${row.monthlyPrice}`)
     .join(", ");
   const freeRow = pricingRows.find((row) => /free|public/i.test(row.level));
-  const paidLevels = pricingRows
-    .filter((row) => !/free|public/i.test(row.level))
-    .map((row) => row.level)
-    .join(", ");
-  const ultraRow = pricingRows.find((row) => /^ultra$/i.test(row.level));
-
   const details = [
-    `Right now the Academy pricing looks like this: ${pricingSummary}.`,
+    `Here's the short version on the levels right now: ${pricingSummary}.`,
     freeRow
       ? `${freeRow.level} does not include PBG credits, and the paid levels do include them.`
-      : paidLevels
-        ? `Paid levels ${paidLevels} include PBG credits.`
+      : pricingRows.some((row) => !/free|public/i.test(row.level))
+        ? "The paid levels do include PBG credits."
         : null,
-    ultraRow?.notes ? `Ultra is currently described as ${ultraRow.notes.toLowerCase()}` : null,
     "I can't open the live enrollment link inside the playground yet, but I can still point you to the right information.",
   ].filter(Boolean);
 
@@ -167,6 +212,18 @@ function buildPricingReply(page: RoriWikiPage): RoriReply {
     output: details.join(" "),
     citations: [wikiCitation(page)],
   };
+}
+
+function hasProgramsQuestion(normalizedContent: string) {
+  return /\b(course|courses|study|learn|program|programs|curriculum|mission|missions)\b/i.test(
+    normalizedContent,
+  );
+}
+
+function hasSupportEscalationQuestion(normalizedContent: string) {
+  return /\b(payment problem|payment trouble|billing issue|billing problem|payment issue|upgrade|downgrade|leave of absence|conflict|cancel|cancellation|refund|discount)\b/i.test(
+    normalizedContent,
+  );
 }
 
 function buildAfterEnrollmentReply(): RoriReply {
@@ -224,11 +281,10 @@ function shapeRoriOutput(
   output: string,
   promptConfig: RoriPromptConfig | undefined,
 ) {
-  if (!promptConfig || !prefersWarmScholarlyGuide(promptConfig)) {
-    return output;
-  }
-
-  return output
+  const warmedOutput =
+    !promptConfig || !prefersWarmScholarlyGuide(promptConfig)
+      ? output
+      : output
     .replace(
       /^Here are the PBG Telegram rooms I can point you to right now:/,
       "Here's where I'd point you right now:",
@@ -256,7 +312,39 @@ function shapeRoriOutput(
     .replace(
       /^Right now the Academy pricing looks like this:/,
       "Here's the straightforward version on pricing:",
+    )
+    .replace(
+      /^For that, the best match is /,
+      "For that, I'd point you to ",
     );
+
+  return formatRoriParagraphs(warmedOutput);
+}
+
+function formatRoriParagraphs(output: string) {
+  if (output.includes("\n\n") || /(?:^|\n)[-*]\s+/u.test(output) || /\|---/u.test(output)) {
+    return output;
+  }
+
+  if (output.includes(" I can't open the live ")) {
+    return output.replace(/ (?=I can't open the live )/u, "\n\n");
+  }
+
+  if (output.startsWith("For that, I'd point you to ")) {
+    return output.replace(/\. (?=I can't open the live invite)/u, ".\n\n");
+  }
+
+  if (output.startsWith("Here's the short version on the levels right now:")) {
+    return output.replace(/\. (?=Free\/Public does not include)/u, ".\n\n");
+  }
+
+  const sentences = output.split(/(?<=[.!?])\s+(?=[A-Z])/u);
+
+  if (sentences.length >= 3) {
+    return `${sentences.slice(0, 2).join(" ")}\n\n${sentences.slice(2).join(" ")}`;
+  }
+
+  return output;
 }
 
 function finalizeRoriReply(
@@ -293,6 +381,10 @@ function classifyRoriIntent(content: string): RoriConversationIntent | null {
     /\benroll|enrollment|join academy|sign up|signup\b/i.test(normalizedContent)
   ) {
     return "enrollment";
+  }
+
+  if (hasProgramsQuestion(normalizedContent)) {
+    return "programs";
   }
 
   if (/\bworkshops?|events?|classes?|register|registration\b/i.test(normalizedContent)) {
@@ -486,6 +578,21 @@ export function buildGroundedRoriReply(
     return buildJailbreakReply();
   }
 
+  if (hasSupportEscalationQuestion(normalizedContent)) {
+    const supportRoom =
+      findTelegramRoomRecord("payment trouble upgrade billing leave of absence conflict", directory.telegramRooms) ??
+      directory.telegramRooms.find((room) => /lobby/i.test(room.label));
+
+    if (supportRoom) {
+      return respond({
+        output: `For that, the best match is ${supportRoom.label}. ${supportRoom.purpose} ${formatTelegramRoomLinkStatus(
+          supportRoom,
+        )}`,
+        citations: [sourceCitation(RORI_DIRECTORY_SOURCE)],
+      });
+    }
+  }
+
   if (hasTelegramRoomRoutingQuestion(normalizedContent)) {
     return respond(buildTelegramRoomReply(normalizedContent, directory));
   }
@@ -552,6 +659,18 @@ export function buildGroundedRoriReply(
     });
   }
 
+  if (
+    /\b(credits?|pbg credits?|paid levels?)\b/i.test(normalizedContent)
+  ) {
+    const pricingPage =
+      findWikiPageByAliases(["enrollment-and-pricing", "enrollment"], wikiPages) ??
+      findWikiPageByKeyword(/\b(pricing|cost|tuition|monthly price|pbg credits)\b/i, wikiPages);
+
+    if (pricingPage) {
+      return respond(buildPricingReply(pricingPage));
+    }
+  }
+
   if (/\benroll|enrollment|join academy|sign up|signup\b/i.test(normalizedContent)) {
     const enrollmentPage =
       findWikiPageByAliases(["enrollment", "enrollment-and-pricing"], wikiPages) ??
@@ -586,6 +705,16 @@ export function buildGroundedRoriReply(
       output: roomGuidance,
       citations: [sourceCitation(RORI_DIRECTORY_SOURCE)],
     });
+  }
+
+  if (hasProgramsQuestion(normalizedContent)) {
+    const programsPage =
+      findWikiPageByAliases(["programs-and-curriculum"], wikiPages) ??
+      findWikiPageByKeyword(/\b(programs?|curriculum|missions?|courses?|study|learn)\b/i, wikiPages);
+
+    if (programsPage) {
+      return respond(buildWikiReply(programsPage));
+    }
   }
 
   if (!classifyRoriIntent(normalizedContent) && !hasPricingQuestion(normalizedContent)) {

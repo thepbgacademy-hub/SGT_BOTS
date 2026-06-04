@@ -289,3 +289,13 @@
 **Fix applied:** Added a small Rori-only conversation context layer in the chat service and knowledge-base reply builder. The service now keeps prior messages for the active conversation, infers the last resolved Rori intent from recent user prompts, and rewrites ambiguous follow-ups into explicit Academy or Telegram-room questions before normal wiki and directory routing runs. Added failing backend tests and a Playwright follow-up test before implementation, then redeployed the backend to VPS2 and rechecked health.
 
 **Rule going forward:** Rori should feel conversational, but its memory should stay bounded. Use short-lived topic context to resolve pronouns and `which one` follow-ups; do not turn Rori into an unbounded freeform assistant that drifts away from the approved Academy wiki, room directory, and tool-routing rules.
+
+## 2026-06-04 - Rori Warmth Work Needed Readability Shaping, Not More Routing
+
+**Context:** Live Telegram review after pricing, programs, and support routing were already substantively correct.
+
+**Problem:** Even with the right answers, Rori still sounded cramped and mechanical because several replies arrived as one dense paragraph. The issue was no longer incorrect routing; it was presentation and cadence.
+
+**Fix applied:** Added a light reply-shaping pass in `rori-kb.ts` that keeps the same grounded facts but inserts short paragraph breaks before playground limitations and between the direct answer and the follow-up guidance. Pricing replies now open with `Here's the short version on the levels right now:` and no longer restate unnecessary paid-level filler. Added focused bot-runtime coverage for paragraph-shaped pricing and support escalation replies.
+
+**Rule going forward:** Once Rori's substance is correct, prefer small answer-shaping changes over more branch logic. Warmth should come from concise phrasing, visual breathing room, and answer-first structure, not from adding more factual copy.
