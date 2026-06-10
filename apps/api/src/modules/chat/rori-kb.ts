@@ -256,6 +256,14 @@ function hasSupportEscalationQuestion(normalizedContent: string) {
   );
 }
 
+function hasEnrollmentContactQuestion(normalizedContent: string) {
+  return /\b(who (do|should) i (talk|speak|go)|who can help|who do i ask|where do i go|who handles)\b/i.test(
+    normalizedContent,
+  ) && /\b(enroll|enrollment|join|sign up|signup|classes?|courses?)\b/i.test(
+    normalizedContent,
+  );
+}
+
 function buildAfterEnrollmentReply(): RoriReply {
   return {
     output:
@@ -618,6 +626,19 @@ export function buildGroundedRoriReply(
         output: `For that, the best match is ${supportRoom.label}. ${supportRoom.purpose} ${formatTelegramRoomLinkStatus(
           supportRoom,
         )}`,
+        citations: [sourceCitation(RORI_DIRECTORY_SOURCE)],
+      });
+    }
+  }
+
+  if (hasEnrollmentContactQuestion(normalizedContent)) {
+    const supportRoom =
+      findTelegramRoomRecord("admin staff payment billing upgrade leave absence conflict", directory.telegramRooms) ??
+      directory.telegramRooms.find((room) => /lobby/i.test(room.label));
+
+    if (supportRoom) {
+      return respond({
+        output: `For enrollment help, I'd point you to ${supportRoom.label}. Open a DM there and ask an admin to help you get started.\n\nI can't open the live invite for ${supportRoom.label} in the playground yet, but I can still point you to the right room.`,
         citations: [sourceCitation(RORI_DIRECTORY_SOURCE)],
       });
     }

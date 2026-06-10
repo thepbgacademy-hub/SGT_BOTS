@@ -319,3 +319,13 @@
 **Fix applied:** Added a dedicated `buildProgramsReply(...)` formatter in `rori-kb.ts` that breaks long programs/courses answers into smaller sections before the general response shaping runs. Added focused bot-runtime coverage for the longer `What can I study here?` variant so future edits do not collapse it back into one dense block.
 
 **Rule going forward:** When an answer family regularly carries longer educational copy, give it a light domain-specific formatter instead of forcing the generic wiki reply path to do all the work.
+
+## 2026-06-10 - Enrollment Contact Questions Were Falling Back To Pricing Context
+
+**Context:** Live review of the question `Who do I talk to about enrolling for classes?`
+
+**Problem:** Rori answered with the general enrollment-and-pricing body, which was mostly accurate but still missed the actual user intent. The user was asking for a person/room to contact, not for pricing or level details.
+
+**Fix applied:** Added a dedicated enrollment-contact detector in `rori-kb.ts` for `who do I talk to / who do I ask / where do I go` phrasing paired with enrollment/course keywords. That route now points to `Lobby DM to staff`, tells the user to open a DM there, and says to ask an admin for help getting started. A failing bot-runtime test first showed the old matcher still routed to `Rori DM`; the matching seed was then tightened to force the staff-room path, and the test passed on rerun.
+
+**Rule going forward:** Contact-routing questions should be answered as contact-routing questions. When the user asks who to talk to, prefer the right room and next step over dumping adjacent wiki facts like pricing or enrollment summaries.

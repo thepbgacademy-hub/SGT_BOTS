@@ -1217,6 +1217,41 @@ describe("bot runtime routes", () => {
     );
   }, 40000);
 
+  it("routes enrollment contact questions to the staff room with clear next-step guidance", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "Who do I talk to about enrolling for classes?",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ sourceId: string; title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("For enrollment help, I'd point you to Lobby DM to staff.");
+    expect(body.output).toContain("ask an admin to help you get started");
+    expect(body.output).toContain("I can't open the live invite");
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceId: "knowledge_base",
+          title: "Rori Academy Directory Source Pack",
+        }),
+      ]),
+    );
+  }, 40000);
+
   it("uses configured Academy event data and registration URLs from the Rori directory repo", async () => {
     const { app, sessionId, sessionToken } =
       await createAuthorizedSessionWithRoriDirectoryRepo({
