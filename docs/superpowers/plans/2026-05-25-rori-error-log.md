@@ -329,3 +329,13 @@
 **Fix applied:** Added a dedicated enrollment-contact detector in `rori-kb.ts` for `who do I talk to / who do I ask / where do I go` phrasing paired with enrollment/course keywords. That route now points to `Lobby DM to staff`, tells the user to open a DM there, and says to ask an admin for help getting started. A failing bot-runtime test first showed the old matcher still routed to `Rori DM`; the matching seed was then tightened to force the staff-room path, and the test passed on rerun.
 
 **Rule going forward:** Contact-routing questions should be answered as contact-routing questions. When the user asks who to talk to, prefer the right room and next step over dumping adjacent wiki facts like pricing or enrollment summaries.
+
+## 2026-06-10 - Broad Tool Questions Were Too Loose For Routing But Too In-Bounds For Off-Topic
+
+**Context:** Live review of the question `what do the bots do?`
+
+**Problem:** Rori treated that wording as off-topic because the runtime only had a narrow tool-selection pattern for phrases like `which tool should I use`. The user intent was obvious, but the matcher was too literal.
+
+**Fix applied:** Added a broader tool-overview detector in `rori-kb.ts` so natural phrasing like `what do the bots do?` and similar tool-overview questions get a concise bot summary instead of the off-topic boundary line. A failing bot-runtime test then showed that the broad matcher accidentally captured the exact starter prompt `Which tool should I use for...?`, so the intent order was corrected: precise tool-selection routing now runs first, and the broader overview matcher runs afterward.
+
+**Rule going forward:** In-bound Academy questions should be interpreted by intent, not only by exact wording. Broader overview routes should exist, but they must not override narrower, higher-confidence intent branches that already answer a more specific version of the question.

@@ -520,6 +520,13 @@ function hasTelegramRoomRoutingQuestion(normalizedContent: string) {
   );
 }
 
+function hasToolOverviewQuestion(normalizedContent: string) {
+  return (
+    /\b(bot|bots|tool|tools)\b/i.test(normalizedContent) &&
+    /\b(what do|what can|do|does|used for|use for|help with)\b/i.test(normalizedContent)
+  );
+}
+
 function buildTelegramRoomReply(
   normalizedContent: string,
   directory: RoriAcademyDirectory,
@@ -585,6 +592,14 @@ function toolRoute(normalizedContent: string): RoriReply | null {
         citations: [sourceCitation(TOOL_ROUTING_SOURCE)],
       }
     : null;
+}
+
+function buildToolOverviewReply(): RoriReply {
+  return {
+    output:
+      "Here's the short version. Cursive is for credit bureau and dispute work, Top Secret is for checking claims and online information, Condor is for tax or legal research, and ShAzZaM helps with forms and guided intake.\n\nIf you tell me what you're trying to do, I can point you to the best fit.",
+    citations: [sourceCitation(TOOL_ROUTING_SOURCE)],
+  };
 }
 
 export function buildGroundedRoriReply(
@@ -666,6 +681,10 @@ export function buildGroundedRoriReply(
           "I can help you choose the right tool. Use Cursive for credit bureau and dispute work, Top Secret for checking online claims, Condor for tax or legal research, and ShAzZaM for forms or guided intake.",
         citations: [sourceCitation(TOOL_ROUTING_SOURCE)],
       });
+  }
+
+  if (hasToolOverviewQuestion(normalizedContent)) {
+    return respond(buildToolOverviewReply());
   }
 
   if (

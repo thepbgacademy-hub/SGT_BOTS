@@ -842,6 +842,45 @@ describe("bot runtime routes", () => {
     );
   }, 40000);
 
+  it("answers broad bot overview questions as a tools explanation instead of off-topic", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "concierge_general_academy_KB",
+        message: "what do the bots do?",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ sourceId: string; title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Here's the short version.");
+    expect(body.output).toContain("Cursive is for credit bureau and dispute work");
+    expect(body.output).toContain("Top Secret is for checking claims and online information");
+    expect(body.output).toContain("Condor is for tax or legal research");
+    expect(body.output).toContain("ShAzZaM helps with forms and guided intake");
+    expect(body.output).not.toBe(
+      "I can only help with PBG Academy, the Playground tools, enrollment, workshops, and support rooms.",
+    );
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Rori Tool Routing Source Pack",
+        }),
+      ]),
+    );
+  }, 40000);
+
   it("answers Rori workshop questions from the Academy directory without inventing events", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
 
