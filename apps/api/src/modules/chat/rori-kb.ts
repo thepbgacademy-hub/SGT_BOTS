@@ -597,7 +597,7 @@ function toolRoute(normalizedContent: string): RoriReply | null {
 function buildToolOverviewReply(): RoriReply {
   return {
     output:
-      "Here's the short version. Cursive is for credit bureau and dispute work, Top Secret is for checking claims and online information, Condor is for tax or legal research, and ShAzZaM helps with forms and guided intake.\n\nIf you tell me what you're trying to do, I can point you to the best fit.",
+      "Here's the short version. Cursive is for credit bureau and dispute work, Top Secret is for checking claims and online information, Condor is for tax or legal research, ShAzZaM helps with forms and guided intake, Insight is for tutoring and guided learning support, and I help with Academy questions, enrollment, workshops, support rooms, and tool routing.\n\nThere are 37 tools and gadgets at PBG to assist Cadets along their learning journey. If you tell me what you're trying to do, I can point you to the best fit.",
     citations: [sourceCitation(TOOL_ROUTING_SOURCE)],
   };
 }

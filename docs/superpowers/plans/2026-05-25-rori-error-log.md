@@ -339,3 +339,13 @@
 **Fix applied:** Added a broader tool-overview detector in `rori-kb.ts` so natural phrasing like `what do the bots do?` and similar tool-overview questions get a concise bot summary instead of the off-topic boundary line. A failing bot-runtime test then showed that the broad matcher accidentally captured the exact starter prompt `Which tool should I use for...?`, so the intent order was corrected: precise tool-selection routing now runs first, and the broader overview matcher runs afterward.
 
 **Rule going forward:** In-bound Academy questions should be interpreted by intent, not only by exact wording. Broader overview routes should exist, but they must not override narrower, higher-confidence intent branches that already answer a more specific version of the question.
+
+## 2026-06-10 - The Tool Overview Reply Needed The Full Playground Lineup
+
+**Context:** Follow-up review of the new `what do the bots do?` answer.
+
+**Problem:** The first overview reply correctly escaped the off-topic boundary, but it forgot to mention Insight and did not include the Academy-wide `37 tools and gadgets` framing the user wanted.
+
+**Fix applied:** Expanded the overview reply in `rori-kb.ts` so it now names Cursive, Top Secret, Condor, ShAzZaM, Insight, and Rori, and adds the line that there are `37 tools and gadgets at PBG to assist Cadets along their learning journey.` Updated the bot-runtime coverage to assert Insight and the `37 tools and gadgets` line are present.
+
+**Rule going forward:** Overview answers about the playground lineup should mention the full current bot set, not a partial subset. If the user asks what the bots do, answer with the whole visible playground picture.

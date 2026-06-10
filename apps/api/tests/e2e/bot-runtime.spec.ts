@@ -869,6 +869,9 @@ describe("bot runtime routes", () => {
     expect(body.output).toContain("Top Secret is for checking claims and online information");
     expect(body.output).toContain("Condor is for tax or legal research");
     expect(body.output).toContain("ShAzZaM helps with forms and guided intake");
+    expect(body.output).toContain("Insight is for tutoring and guided learning support");
+    expect(body.output).toContain("I help with Academy questions, enrollment, workshops, support rooms, and tool routing");
+    expect(body.output).toContain("There are 37 tools and gadgets at PBG to assist Cadets along their learning journey.");
     expect(body.output).not.toBe(
       "I can only help with PBG Academy, the Playground tools, enrollment, workshops, and support rooms.",
     );
