@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Use `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` as the active execution map for persona/runtime work. Continue with Phase 2 Ticket 2.2: add an explicit Rori response decision layer. Keep this ticket scoped to decision only; do not add provider/model usage or the persona composer yet.
+Use `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` as the active execution map for persona/runtime work. Continue with Phase 2 Ticket 2.3: preserve deterministic Rori operational routes. Keep this ticket scoped to Rori rule-path tests and deterministic operational behavior; do not add provider/model usage or the persona composer yet.
 
 ## Build Doc Sources
 
@@ -23,4 +23,4 @@ Use `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` 
 
 ## Last Completed Step
 
-Completed Phase 2 Ticket 2.1 in `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md`. Rori wiki retrieval now returns structured outcomes (`exact`, `partial`, `no_match`, `error`) with score/confidence fields, matched terms, source IDs, ambiguity detection, and a page-only compatibility adapter. Supabase no-match results stay no-match; Supabase retrieval failures return an explicit error outcome with fallback pages for degraded continuity. Focused tests cover direct, vague, partial, unrelated, ambiguous, Supabase, fallback, and error paths in `apps/api/tests/chat/rori-wiki.spec.ts` and `apps/api/tests/chat/rori-wiki-repo.spec.ts`. Verified with `corepack pnpm exec vitest run tests/chat/rori-wiki.spec.ts tests/chat/rori-wiki-repo.spec.ts`, `corepack pnpm exec vitest run tests/e2e/bot-runtime.spec.ts`, and `corepack pnpm --filter @sgt-bots/api lint`. No provider/model composition or production apply was performed.
+Completed Phase 2 Ticket 2.2 in `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md`. Rori now has a pure response decision layer in `apps/api/src/modules/chat/rori-decision.ts` with `answer`, `clarify`, `boundary`, `escalate`, and `route` intents. `apps/api/src/modules/chat/rori-kb.ts` clarifies broad help prompts and context-free follow-ups, and answers thin approved-source prompts such as `What about Specialist?` while asking what part the user means instead of falling into the off-topic boundary. `apps/api/src/modules/chat/chat.service.ts` passes structured wiki retrieval results into Rori when available and preserves old page-only stubs. Verified with `corepack pnpm exec vitest run tests/chat/rori-decision.spec.ts tests/chat/rori-kb.spec.ts`, `corepack pnpm exec vitest run tests/e2e/bot-runtime.spec.ts`, and `corepack pnpm --filter @sgt-bots/api lint`. No provider/model composition or production apply was performed.

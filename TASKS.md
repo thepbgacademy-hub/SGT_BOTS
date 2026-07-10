@@ -2,7 +2,7 @@
 
 ## Active
 
-- [ ] **Execute persona/runtime roadmap** - work through `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` in order; next ticket is Phase 2 Ticket 2.2 to add an explicit Rori response decision layer without provider/model usage or persona composition
+- [ ] **Execute persona/runtime roadmap** - work through `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` in order; next ticket is Phase 2 Ticket 2.3 to preserve deterministic Rori operational routes without provider/model usage or persona composition
 - [ ] **Load approved Rori wiki data** - wait for Academy-approved wiki pages from `E:\REPOS\wiki-architect`, generate reviewed Rori upsert SQL, apply after migrations `008` and `009`, then smoke test Rori in Telegram
 - [ ] **Prepare remaining bot workflow layers** - continue non-Cursive bot polish after Rori wiki data is ready
 

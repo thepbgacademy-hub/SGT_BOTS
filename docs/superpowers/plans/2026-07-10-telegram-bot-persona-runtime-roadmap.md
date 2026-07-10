@@ -26,6 +26,7 @@ Out of scope for this roadmap:
   - [x] Ticket 1.3 - Define persona records for persona bots only
 - [ ] Phase 2 - Rori retrieval and decision-layer hardening
   - [x] Ticket 2.1 - Refactor wiki retrieval result shape
+  - [x] Ticket 2.2 - Add an explicit response decision layer
 - [ ] Phase 3 - Rori grounded persona composer
 - [ ] Phase 4 - Top Secret chat to real workflow integration
 - [ ] Phase 5 - Insight approved-source tutoring runtime
@@ -240,6 +241,9 @@ Deliverables:
 
 Done when:
 - Rori clarifies when it should and boundaries only when it truly must.
+
+Status:
+- Completed 2026-07-10. `apps/api/src/modules/chat/rori-decision.ts` now provides a pure Rori response decision layer with `answer`, `clarify`, `boundary`, `escalate`, and `route` intents. `apps/api/src/modules/chat/rori-kb.ts` uses that decision output to clarify broad help prompts and context-free follow-ups, and to answer thin approved-source prompts such as `What about Specialist?` while asking for the missing angle instead of falling into the off-topic boundary. `apps/api/src/modules/chat/chat.service.ts` now passes structured wiki retrieval results into Rori when available while preserving old `searchPages()` stubs. Focused coverage lives in `apps/api/tests/chat/rori-decision.spec.ts` and `apps/api/tests/chat/rori-kb.spec.ts`; verified with `corepack pnpm exec vitest run tests/chat/rori-decision.spec.ts tests/chat/rori-kb.spec.ts`, `corepack pnpm exec vitest run tests/e2e/bot-runtime.spec.ts`, and `corepack pnpm --filter @sgt-bots/api lint`.
 
 ### Ticket 2.3 - Preserve deterministic operational routes
 

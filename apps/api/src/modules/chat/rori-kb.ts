@@ -8,9 +8,15 @@ import {
   RORI_DIRECTORY_SOURCE,
 } from "./rori-directory";
 import {
+  decideRoriResponse,
+  type RoriResponseDecision,
+} from "./rori-decision";
+import {
   FALLBACK_RORI_WIKI_PAGES,
+  findRoriWikiSearchResult,
   RORI_WIKI_SOURCE_TITLE,
   type RoriWikiPage,
+  type RoriWikiSearchResult,
 } from "./rori-wiki";
 import type { BotPromptConfig } from "../bots/bot-prompt-config.repo";
 
@@ -310,6 +316,39 @@ function buildJailbreakReply(): RoriReply {
     boundaryType: "jailbreak_attempt",
     output: RORI_JAILBREAK_REPLY,
     citations: [sourceCitation(ACADEMY_SOURCE)],
+  };
+}
+
+function buildClarificationReply(decision: RoriResponseDecision): RoriReply {
+  const output =
+    decision.reason === "missing_follow_up_context"
+      ? "What would you like to dig into: enrollment, Missions, support rooms, workshops, or which Playground tool fits what you're trying to do?"
+      : "Yes. I can help with enrollment, Missions, workshops, support rooms, or choosing the right Playground tool. Which one are you trying to figure out?";
+
+  return {
+    output,
+    citations: [sourceCitation(ACADEMY_SOURCE)],
+  };
+}
+
+function buildPartialWikiClarificationReply(
+  page: RoriWikiPage,
+  content: string,
+): RoriReply {
+  const subject =
+    content
+      .replace(/[?.!]+$/u, "")
+      .match(/\b(?:what about|tell me about|explain)\s+(.+)$/i)?.[1]
+      ?.trim() || "that";
+  const followUpPrompt = [page.slug, page.title, page.summary, ...page.keywords]
+    .join(" ")
+    .match(/\b(enroll|enrollment|pricing|cost|credits?|levels?|specialist)\b/i)
+    ? `Which part of ${subject} do you want me to unpack: cost, access, credits, or what it means in practice?`
+    : `Which part of ${subject} do you want me to unpack next?`;
+
+  return {
+    output: `${page.body}\n\n${followUpPrompt}`,
+    citations: [wikiCitation(page)],
   };
 }
 
@@ -624,6 +663,7 @@ export function buildGroundedRoriReply(
     telegramRooms?: RoriAcademyDirectory["telegramRooms"];
     workshops?: RoriAcademyDirectory["workshops"];
     wikiPages?: RoriWikiPage[];
+    wikiSearchResult?: RoriWikiSearchResult;
   } = {},
 ): RoriReply {
   const resolvedContent = resolveFollowUpContent(
@@ -638,13 +678,22 @@ export function buildGroundedRoriReply(
   };
   const promptConfig = grounding.promptConfig;
   const wikiPages = grounding.wikiPages ?? FALLBACK_RORI_WIKI_PAGES;
+  const wikiSearchResult =
+    grounding.wikiSearchResult ??
+    findRoriWikiSearchResult(resolvedContent, wikiPages);
   const respond = (reply: RoriReply) => finalizeRoriReply(reply, promptConfig);
+  const decision = decideRoriResponse({
+    content: resolvedContent,
+    conversationContext: grounding.conversationContext,
+    normalizedContent,
+    wikiSearchResult,
+  });
 
   if (isJailbreakAttempt(normalizedContent)) {
     return buildJailbreakReply();
   }
 
-  if (hasSupportEscalationQuestion(normalizedContent)) {
+  if (decision.intent === "escalate" && decision.reason === "operational_escalation") {
     const supportRoom =
       findTelegramRoomRecord("payment trouble upgrade billing leave of absence conflict", directory.telegramRooms) ??
       directory.telegramRooms.find((room) => /lobby/i.test(room.label));
@@ -672,11 +721,14 @@ export function buildGroundedRoriReply(
     }
   }
 
-  if (hasTelegramRoomRoutingQuestion(normalizedContent)) {
+  if (decision.intent === "route" && decision.reason === "room_route") {
     return respond(buildTelegramRoomReply(normalizedContent, directory));
   }
 
-  const routedReply = toolRoute(normalizedContent);
+  const routedReply =
+    decision.intent === "route" && decision.reason === "tool_route"
+      ? toolRoute(normalizedContent)
+      : null;
 
   if (routedReply) {
     return respond(routedReply);
@@ -798,6 +850,23 @@ export function buildGroundedRoriReply(
     if (programsPage) {
       return respond(buildProgramsReply(programsPage));
     }
+  }
+
+  if (decision.intent === "clarify") {
+    return respond(buildClarificationReply(decision));
+  }
+
+  if (
+    decision.intent === "answer" &&
+    decision.needsClarification &&
+    wikiSearchResult.pages[0]
+  ) {
+    return respond(
+      buildPartialWikiClarificationReply(
+        wikiSearchResult.pages[0],
+        resolvedContent,
+      ),
+    );
   }
 
   if (!classifyRoriIntent(normalizedContent) && !hasPricingQuestion(normalizedContent)) {

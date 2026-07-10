@@ -23,6 +23,10 @@ import {
   createFallbackRoriWikiRepo,
   type RoriWikiRepo,
 } from "./rori-wiki.repo";
+import {
+  findRoriWikiSearchResult,
+  type RoriWikiSearchResult,
+} from "./rori-wiki";
 
 type ChatRole = "user" | "assistant";
 
@@ -103,8 +107,8 @@ function buildAcademyConciergeReply(
     botPromptConfigRepo.getActiveConfig(manifest.id, "playground"),
     directoryRepo.listTelegramRooms(),
     directoryRepo.listUpcomingEvents(),
-    wikiRepo.searchPages(content),
-  ]).then(([promptConfig, telegramRooms, workshops, wikiPages]) =>
+    searchRoriWiki(wikiRepo, content),
+  ]).then(([promptConfig, telegramRooms, workshops, wikiSearchResult]) =>
     buildGroundedRoriReply(content, {
       promptConfig: (promptConfig as RoriPromptConfig | null) ?? undefined,
       conversationContext: buildRoriConversationContext(
@@ -114,9 +118,22 @@ function buildAcademyConciergeReply(
       ),
       telegramRooms,
       workshops,
-      wikiPages,
+      wikiPages: wikiSearchResult.pages,
+      wikiSearchResult,
     }),
   );
+}
+
+async function searchRoriWiki(
+  wikiRepo: RoriWikiRepo,
+  content: string,
+): Promise<RoriWikiSearchResult> {
+  if (wikiRepo.searchPagesResult) {
+    return wikiRepo.searchPagesResult(content);
+  }
+
+  const pages = await wikiRepo.searchPages(content);
+  return findRoriWikiSearchResult(content, pages);
 }
 
 function buildTutorReply(manifest: BotManifest, content: string): RuntimeReply {
