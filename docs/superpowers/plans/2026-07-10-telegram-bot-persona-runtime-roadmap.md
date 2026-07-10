@@ -18,6 +18,8 @@ Out of scope for this roadmap:
 ## Status Checklist
 
 - [ ] Phase 0 - Canonical source and live-state reconciliation
+  - [x] Ticket 0.1 - Establish canonical source revision
+  - [ ] Ticket 0.2 - Freeze the acceptance prompt set
 - [ ] Phase 1 - Persona config table and observable config loading
 - [ ] Phase 2 - Rori retrieval and decision-layer hardening
 - [ ] Phase 3 - Rori grounded persona composer
@@ -64,6 +66,9 @@ Deliverables:
 
 Done when:
 - A future worker can answer “which branch is the source of truth?” without guessing.
+
+Status:
+- Completed 2026-07-10. See "Phase 0.1 Canonical Source Note" below.
 
 ### Ticket 0.2 - Freeze the acceptance prompt set
 
@@ -562,3 +567,40 @@ Primary reviewer focus after each phase:
 Use this section as the running build ledger. Add one dated line per completed ticket or phase.
 
 - 2026-07-10: Roadmap created from external persona/runtime audit; no runtime changes applied in this document.
+- 2026-07-10: Completed Phase 0 Ticket 0.1. Canonical repo source line is `origin/codex/rori-academy-concierge`; `3bf7c8e15b5ec77ee2337a88e09b8980625bfac6` is the verified pre-ticket baseline commit used for the canonical-source review. The live runtime image is not proven to be built from that baseline or any later commit until source-revision build metadata exists.
+
+---
+
+## Phase 0.1 Canonical Source Note
+
+Canonical repo source for this roadmap:
+- Branch: `codex/rori-academy-concierge`
+- Remote branch: `origin/codex/rori-academy-concierge`
+- Source line: latest reviewed commits on `origin/codex/rori-academy-concierge`
+- Verified baseline at time of Ticket 0.1 review: `3bf7c8e15b5ec77ee2337a88e09b8980625bfac6`
+- Baseline commit subject: `docs: add persona runtime roadmap`
+
+Why this is the canonical repo source:
+- The active worktree is on `codex/rori-academy-concierge` and tracks `origin/codex/rori-academy-concierge`.
+- The branch-map plan identifies `codex/rori-academy-concierge` as the active playground stabilization branch until shared Top Secret and session/provider work is fully verified and merged.
+- `main` is materially behind the current playground/Rori/Top Secret/shared runtime work and should not be treated as the source of truth for this roadmap.
+- The worktree-local handoff and task file point execution at this roadmap from this branch.
+
+Known caveat:
+- Repo evidence does not prove the live VPS2 runtime image was built from this commit. The repo does not yet contain a source-revision label or other build metadata tying the deployed frontend/backend images to a git SHA. Live runtime observations from the external audit should therefore remain treated as observed runtime truth until a future deployment adds commit-pinned build metadata.
+
+Known live mismatches remaining against the intended roadmap direction:
+- The audit observed live runtime attempts to read `academy_bot_prompt_configs`, but the production table was not found and behavior falls back.
+- Rori's observed live chat path remains mostly deterministic and does not yet use a grounded model composer.
+- Top Secret ordinary chat is still separate from the real evidence/report workflow and must not imply verification unless that workflow succeeds.
+- Insight ordinary chat still needs approved-source tutoring behavior before it can be considered a real tutor.
+- ShAzZaM still needs dedicated utility workflow routing rather than generic persona-style chat behavior.
+
+Items intentionally left for later tickets:
+- Persona table creation, schema fixes, and config observability belong to Phase 1.
+- Rori retrieval scoring, decision outcomes, and clarification-first behavior belong to Phase 2.
+- Rori grounded persona composition belongs to Phase 3.
+- Top Secret workflow integration belongs to Phase 4.
+- Insight tutoring runtime belongs to Phase 5.
+- ShAzZaM workflow separation belongs to Phase 6.
+- Runtime diagnostics and rollout gates belong to Phase 7.
