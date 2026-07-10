@@ -19,6 +19,7 @@ import {
   buildRoriConversationContext,
   type RoriPromptConfig,
 } from "./rori-kb";
+import { buildInsightTutorReply } from "./insight-tutor";
 import {
   createFallbackRoriWikiRepo,
   type RoriWikiRepo,
@@ -136,12 +137,22 @@ async function searchRoriWiki(
   return findRoriWikiSearchResult(content, pages);
 }
 
-function buildTutorReply(manifest: BotManifest, content: string): RuntimeReply {
+async function buildTutorReply(
+  manifest: BotManifest,
+  content: string,
+  botPromptConfigRepo: BotPromptConfigRepo,
+): Promise<RuntimeReply> {
   requireCapability(manifest, "chat");
+  requireCapability(manifest, "citations");
+  requireCapability(manifest, "rag_query");
+  requireSourceBinding(manifest, "knowledge_base");
+  requireToolPermission(manifest, "knowledge_base_search");
+  const promptConfig = await botPromptConfigRepo.getActiveConfig(
+    manifest.id,
+    "playground",
+  );
 
-  return {
-    output: `Let's break "${content}" into a few clear steps, then I can guide you through each one like a coach.`,
-  };
+  return buildInsightTutorReply(content, { promptConfig });
 }
 
 function buildFormWizardReply(
@@ -161,6 +172,7 @@ function buildFormWizardReply(
 function buildVerifierReply(
   manifest: BotManifest,
   content: string,
+  promptConfig?: RoriPromptConfig | null,
 ): RuntimeReply {
   requireCapability(manifest, "chat");
   requireCapability(manifest, "citations");
@@ -194,7 +206,9 @@ function buildVerifierReply(
   if (sourceBypassPattern.test(normalizedContent)) {
     return {
       output:
-        "I can't verify a claim without reliable sources. Top Secret is built to compare the pasted message against trusted references, so use the report workflow when you want the actual source-backed check.",
+        promptConfig
+          ? `${promptConfig.offTopicPolicy} ${promptConfig.fallbackPolicy}`
+          : "I can't verify a claim without reliable sources. Top Secret is built to compare the pasted message against trusted references, so use the report workflow when you want the actual source-backed check.",
       citations,
     };
   }
@@ -206,6 +220,7 @@ function buildVerifierReply(
   ) {
     return {
       output:
+        promptConfig?.fallbackPolicy?.trim() ||
         "Please paste the exact statement or how-to message you want checked. Top Secret needs the actual wording before it can build a source-backed report.",
       citations,
     };
@@ -213,7 +228,9 @@ function buildVerifierReply(
 
   return {
     output:
-      "Use the Top Secret report workflow for this claim, then choose Create report. That path runs the source-backed review and gives you the PDF when the report is ready.",
+      promptConfig
+        ? "Use the Top Secret report workflow for this claim, then choose Create report. That path keeps the answer evidence-first and tied to reliable sources before it reaches a conclusion."
+        : "Use the Top Secret report workflow for this claim, then choose Create report. That path runs the source-backed review and gives you the PDF when the report is ready.",
     citations,
   };
 }
@@ -406,11 +423,15 @@ function buildRuntimeReply(
     case "document_wizard":
       throw new Error("cursive workflow only");
     case "tutor":
-      return buildTutorReply(manifest, trimmedContent);
+      return buildTutorReply(manifest, trimmedContent, botPromptConfigRepo);
     case "form_wizard":
       return buildFormWizardReply(manifest, trimmedContent);
     case "verifier":
-      return buildVerifierReply(manifest, trimmedContent);
+      return botPromptConfigRepo
+        .getActiveConfig(manifest.id, "playground")
+        .then((promptConfig) =>
+          buildVerifierReply(manifest, trimmedContent, promptConfig),
+        );
     case "concierge_general_academy_KB":
       return buildAcademyConciergeReply(
         manifest,

@@ -29,8 +29,8 @@ Out of scope for this roadmap:
   - [x] Ticket 2.2 - Add an explicit response decision layer
   - [x] Ticket 2.3 - Preserve deterministic operational routes
 - [x] Phase 3 - Rori grounded persona composer
-- [ ] Phase 4 - Top Secret chat to real workflow integration
-- [ ] Phase 5 - Insight approved-source tutoring runtime
+- [x] Phase 4 - Top Secret chat to real workflow integration
+- [x] Phase 5 - Insight approved-source tutoring runtime
 - [ ] Phase 6 - Utility-bot separation finalization
 - [ ] Phase 7 - Observability, QA matrix, and rollout gate
 
@@ -406,8 +406,14 @@ Deliverables:
 Done when:
 - Top Secret sounds like the right bot without compromising evidence discipline.
 
+Status:
+- Completed 2026-07-10. Top Secret ordinary chat now loads the `verifier` playground persona config when available and applies it to source-bypass refusal, missing-claim clarification, and evidence-first report-workflow handoff copy. The chat path still does not claim verification happened before the real report workflow runs. E2E coverage lives in `apps/api/tests/e2e/bot-runtime.spec.ts`.
+
 Phase exit criteria:
 - Top Secret chat and workflow are no longer semantically disconnected.
+
+Status:
+- Phase 4 completed 2026-07-10. Chat modes and persona-config-aware explanation steps are covered without touching Top Secret PDF/report layout.
 
 ---
 
@@ -432,6 +438,9 @@ Deliverables:
 Done when:
 - “What does Insight teach?” has a concrete answer.
 
+Status:
+- Completed 2026-07-10. Insight's initial playground teaching boundary is documented in `docs/superpowers/specs/2026-07-10-insight-approved-source-boundary.md`: Missions/course structure, PBG credits at a high level, and PBG Academy overview only.
+
 ### Ticket 5.2 - Replace echo-template with grounded tutoring loop
 
 Boundaries:
@@ -453,8 +462,14 @@ Deliverables:
 Done when:
 - Insight behaves like a real tutor, not an echo bot.
 
+Status:
+- Completed 2026-07-10. `apps/api/src/modules/chat/insight-tutor.ts` replaces the old echo-template with a bounded approved-source tutoring loop for explain, simpler wording, quiz prompts, unsupported-example refusal, and no-source boundary handling. The `tutor` manifest now requires citations, knowledge-base source binding, RAG query capability, and `knowledge_base_search`. Focused coverage lives in `apps/api/tests/chat/insight-tutor.spec.ts` and `apps/api/tests/e2e/bot-runtime.spec.ts`.
+
 Phase exit criteria:
 - Insight is grounded, bounded, and useful.
+
+Status:
+- Phase 5 completed 2026-07-10. Insight remains intentionally limited to the approved source pack until a future lesson store is added.
 
 ---
 
@@ -477,6 +492,9 @@ Deliverables:
 
 Done when:
 - Cursive stays deterministic and intake-driven.
+
+Status:
+- Completed 2026-07-10. Cursive `document_wizard` chat still hard-fails with `cursive workflow only` before persona config is loaded or any chat conversation is persisted. Dispatcher coverage lives in `apps/api/tests/cursive/cursive-service.spec.ts`.
 
 ### Ticket 6.2 - Complete ShAzZaM! workflow separation
 
@@ -615,6 +633,7 @@ Use this section as the running build ledger. Add one dated line per completed t
 - 2026-07-10: Completed Phase 1 Ticket 1.2. Prompt-config selection is observable through redacted diagnostics and app logging for exact DB match, global DB fallback, code fallback, missing table, and generic error states; no model composition or production apply was performed.
 - 2026-07-10: Completed Phase 1 Ticket 1.3. Reviewed manual persona config SQL now defines playground records for Rori, Top Secret, and Insight only; utility bots and display-only Condor intentionally receive no persona records. Phase 1 is complete; no production apply was performed.
 - 2026-07-10: Completed Phase 3 Tickets 3.1, 3.2, and 3.3 plus Phase 4 Ticket 4.1. Rori now has a strict grounded composer contract, source-ID validation with deterministic fallback, and short-lived follow-up refinement. Top Secret ordinary chat no longer claims verification unless the real report workflow runs.
+- 2026-07-10: Completed Phase 4 Ticket 4.2, Phase 5 Tickets 5.1 and 5.2, and Phase 6 Ticket 6.1. Top Secret chat now uses verifier persona config for source-first guidance, Insight now has an approved-source tutoring module and boundary note, and Cursive remains workflow-only with route coverage. Verified with `corepack pnpm exec vitest run tests/chat/insight-tutor.spec.ts tests/e2e/bot-runtime.spec.ts tests/cursive/cursive-service.spec.ts`, `corepack pnpm --filter @sgt-bots/api lint`, and `git diff --check`.
 
 ---
 

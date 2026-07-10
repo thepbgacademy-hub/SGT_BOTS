@@ -38,4 +38,26 @@ describe("createChatService document_wizard workflow gating", () => {
     expect(tutorReply.userMessage.id).toBe("message-1");
     expect(tutorReply.assistantMessage.id).toBe("message-2");
   });
+
+  it("does not load persona config before rejecting document_wizard chat", async () => {
+    const chatService = createChatService({
+      botPromptConfigRepo: {
+        async getActiveConfig() {
+          throw new Error("persona config should not load for Cursive");
+        },
+        async getActiveConfigResult() {
+          throw new Error("persona config should not load for Cursive");
+        },
+      },
+    });
+
+    await expect(
+      chatService.sendMessage({
+        sessionId: "session-1",
+        userId: "user-1",
+        botId: "document_wizard",
+        message: "Draft a bureau dispute letter.",
+      }),
+    ).rejects.toThrow("cursive workflow only");
+  });
 });

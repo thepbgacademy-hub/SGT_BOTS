@@ -30,9 +30,9 @@ values
     'tutor',
     'Tutor',
     'learning',
-    '{"chat":true}',
-    'none',
-    'phase-5-v1',
+    '{"chat":true,"citations":true,"rag_query":true}',
+    'knowledge_base',
+    'phase-6-v1',
     true
   ),
   (

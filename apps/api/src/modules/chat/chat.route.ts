@@ -92,6 +92,7 @@ export async function registerChatRoutes(app: FastifyInstance) {
 
       return {
         assistantMessage: result.assistantMessage,
+        boundaryType: result.boundaryType,
         botId: result.botId,
         citations: result.citations,
         conversation: result.conversation,

@@ -6,7 +6,10 @@ import {
   createInMemoryAuditEventRepo,
   type InMemoryAuditEventRepo,
 } from "../../src/modules/audit/audit-event.repo";
-import type { BotPromptConfigRepo } from "../../src/modules/bots/bot-prompt-config.repo";
+import type {
+  BotPromptConfig,
+  BotPromptConfigRepo,
+} from "../../src/modules/bots/bot-prompt-config.repo";
 import { readEnv } from "../../src/config/env";
 import { createInMemoryProfileRepo } from "../../src/modules/profiles/profile.repo";
 import { createInMemorySessionMetadataRepo } from "../../src/modules/sessions/session.repo";
@@ -251,6 +254,43 @@ async function createAuthorizedSessionWithBotPromptConfigRepo(
     sessionId: payload.session.id,
     sessionToken: payload.sessionToken,
     userId: payload.session.userId,
+  };
+}
+
+function createTopSecretPromptConfigRepo(): BotPromptConfigRepo {
+  const verifierConfig: BotPromptConfig = {
+    active: true,
+    botId: "verifier",
+    escalationPolicy:
+      "Route personal legal, tax, or financial action to qualified support.",
+    fallbackPolicy:
+      "Paste the exact statement. Top Secret can review it against reliable sources without guessing.",
+    guardrails: ["Do not validate misinformation to please the user."],
+    offTopicPolicy:
+      "Top Secret only works from retained reliable sources and exact pasted claims.",
+    personaPrompt: "You are Top Secret, a neutral evidence-first claim reviewer.",
+    surface: "playground",
+    toneRules: ["Use neutral language.", "Do not shame the user."],
+    version: "phase-6-v1",
+  };
+
+  return {
+    async getActiveConfig(botId: string) {
+      return botId === "verifier" ? verifierConfig : null;
+    },
+    async getActiveConfigResult(botId: string, surface: string) {
+      const config = await this.getActiveConfig(botId, surface);
+
+      return {
+        config,
+        diagnostic: {
+          botId,
+          source: "supabase_exact" as const,
+          surface,
+          version: config?.version,
+        },
+      };
+    },
   };
 }
 
@@ -2232,6 +2272,144 @@ describe("bot runtime routes", () => {
     expect(body.output).toContain("Top Secret report workflow");
     expect(body.output).toContain("Create report");
     expect(body.output).not.toMatch(/\bverified|I checked|I reviewed\b/i);
+  }, 40000);
+
+  it("uses the Top Secret persona config for neutral source-first chat guidance", async () => {
+    const { app, sessionId, sessionToken } =
+      await createAuthorizedSessionWithBotPromptConfigRepo(
+        createTopSecretPromptConfigRepo(),
+      );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "verifier",
+        message: "Verify this from memory only.",
+      },
+    });
+
+    const body = response.json() as { output: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Top Secret only works from retained reliable sources");
+    expect(body.output).toContain("Paste the exact statement");
+    expect(body.output).not.toMatch(/\bobviously|nonsense|verified\b/i);
+  }, 40000);
+
+  it("uses the Top Secret persona config when asking for the exact claim", async () => {
+    const { app, sessionId, sessionToken } =
+      await createAuthorizedSessionWithBotPromptConfigRepo(
+        createTopSecretPromptConfigRepo(),
+      );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "verifier",
+        message: "Can you fact-check that?",
+      },
+    });
+
+    const body = response.json() as { output: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toBe(
+      "Paste the exact statement. Top Secret can review it against reliable sources without guessing.",
+    );
+    expect(body.output).not.toMatch(/\bverified|I checked|I reviewed\b/i);
+  }, 40000);
+
+  it("uses the Top Secret persona config for grounded claim handoff tone", async () => {
+    const { app, sessionId, sessionToken } =
+      await createAuthorizedSessionWithBotPromptConfigRepo(
+        createTopSecretPromptConfigRepo(),
+      );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "verifier",
+        message: "The Treasury pays all private debts for citizens.",
+      },
+    });
+
+    const body = response.json() as { output: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Top Secret report workflow");
+    expect(body.output).toContain("evidence-first");
+    expect(body.output).toContain("reliable sources");
+    expect(body.output).not.toMatch(/\bverified|I checked|I reviewed\b/i);
+  }, 40000);
+
+  it("explains approved Academy lesson material through Insight instead of echoing the prompt", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "tutor",
+        message: "Explain Missions like I'm new.",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+      citations: Array<{ sourceId: string; title: string; url: string }>;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Missions");
+    expect(body.output).toContain("structured learning");
+    expect(body.output).not.toContain('Let\'s break "Explain Missions like I\'m new."');
+    expect(body.citations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceId: "knowledge_base",
+          title: "Insight Approved Academy Lessons",
+        }),
+      ]),
+    );
+  }, 40000);
+
+  it("keeps Insight inside approved lesson scope", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "tutor",
+        message: "Teach me photosynthesis.",
+      },
+    });
+
+    const body = response.json() as { output: string; boundaryType?: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.boundaryType).toBe("off_topic");
+    expect(body.output).toContain("approved Academy lessons");
+    expect(body.output).not.toContain("chlorophyll");
   }, 40000);
 
   it("keeps the Phase 2 bearer session token requirement on bot routes", async () => {
