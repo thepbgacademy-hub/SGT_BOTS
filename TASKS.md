@@ -2,7 +2,7 @@
 
 ## Active
 
-- [ ] **Execute persona/runtime roadmap** - work through `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` in order; next ticket is Phase 1 Ticket 1.3 to define persona records for Rori, Top Secret, and Insight only, without utility-bot persona records
+- [ ] **Execute persona/runtime roadmap** - work through `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` in order; next ticket is Phase 2 Ticket 2.1 to refactor Rori wiki retrieval result shape without starting persona composition
 - [ ] **Load approved Rori wiki data** - wait for Academy-approved wiki pages from `E:\REPOS\wiki-architect`, generate reviewed Rori upsert SQL, apply after migrations `008` and `009`, then smoke test Rori in Telegram
 - [ ] **Prepare remaining bot workflow layers** - continue non-Cursive bot polish after Rori wiki data is ready
 

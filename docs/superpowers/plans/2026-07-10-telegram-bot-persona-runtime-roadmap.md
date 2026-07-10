@@ -20,10 +20,10 @@ Out of scope for this roadmap:
 - [x] Phase 0 - Canonical source and live-state reconciliation
   - [x] Ticket 0.1 - Establish canonical source revision
   - [x] Ticket 0.2 - Freeze the acceptance prompt set
-- [ ] Phase 1 - Persona config table and observable config loading
+- [x] Phase 1 - Persona config table and observable config loading
   - [x] Ticket 1.1 - Verify/create migration path for `academy_bot_prompt_configs`
   - [x] Ticket 1.2 - Make config loading observable
-  - [ ] Ticket 1.3 - Define persona records for persona bots only
+  - [x] Ticket 1.3 - Define persona records for persona bots only
 - [ ] Phase 2 - Rori retrieval and decision-layer hardening
 - [ ] Phase 3 - Rori grounded persona composer
 - [ ] Phase 4 - Top Secret chat to real workflow integration
@@ -172,6 +172,9 @@ Deliverables:
 
 Done when:
 - Persona bots have defined config records and utility bots do not.
+
+Status:
+- Completed 2026-07-10. `vps-supabase-manual/014_academy_bot_persona_configs.sql` defines reviewed manual playground persona records for `concierge_general_academy_KB`, `verifier`, and `tutor` only, aligned to manifest version `phase-6-v1` and the `academy_bot_prompt_configs` table shape. `apps/api/tests/bots/academy-bot-prompt-config-seed.spec.ts` locks the persona-only scope, field coverage, old-version deactivation, and source-grounding guardrails. No production apply was performed.
 
 Phase exit criteria:
 - Config table path is trustworthy.
@@ -583,6 +586,7 @@ Use this section as the running build ledger. Add one dated line per completed t
 - 2026-07-10: Completed Phase 0 Ticket 0.2. The repo-owned acceptance prompt suite is now recorded at `docs/superpowers/plans/2026-07-10-telegram-bot-persona-acceptance-prompts.md`, scoped to Rori, Top Secret, Insight, Cursive, ShAzZaM!, and display-only Condor. No runtime behavior, schema, or production state changed in this ticket.
 - 2026-07-10: Completed Phase 1 Ticket 1.1. The prompt-config migration path is explicit for `public.academy_bot_prompt_configs`, the schema test locks the loader columns and one-active-per-bot/surface partial unique index, and no production apply was performed.
 - 2026-07-10: Completed Phase 1 Ticket 1.2. Prompt-config selection is observable through redacted diagnostics and app logging for exact DB match, global DB fallback, code fallback, missing table, and generic error states; no model composition or production apply was performed.
+- 2026-07-10: Completed Phase 1 Ticket 1.3. Reviewed manual persona config SQL now defines playground records for Rori, Top Secret, and Insight only; utility bots and display-only Condor intentionally receive no persona records. Phase 1 is complete; no production apply was performed.
 
 ---
 

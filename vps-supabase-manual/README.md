@@ -11,6 +11,7 @@ Apply these files in the Supabase SQL editor on the VPS in this exact order:
 7. `008_rori_academy_directory.sql`
 8. `009_rori_academy_wiki.sql`
 9. `012_rori_schema_segregation.sql`
+10. `014_academy_bot_persona_configs.sql` after `public.academy_bot_prompt_configs` exists
 
 Notes:
 
@@ -21,6 +22,7 @@ Notes:
 - `008_rori_academy_directory.sql` creates the dedicated `rori` schema, then creates Rori's Academy event and Telegram room directory tables inside it. It does not seed fake events or invite links.
 - `009_rori_academy_wiki.sql` creates Rori's Academy wiki page table inside the dedicated `rori` schema. It does not seed fake links or event data.
 - `012_rori_schema_segregation.sql` is only needed for existing environments that already created the old public Rori tables. It moves those live Rori Academy tables into the `rori` schema without deleting data.
+- `014_academy_bot_persona_configs.sql` defines reviewed playground persona prompt-config rows only for Rori, Top Secret, and Insight. It does not create persona rows for Cursive, ShAzZaM!, or Condor.
 
 ## Rori Academy Data
 
