@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Run a live Rori Telegram smoke focused on enrollment phrasing and the existing broader tool overview reply. Recheck prompts like `how do i join?`, `how do i join the academy?`, `who do I talk to about enrolling for classes?`, `what do the bots do?`, and `which tool should I use for...?` and confirm that Rori now routes plain `join` wording into enrollment instead of the off-topic boundary while still preserving the sharper tool-selection route for the more specific prompt. Keep the deterministic boundary rules in place: ordinary off-topic prompts should still return the fixed Academy-only line, jailbreak prompts should still return the fixed boundary line, and only jailbreak / instruction-bypass attempts should be written to `playground_audit_events`. Keep the playground shared tables on the `playground_` prefix in `public`, keep Rori Academy content separate in the `rori` schema, and continue treating `codex/rori-academy-concierge` as the active playground stabilization branch until shared Top Secret and session/provider work is fully merged. Do not deploy invented, fallback, fixture, or placeholder data.
+Use `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` as the active execution map for persona/runtime work. Start with Phase 0 and Phase 1 only: reconcile canonical source vs live runtime drift, freeze the acceptance prompt set in-repo, and make `academy_bot_prompt_configs` a real observable runtime dependency instead of a silent fallback. Do not jump ahead to a model-backed persona composer until retrieval/decision behavior and config loading are test-backed. Keep persona work limited to `Rori`, `Top Secret`, and `Insight`; keep `Cursive` and `ShAzZaM` in deterministic utility lanes; keep `Condor` as a display-only playground surface.
 
 ## Build Doc Sources
 
@@ -18,7 +18,8 @@ Run a live Rori Telegram smoke focused on enrollment phrasing and the existing b
 - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-28-top-secret-codex-provider-error-log.md`
 - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-29-playground-branch-map.md`
 - `E:\REPOS\SGT_BOTS\docs\superpowers\plans\2026-05-25-rori-error-log.md`
+- `E:\REPOS\SGT_BOTS\.worktrees\rori-academy-concierge\docs\superpowers\plans\2026-07-10-telegram-bot-persona-runtime-roadmap.md`
 
 ## Last Completed Step
 
-Rori enrollment intent now recognizes plain human `join` phrasing instead of treating it as off-topic. The bug was that the concierge logic only matched `enroll`, `enrollment`, `join academy`, `sign up`, and `signup`, so the live prompt `how do i join?` fell through to the fixed Academy-only boundary line even though the user clearly meant enrollment. A shared `hasEnrollmentQuestion(...)` matcher was added in `apps/api/src/modules/chat/rori-kb.ts`, both intent classification and the main enrollment branch were switched to use it, and the enrollment wiki lookup was widened to include `join` phrasing. Focused Rori KB tests for `how do i join?`, `how do i join the academy?`, and the enrollment follow-up path all passed, and API lint passed.
+Created and checked in a new persona/runtime execution roadmap at `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md`. The roadmap translates the external audit into bounded implementation tickets, phase gates, acceptance criteria, orchestration guidance, and a persistent checklist so future sessions can advance the work without repeating discovery. No runtime behavior changed in this step; this was a planning and coordination checkpoint only.
