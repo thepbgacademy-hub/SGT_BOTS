@@ -181,7 +181,15 @@ export async function buildApp(options?: {
     "chatService",
     createChatService({
       botPromptConfigRepo:
-        options?.botPromptConfigRepo ?? createBotPromptConfigRepo(appEnv),
+        options?.botPromptConfigRepo ??
+        createBotPromptConfigRepo(appEnv, {
+          onDiagnostic(diagnostic) {
+            app.log.info(
+              { botPromptConfig: diagnostic },
+              "bot prompt config selected",
+            );
+          },
+        }),
       now: options?.now,
       roriDirectoryRepo:
         options?.roriDirectoryRepo ?? createRoriDirectoryRepo(appEnv),

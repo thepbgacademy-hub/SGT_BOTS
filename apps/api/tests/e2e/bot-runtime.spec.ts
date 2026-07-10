@@ -1639,6 +1639,22 @@ describe("bot runtime routes", () => {
               version: "rori-v1",
             };
           },
+          async getActiveConfigResult() {
+            const config = await this.getActiveConfig(
+              "concierge_general_academy_KB",
+              "playground",
+            );
+
+            return {
+              config,
+              diagnostic: {
+                botId: "concierge_general_academy_KB",
+                source: "supabase_exact" as const,
+                surface: "playground",
+                version: config?.version,
+              },
+            };
+          },
         },
       );
 
@@ -1858,6 +1874,22 @@ describe("bot runtime routes", () => {
             surface: "playground",
             toneRules: ["Answer first."],
             version: "rori-v1",
+          };
+        },
+        async getActiveConfigResult() {
+          const config = await this.getActiveConfig(
+            "concierge_general_academy_KB",
+            "playground",
+          );
+
+          return {
+            config,
+            diagnostic: {
+              botId: "concierge_general_academy_KB",
+              source: "supabase_exact" as const,
+              surface: "playground",
+              version: config?.version,
+            },
           };
         },
       });

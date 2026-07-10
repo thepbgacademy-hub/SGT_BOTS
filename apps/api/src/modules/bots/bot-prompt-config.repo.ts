@@ -14,11 +14,37 @@ export type BotPromptConfig = {
   version: string;
 };
 
+export type BotPromptConfigSource =
+  | "supabase_exact"
+  | "supabase_global_fallback"
+  | "code_fallback"
+  | "missing_table"
+  | "error";
+
+export type BotPromptConfigDiagnostic = {
+  botId: string;
+  errorCode?: string;
+  errorMessage?: string;
+  source: BotPromptConfigSource;
+  surface: string;
+  version?: string;
+};
+
+export type BotPromptConfigResult = {
+  config: BotPromptConfig | null;
+  diagnostic: BotPromptConfigDiagnostic;
+};
+
 export type BotPromptConfigRepo = {
   getActiveConfig(botId: string, surface: string): Promise<BotPromptConfig | null>;
+  getActiveConfigResult(
+    botId: string,
+    surface: string,
+  ): Promise<BotPromptConfigResult>;
 };
 
 type FetchLike = typeof fetch;
+type DiagnosticReporter = (diagnostic: BotPromptConfigDiagnostic) => void;
 
 type SupabaseBotPromptConfigRow = {
   active: boolean;
@@ -105,12 +131,61 @@ function selectConfig(
   );
 }
 
+function buildDiagnostic(input: {
+  config: BotPromptConfig | null;
+  errorCode?: string;
+  errorMessage?: string;
+  requestedSurface: string;
+  source: BotPromptConfigSource;
+  botId: string;
+}): BotPromptConfigDiagnostic {
+  return {
+    botId: input.botId,
+    errorCode: input.errorCode,
+    errorMessage: input.errorMessage,
+    source: input.source,
+    surface: input.config?.surface ?? input.requestedSurface,
+    version: input.config?.version,
+  };
+}
+
+function reportDiagnostic(
+  reporter: DiagnosticReporter | undefined,
+  diagnostic: BotPromptConfigDiagnostic,
+) {
+  reporter?.(diagnostic);
+}
+
 export function createInMemoryBotPromptConfigRepo(
   configs: BotPromptConfig[] = FALLBACK_BOT_PROMPT_CONFIGS,
+  options?: {
+    onDiagnostic?: DiagnosticReporter;
+  },
 ): BotPromptConfigRepo {
+  const onDiagnostic = options?.onDiagnostic;
+
   return {
     async getActiveConfig(botId: string, surface: string) {
-      return selectConfig(configs, botId, surface);
+      const result = await this.getActiveConfigResult(botId, surface);
+
+      return result.config;
+    },
+    async getActiveConfigResult(botId: string, surface: string) {
+      const config = selectConfig(configs, botId, surface);
+
+      const result = {
+        config,
+        diagnostic: buildDiagnostic({
+          botId,
+          config,
+          errorMessage: "Supabase env is absent; using in-memory prompt config",
+          requestedSurface: surface,
+          source: "code_fallback",
+        }),
+      };
+      reportDiagnostic(onDiagnostic, result.diagnostic);
+
+      return result;
     },
   };
 }
@@ -149,23 +224,96 @@ export function createSupabaseBotPromptConfigRepo(
   options?: {
     fallbackRepo?: BotPromptConfigRepo;
     fetchImpl?: FetchLike;
+    onDiagnostic?: DiagnosticReporter;
   },
 ): BotPromptConfigRepo {
   const fetchImpl = options?.fetchImpl ?? fetch;
   const fallbackRepo =
     options?.fallbackRepo ?? createInMemoryBotPromptConfigRepo();
+  const onDiagnostic = options?.onDiagnostic;
 
   return {
     async getActiveConfig(botId: string, surface: string) {
+      const result = await this.getActiveConfigResult(botId, surface);
+
+      return result.config;
+    },
+    async getActiveConfigResult(botId: string, surface: string) {
       try {
         const rows = await selectSupabaseRows({ botId, env, fetchImpl });
         const config = selectConfig(rows.map(mapRow), botId, surface);
+        const source =
+          config?.surface.toLowerCase() === surface.toLowerCase()
+            ? "supabase_exact"
+            : config?.surface.toLowerCase() === "global"
+              ? "supabase_global_fallback"
+              : null;
 
-        return config ?? fallbackRepo.getActiveConfig(botId, surface);
-      } catch {
-        return fallbackRepo.getActiveConfig(botId, surface);
+        if (config && source) {
+          const diagnostic = buildDiagnostic({
+            botId,
+            config,
+            requestedSurface: surface,
+            source,
+          });
+          reportDiagnostic(onDiagnostic, diagnostic);
+
+          return { config, diagnostic };
+        }
+
+        const fallback = await fallbackRepo.getActiveConfigResult(botId, surface);
+        const diagnostic = buildDiagnostic({
+          botId,
+          config: fallback.config,
+          errorMessage: "no active Supabase prompt config matched",
+          requestedSurface: surface,
+          source: "code_fallback",
+        });
+        reportDiagnostic(onDiagnostic, diagnostic);
+
+        return { config: fallback.config, diagnostic };
+      } catch (error) {
+        const fallback = await fallbackRepo.getActiveConfigResult(botId, surface);
+        const supabaseError = classifySupabaseConfigError(error);
+        const diagnostic = buildDiagnostic({
+          botId,
+          config: fallback.config,
+          errorCode: supabaseError.errorCode,
+          errorMessage: supabaseError.errorMessage,
+          requestedSurface: surface,
+          source: supabaseError.source,
+        });
+        reportDiagnostic(onDiagnostic, diagnostic);
+
+        return { config: fallback.config, diagnostic };
       }
     },
+  };
+}
+
+function classifySupabaseConfigError(error: unknown): {
+  errorCode?: string;
+  errorMessage: string;
+  source: Extract<BotPromptConfigSource, "missing_table" | "error">;
+} {
+  const message = error instanceof Error ? error.message : String(error);
+  const errorCode = message.match(/\bPGRST\d+\b/)?.[0];
+
+  if (
+    errorCode === "PGRST205" ||
+    /academy_bot_prompt_configs table|could not find the table/i.test(message)
+  ) {
+    return {
+      errorCode,
+      errorMessage: "Supabase academy_bot_prompt_configs table is unavailable",
+      source: "missing_table",
+    };
+  }
+
+  return {
+    errorCode,
+    errorMessage: "Supabase academy_bot_prompt_configs select failed",
+    source: "error",
   };
 }
 
@@ -173,10 +321,13 @@ export function createBotPromptConfigRepo(
   env: AppEnv,
   options?: {
     fetchImpl?: FetchLike;
+    onDiagnostic?: DiagnosticReporter;
   },
 ): BotPromptConfigRepo {
   if (!hasSupabaseEnv(env)) {
-    return createInMemoryBotPromptConfigRepo();
+    return createInMemoryBotPromptConfigRepo(undefined, {
+      onDiagnostic: options?.onDiagnostic,
+    });
   }
 
   return createSupabaseBotPromptConfigRepo(env, options);

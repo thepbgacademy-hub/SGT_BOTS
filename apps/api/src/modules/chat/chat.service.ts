@@ -213,6 +213,17 @@ export function createChatService(deps?: {
       async getActiveConfig() {
         return null;
       },
+      async getActiveConfigResult(botId: string, surface: string) {
+        return {
+          config: null,
+          diagnostic: {
+            botId,
+            errorMessage: "No bot prompt config repo was provided",
+            source: "code_fallback",
+            surface,
+          },
+        };
+      },
     } satisfies BotPromptConfigRepo);
   const roriDirectoryRepo =
     deps?.roriDirectoryRepo ?? createFallbackRoriDirectoryRepo();

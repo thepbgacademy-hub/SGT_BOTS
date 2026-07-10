@@ -22,7 +22,7 @@ Out of scope for this roadmap:
   - [x] Ticket 0.2 - Freeze the acceptance prompt set
 - [ ] Phase 1 - Persona config table and observable config loading
   - [x] Ticket 1.1 - Verify/create migration path for `academy_bot_prompt_configs`
-  - [ ] Ticket 1.2 - Make config loading observable
+  - [x] Ticket 1.2 - Make config loading observable
   - [ ] Ticket 1.3 - Define persona records for persona bots only
 - [ ] Phase 2 - Rori retrieval and decision-layer hardening
 - [ ] Phase 3 - Rori grounded persona composer
@@ -144,6 +144,9 @@ Deliverables:
 
 Done when:
 - We can tell from logs/tests which config source produced a reply.
+
+Status:
+- Completed 2026-07-10. `apps/api/src/modules/bots/bot-prompt-config.repo.ts` now returns redacted prompt-config diagnostics for Supabase exact match, Supabase global fallback, code fallback, missing table, and generic error states while preserving the existing plain-config caller API. `apps/api/src/app.ts` logs those diagnostics through the app logger, and `apps/api/tests/bots/bot-prompt-config.repo.spec.ts` covers the observable states. No model composition or production apply was performed.
 
 ### Ticket 1.3 - Define persona records for persona bots only
 
@@ -579,6 +582,7 @@ Use this section as the running build ledger. Add one dated line per completed t
 - 2026-07-10: Completed Phase 0 Ticket 0.1. Canonical repo source line is `origin/codex/rori-academy-concierge`; `3bf7c8e15b5ec77ee2337a88e09b8980625bfac6` is the verified pre-ticket baseline commit used for the canonical-source review. The live runtime image is not proven to be built from that baseline or any later commit until source-revision build metadata exists.
 - 2026-07-10: Completed Phase 0 Ticket 0.2. The repo-owned acceptance prompt suite is now recorded at `docs/superpowers/plans/2026-07-10-telegram-bot-persona-acceptance-prompts.md`, scoped to Rori, Top Secret, Insight, Cursive, ShAzZaM!, and display-only Condor. No runtime behavior, schema, or production state changed in this ticket.
 - 2026-07-10: Completed Phase 1 Ticket 1.1. The prompt-config migration path is explicit for `public.academy_bot_prompt_configs`, the schema test locks the loader columns and one-active-per-bot/surface partial unique index, and no production apply was performed.
+- 2026-07-10: Completed Phase 1 Ticket 1.2. Prompt-config selection is observable through redacted diagnostics and app logging for exact DB match, global DB fallback, code fallback, missing table, and generic error states; no model composition or production apply was performed.
 
 ---
 
