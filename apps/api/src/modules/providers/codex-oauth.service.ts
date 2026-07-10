@@ -110,7 +110,10 @@ export async function exchangeCodexDeviceCode(input: {
   }
 
   if (!pollResponse.ok) {
-    throw new Error("OpenAI Codex device login polling failed");
+    const failureBody = await pollResponse.text();
+    throw new Error(
+      `OpenAI Codex device login polling failed: ${pollResponse.status} ${summarizeProviderFailureBody(failureBody)}`,
+    );
   }
 
   const pollBody = (await pollResponse.json()) as Record<string, unknown>;
@@ -132,7 +135,7 @@ export async function exchangeCodexDeviceCode(input: {
     };
   }
 
-  const tokenResponse = await fetchImpl(CODEX_TOKEN_URL, {
+  const tokenRequestInit = {
     body: new URLSearchParams({
       client_id: CODEX_CLIENT_ID,
       code: authorizationCode,
@@ -142,10 +145,23 @@ export async function exchangeCodexDeviceCode(input: {
     }),
     headers: { "content-type": "application/x-www-form-urlencoded" },
     method: "POST",
-  });
+  } as const;
+  let tokenResponse = await fetchImpl(CODEX_TOKEN_URL, tokenRequestInit);
+
+  if (
+    (tokenResponse.status === 429 ||
+      (tokenResponse.status >= 500 && tokenResponse.status <= 599)) &&
+    !tokenResponse.ok
+  ) {
+    await sleep(1500);
+    tokenResponse = await fetchImpl(CODEX_TOKEN_URL, tokenRequestInit);
+  }
 
   if (!tokenResponse.ok) {
-    throw new Error("OpenAI Codex token exchange failed");
+    const failureBody = await tokenResponse.text();
+    throw new Error(
+      `OpenAI Codex token exchange failed: ${tokenResponse.status} ${summarizeProviderFailureBody(failureBody)}`,
+    );
   }
 
   const tokenBody = (await tokenResponse.json()) as Record<string, unknown>;
@@ -366,6 +382,10 @@ function summarizeProviderFailureBody(body: string) {
     .trim();
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function buildCodexHeaders(accessToken: string) {
   const headers: Record<string, string> = {
     originator: "codex_cli_rs",
@@ -419,7 +439,10 @@ async function refreshCodexCredential(input: {
   });
 
   if (!response.ok) {
-    throw new Error("OpenAI Codex token refresh failed");
+    const failureBody = await response.text();
+    throw new Error(
+      `OpenAI Codex token refresh failed: ${response.status} ${summarizeProviderFailureBody(failureBody)}`,
+    );
   }
 
   const payload = (await response.json()) as Record<string, unknown>;

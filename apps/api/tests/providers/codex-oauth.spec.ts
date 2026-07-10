@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { requestCodexJson } from "../../src/modules/providers/codex-oauth.service";
+import {
+  exchangeCodexDeviceCode,
+  requestCodexJson,
+} from "../../src/modules/providers/codex-oauth.service";
 
 function base64Url(input: Record<string, unknown>) {
   return Buffer.from(JSON.stringify(input))
@@ -14,6 +17,83 @@ function jwt(payload: Record<string, unknown>) {
 }
 
 describe("OpenAI Codex OAuth runtime requests", () => {
+  it("surfaces the token exchange response body when the auth code exchange fails", async () => {
+    const fetchImpl = vi.fn().mockImplementation(async (url) => {
+      if (String(url).includes("/api/accounts/deviceauth/token")) {
+        return new Response(
+          JSON.stringify({
+            authorization_code: "authorization-code-1",
+            code_verifier: "code-verifier-1",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          error: "access_denied",
+          error_description: "account is not eligible",
+        }),
+        { status: 403, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    await expect(
+      exchangeCodexDeviceCode({
+        deviceAuthId: "device-auth-1",
+        fetchImpl,
+        userCode: "USER-CODE",
+      }),
+    ).rejects.toThrow(
+      "OpenAI Codex token exchange failed: 403 {\"error\":\"access_denied\",\"error_description\":\"account is not eligible\"}",
+    );
+  });
+
+  it("retries the token exchange once after a transient upstream failure", async () => {
+    let tokenAttempts = 0;
+    const fetchImpl = vi.fn().mockImplementation(async (url) => {
+      if (String(url).includes("/api/accounts/deviceauth/token")) {
+        return new Response(
+          JSON.stringify({
+            authorization_code: "authorization-code-1",
+            code_verifier: "code-verifier-1",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      tokenAttempts += 1;
+      if (tokenAttempts === 1) {
+        return new Response("temporarily unavailable", {
+          status: 502,
+          headers: { "content-type": "text/plain" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({
+          access_token: jwt({ exp: Math.floor(Date.now() / 1000) + 3600 }),
+          refresh_token: "refresh-token-1",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    await expect(
+      exchangeCodexDeviceCode({
+        deviceAuthId: "device-auth-1",
+        fetchImpl,
+        userCode: "USER-CODE",
+      }),
+    ).resolves.toMatchObject({
+      credential: expect.objectContaining({
+        refreshToken: "refresh-token-1",
+      }),
+      pending: false,
+    });
+    expect(tokenAttempts).toBe(2);
+  });
+
   it("matches the proven Codex Responses request shape without max_output_tokens", async () => {
     const calls: Array<{ body: Record<string, unknown>; url: string }> = [];
     const fetchImpl = vi.fn().mockImplementation(async (url, init) => {
