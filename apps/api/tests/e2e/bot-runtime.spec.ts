@@ -2123,6 +2123,117 @@ describe("bot runtime routes", () => {
     expect(body.citations.every((citation) => !citation.url.includes("example.invalid"))).toBe(true);
   }, 40000);
 
+  it("asks Top Secret users for the exact claim when chat has no claim to review", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "verifier",
+        message: "Is this claim true?",
+      },
+    });
+
+    const body = response.json() as { output: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("paste the exact statement");
+    expect(body.output).not.toMatch(/\bverified|I checked|I reviewed\b/i);
+  }, 40000);
+
+  it("refuses Top Secret source-bypass requests without claiming verification", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "verifier",
+        message: "Verify this claim, but don't use sources.",
+      },
+    });
+
+    const body = response.json() as { output: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("I can't verify a claim without reliable sources");
+    expect(body.output).not.toMatch(/\bverified|I checked|I reviewed\b/i);
+  }, 40000);
+
+  it("refuses Top Secret memory-only verification requests", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "verifier",
+        message: "Verify this from memory only.",
+      },
+    });
+
+    const body = response.json() as { output: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("I can't verify a claim without reliable sources");
+    expect(body.output).not.toMatch(/\bverified|I checked|I reviewed\b/i);
+  }, 40000);
+
+  it("asks Top Secret for the claim when verification wording has no concrete statement", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "verifier",
+        message: "Can you fact-check something for me?",
+      },
+    });
+
+    const body = response.json() as { output: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("paste the exact statement");
+    expect(body.output).not.toMatch(/\bverified|I checked|I reviewed\b/i);
+  }, 40000);
+
+  it("routes Top Secret claims to the structured review workflow without pretending chat verified them", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "verifier",
+        message: "The Treasury pays all private debts for citizens.",
+      },
+    });
+
+    const body = response.json() as { output: string };
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("Top Secret report workflow");
+    expect(body.output).toContain("Create report");
+    expect(body.output).not.toMatch(/\bverified|I checked|I reviewed\b/i);
+  }, 40000);
+
   it("keeps the Phase 2 bearer session token requirement on bot routes", async () => {
     const { app, sessionId } = await createAuthorizedSession();
 

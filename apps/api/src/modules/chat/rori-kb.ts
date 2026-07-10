@@ -12,6 +12,10 @@ import {
   type RoriResponseDecision,
 } from "./rori-decision";
 import {
+  buildRoriComposerInput,
+  validateRoriComposerOutput,
+} from "./rori-composer";
+import {
   FALLBACK_RORI_WIKI_PAGES,
   findRoriWikiSearchResult,
   RORI_WIKI_SOURCE_TITLE,
@@ -35,6 +39,10 @@ type RoriSource = {
 
 type RoriReply = {
   boundaryType?: "jailbreak_attempt" | "off_topic";
+  composer?: {
+    sourceIds: string[];
+    usedFallback: boolean;
+  };
   output: string;
   citations: RoriCitation[];
 };
@@ -54,7 +62,10 @@ type RoriConversationIntent =
 
 export type RoriConversationContext = {
   lastIntent: RoriConversationIntent | null;
+  lastOutcome?: RoriResponseDecision["reason"] | null;
+  lastSourceIds?: string[];
   lastUserMessage: string | null;
+  unresolvedClarification?: boolean;
 };
 
 export type RoriPromptConfig = BotPromptConfig;
@@ -65,6 +76,22 @@ const ACADEMY_SOURCE: RoriSource = {
   url: "sgt-bots://docs/rori-academy-concierge-source-pack#academy",
   summary:
     "Rori answers PBG Academy enrollment, workshop, event, Telegram room, and general navigation questions. If a live link is not available in the playground, Rori should say so plainly instead of guessing.",
+};
+
+const DEFAULT_RORI_PROMPT_CONFIG: RoriPromptConfig = {
+  active: true,
+  botId: "concierge_general_academy_KB",
+  escalationPolicy:
+    "Route account-specific or student-only requests to staff instead of improvising.",
+  fallbackPolicy:
+    "Ask a focused follow-up when approved Academy sources do not answer the question.",
+  guardrails: ["Use only approved Academy and Playground sources."],
+  offTopicPolicy:
+    "Stay focused on PBG Academy, the Playground tools, enrollment, workshops, and support rooms.",
+  personaPrompt: "Be Rori, a warm scholarly guide for the Academy.",
+  surface: "playground",
+  toneRules: ["Answer first.", "Use plain language."],
+  version: "rori-runtime-fallback",
 };
 
 const TOOL_ROUTING_SOURCE: RoriSource = {
@@ -86,6 +113,10 @@ const wikiCitation = (page: RoriWikiPage): RoriCitation => ({
   title: page.title,
   url: page.sourceUrl ?? `sgt-bots://wiki/rori/${page.slug}`,
 });
+
+function citationSourceIds(citations: RoriCitation[]) {
+  return new Set(citations.map((citation) => citation.url));
+}
 
 function findWikiPageBySlug(slug: string, pages: RoriWikiPage[]) {
   return pages.find((page) => page.slug === slug && page.status === "published");
@@ -288,6 +319,16 @@ function buildAfterEnrollmentReply(): RoriReply {
     output:
       "After you enroll, I'll help you with the next practical steps and make sure you know where to go from there. In the playground I keep that part high level, so I won't expose student-only access details here, but I can still explain what to expect and who to contact if you need help.",
     citations: [sourceCitation(ACADEMY_SOURCE)],
+  };
+}
+
+function buildSimplifiedProgramsFollowUpReply(
+  page: RoriWikiPage | undefined,
+): RoriReply {
+  return {
+    output:
+      "In simpler words, Missions are the Academy's courses. They give Cadets a structured way to study a topic, work through the material, and check their understanding as they go.",
+    citations: page ? [wikiCitation(page)] : [sourceCitation(ACADEMY_SOURCE)],
   };
 }
 
@@ -495,26 +536,11 @@ function classifyRoriIntent(content: string): RoriConversationIntent | null {
 function buildRoriConversationContext(
   priorUserMessages: string[],
 ): RoriConversationContext {
-  for (let index = priorUserMessages.length - 1; index >= 0; index -= 1) {
-    const lastUserMessage = priorUserMessages[index] ?? null;
-
-    if (!lastUserMessage) {
-      continue;
-    }
-
-    const lastIntent = classifyRoriIntent(lastUserMessage);
-
-    if (lastIntent) {
-      return {
-        lastIntent,
-        lastUserMessage,
-      };
-    }
-  }
+  const lastUserMessage = priorUserMessages.at(-1) ?? null;
 
   return {
-    lastIntent: null,
-    lastUserMessage: priorUserMessages.at(-1) ?? null,
+    lastIntent: lastUserMessage ? classifyRoriIntent(lastUserMessage) : null,
+    lastUserMessage,
   };
 }
 
@@ -548,6 +574,15 @@ function resolveFollowUpContent(
     if (/\b(general|academy help|pricing|enrollment|missions?|first step|support)\b/i.test(normalizedContent)) {
       return "Which Telegram room is for general Academy help?";
     }
+  }
+
+  if (
+    context.lastIntent === "programs" &&
+    /\b(say that in simpler words|simpler words|simplify|make that simpler|plain language)\b/i.test(
+      normalizedContent,
+    )
+  ) {
+    return "Explain Missions in simpler words.";
   }
 
   return content;
@@ -681,13 +716,57 @@ export function buildGroundedRoriReply(
   const wikiSearchResult =
     grounding.wikiSearchResult ??
     findRoriWikiSearchResult(resolvedContent, wikiPages);
-  const respond = (reply: RoriReply) => finalizeRoriReply(reply, promptConfig);
+  const respond = (reply: RoriReply) =>
+    finalizeRoriReply(
+      {
+        ...reply,
+        composer: buildComposerMetadata(reply),
+      },
+      promptConfig,
+    );
   const decision = decideRoriResponse({
     content: resolvedContent,
     conversationContext: grounding.conversationContext,
     normalizedContent,
     wikiSearchResult,
   });
+  const composerInput =
+    wikiSearchResult.matches.length > 0
+      ? buildRoriComposerInput({
+          content: resolvedContent,
+          conversationContext: grounding.conversationContext,
+          decision,
+          promptConfig: promptConfig ?? DEFAULT_RORI_PROMPT_CONFIG,
+          wikiSearchResult,
+        })
+      : null;
+  const buildComposerMetadata = (reply: RoriReply) => {
+    if (!composerInput || reply.boundaryType) {
+      return undefined;
+    }
+
+    const replySourceIds = citationSourceIds(reply.citations);
+    const supportedSourceIds = composerInput.sourceIds.filter((sourceId) =>
+      replySourceIds.has(sourceId),
+    );
+
+    if (supportedSourceIds.length === 0) {
+      return undefined;
+    }
+
+    const validated = validateRoriComposerOutput(
+      {
+        output: reply.output,
+        sourceIds: supportedSourceIds,
+      },
+      composerInput.sourceIds,
+    );
+
+    return {
+      sourceIds: validated.sourceIds,
+      usedFallback: true,
+    };
+  };
 
   if (isJailbreakAttempt(normalizedContent)) {
     return buildJailbreakReply();
@@ -848,6 +927,10 @@ export function buildGroundedRoriReply(
       findWikiPageByKeyword(/\b(programs?|curriculum|missions?|courses?|study|learn)\b/i, wikiPages);
 
     if (programsPage) {
+      if (/\bsimpler words|plain language|simpler\b/i.test(normalizedContent)) {
+        return respond(buildSimplifiedProgramsFollowUpReply(programsPage));
+      }
+
       return respond(buildProgramsReply(programsPage));
     }
   }

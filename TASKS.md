@@ -2,7 +2,7 @@
 
 ## Active
 
-- [ ] **Execute persona/runtime roadmap** - work through `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` in order; next ticket is Phase 3 Ticket 3.1 to build the grounded Rori response input contract without freeform provider/model generation
+- [ ] **Execute persona/runtime roadmap** - work through `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` in order; next ticket is Phase 4 Ticket 4.2 to add Top Secret persona config usage for chat-facing clarification/refusal/grounded-tone behavior
 - [ ] **Load approved Rori wiki data** - wait for Academy-approved wiki pages from `E:\REPOS\wiki-architect`, generate reviewed Rori upsert SQL, apply after migrations `008` and `009`, then smoke test Rori in Telegram
 - [ ] **Prepare remaining bot workflow layers** - continue non-Cursive bot polish after Rori wiki data is ready
 
@@ -16,6 +16,7 @@
 
 ## Done
 
+- [x] ~~Complete Rori grounded composer contract, bounded validation, follow-up memory, and Top Secret chat-mode separation~~ (2026-07-10)
 - [x] ~~Repair persistent Top Secret Codex report-generation failure diagnostics and fallback handling~~ (2026-05-28)
 - [x] ~~Fix OpenAI Codex subscription runtime calls for Top Secret report generation~~ (2026-05-28)
 - [x] ~~Polish Rori mini app chat workspace and preserve provider login fix~~ (2026-05-26)

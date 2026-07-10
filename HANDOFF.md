@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Use `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` as the active execution map for persona/runtime work. Continue with Phase 3 Ticket 3.1: build the grounded Rori response input contract. Keep this ticket scoped to the typed contract and validator first; do not add freeform provider/model response generation yet.
+Use `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` as the active execution map for persona/runtime work. Continue with Phase 4 Ticket 4.2: add Top Secret persona config usage for chat-facing explanation steps. Keep the work scoped to the `verifier` persona runtime path and tests for refusal, clarification, and grounded conclusion tone; do not change Top Secret PDF layout or Cursive workflow behavior.
 
 ## Build Doc Sources
 
@@ -23,4 +23,4 @@ Use `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` 
 
 ## Last Completed Step
 
-Completed Phase 2 Ticket 2.3 in `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md`. Focused Rori rule-path tests now pin deterministic handling for billing/support escalation, enrollment-contact routing, unconfigured Telegram room links, no live workshop/event records, and fixed jailbreak/off-topic boundaries. `apps/api/tests/chat/rori-decision.spec.ts` also locks branch priority so billing/payment issues win over generic Telegram room routing, and `apps/api/src/modules/chat/rori-decision.ts` recognizes plural billing/payment issue phrasing. Verified with `corepack pnpm exec vitest run tests/chat/rori-decision.spec.ts tests/chat/rori-kb.spec.ts tests/e2e/bot-runtime.spec.ts` and `corepack pnpm --filter @sgt-bots/api lint`. No provider/model composition or production apply was performed.
+Completed Phase 3 Tickets 3.1, 3.2, and 3.3 plus Phase 4 Ticket 4.1 in `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md`. Rori now has a strict grounded composer contract, provider-stub validation that rejects malformed output or unsupported source IDs, deterministic fallback, and short-lived follow-up memory for simpler Missions explanations and room-topic routing. Top Secret ordinary chat now asks for the exact claim, refuses source-bypass requests, and routes concrete claims to the report workflow without saying verification happened in chat. Verified with `corepack pnpm exec vitest run tests/chat/rori-composer.spec.ts tests/chat/rori-kb.spec.ts tests/e2e/bot-runtime.spec.ts` and `corepack pnpm --filter @sgt-bots/api lint`. No production apply was performed.

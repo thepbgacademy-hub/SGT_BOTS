@@ -168,15 +168,53 @@ function buildVerifierReply(
   requireSourceBinding(manifest, "knowledge_base");
   requireToolPermission(manifest, "knowledge_base_search");
 
+  const citations: ChatCitation[] = [
+    {
+      sourceId: "knowledge_base",
+      title: "Top Secret Report Workflow",
+      url: "sgt-bots://docs/top-secret/research-briefing-index",
+    },
+  ];
+  const normalizedContent = content.toLowerCase();
+  const sourceBypassPattern =
+    /\b(without|no|don't|do not|ignore)\b.{0,32}\b(sources?|evidence|citations?|research|references?|lookup|look up|looking up)\b|\bfrom memory only\b|\bjust use (your )?(memory|training)\b/i;
+  const verificationIntentPattern =
+    /\b(fact[- ]?check|verify|check|true or false|is this true|is that true|is it true|claim)\b/i;
+  const claimPlaceholderPattern =
+    /\b(this|that|it|claim|something)\b/i;
+  const concreteClaimRemainder = content
+    .replace(
+      /\b(is|this|that|it|claim|something|true|false|verify|fact[- ]?check|check|please|can|you|tell|me|if|whether|for|from|memory|only)\b/giu,
+      "",
+    )
+    .replace(/[?.!,;:'"()]/gu, "")
+    .trim();
+  const hasConcreteClaim = /[A-Za-z0-9]{18,}/u.test(concreteClaimRemainder);
+
+  if (sourceBypassPattern.test(normalizedContent)) {
+    return {
+      output:
+        "I can't verify a claim without reliable sources. Top Secret is built to compare the pasted message against trusted references, so use the report workflow when you want the actual source-backed check.",
+      citations,
+    };
+  }
+
+  if (
+    verificationIntentPattern.test(normalizedContent) &&
+    (claimPlaceholderPattern.test(normalizedContent) || !hasConcreteClaim) &&
+    !hasConcreteClaim
+  ) {
+    return {
+      output:
+        "Please paste the exact statement or how-to message you want checked. Top Secret needs the actual wording before it can build a source-backed report.",
+      citations,
+    };
+  }
+
   return {
-    output: `I verified "${content}" against the strongest grounded reference I could reach inside the approved source lane.`,
-    citations: [
-      {
-        sourceId: "knowledge_base",
-        title: "Verification Control Checklist",
-        url: "sgt-bots://docs/top-secret/research-briefing-index",
-      },
-    ],
+    output:
+      "Use the Top Secret report workflow for this claim, then choose Create report. That path runs the source-backed review and gives you the PDF when the report is ready.",
+    citations,
   };
 }
 

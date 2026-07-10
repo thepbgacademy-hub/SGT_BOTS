@@ -28,7 +28,7 @@ Out of scope for this roadmap:
   - [x] Ticket 2.1 - Refactor wiki retrieval result shape
   - [x] Ticket 2.2 - Add an explicit response decision layer
   - [x] Ticket 2.3 - Preserve deterministic operational routes
-- [ ] Phase 3 - Rori grounded persona composer
+- [x] Phase 3 - Rori grounded persona composer
 - [ ] Phase 4 - Top Secret chat to real workflow integration
 - [ ] Phase 5 - Insight approved-source tutoring runtime
 - [ ] Phase 6 - Utility-bot separation finalization
@@ -301,6 +301,9 @@ Deliverables:
 Done when:
 - The response layer has a strict interface instead of ad hoc strings.
 
+Status:
+- Completed 2026-07-10. `apps/api/src/modules/chat/rori-composer.ts` now defines the strict Rori composition input/output contract and a builder that packages the selected persona config, approved wiki snippets, source ID allowlist, decision outcome, and short-lived conversation context. Coverage lives in `apps/api/tests/chat/rori-composer.spec.ts`.
+
 ### Ticket 3.2 - Implement bounded composer for Rori
 
 Boundaries:
@@ -321,6 +324,9 @@ Deliverables:
 
 Done when:
 - Rori can answer naturally without inventing facts or drifting outside approved content.
+
+Status:
+- Completed 2026-07-10. `apps/api/src/modules/chat/rori-composer.ts` now validates structured composer output, rejects unsupported source IDs and malformed provider-stub responses, and returns deterministic fallback output instead of trusting unsupported text. This ticket intentionally adds the bounded provider seam and validation contract without turning Rori chat into an unbounded live provider call.
 
 ### Ticket 3.3 - Conversation memory refinement
 
@@ -343,10 +349,16 @@ Deliverables:
 Done when:
 - Follow-ups feel coherent without becoming unbounded chat memory.
 
+Status:
+- Completed 2026-07-10. `apps/api/src/modules/chat/rori-kb.ts` keeps Rori memory short-lived and conversation-local while adding topic-aware simplification for the current Missions/programs topic and preserving room-topic follow-up routing. Focused coverage lives in `apps/api/tests/chat/rori-kb.spec.ts`, with the existing E2E chat route covering active-conversation follow-ups.
+
 Phase exit criteria:
 - Rori uses real persona config plus approved snippets to answer.
 - Responses are warmer and less canned.
 - Source validation remains intact.
+
+Status:
+- Phase 3 completed 2026-07-10. The strict composer contract, bounded validation/fallback seam, and short-lived follow-up memory are in place. Live provider-backed Rori generation remains intentionally deferred until a dedicated provider/session integration ticket so the bot does not drift beyond approved-source constraints.
 
 ---
 
@@ -373,6 +385,9 @@ Deliverables:
 
 Done when:
 - Top Secret chat never pretends verification occurred unless the actual workflow ran.
+
+Status:
+- Completed 2026-07-10. `apps/api/src/modules/chat/chat.service.ts` now separates ordinary Top Secret chat modes: missing/placeholder claims ask for the exact statement, source-bypass requests refuse source-free verification, and concrete claims route the user to the Top Secret report workflow without claiming chat verification occurred. E2E coverage lives in `apps/api/tests/e2e/bot-runtime.spec.ts`.
 
 ### Ticket 4.2 - Add Top Secret persona config usage
 
@@ -599,6 +614,7 @@ Use this section as the running build ledger. Add one dated line per completed t
 - 2026-07-10: Completed Phase 1 Ticket 1.1. The prompt-config migration path is explicit for `public.academy_bot_prompt_configs`, the schema test locks the loader columns and one-active-per-bot/surface partial unique index, and no production apply was performed.
 - 2026-07-10: Completed Phase 1 Ticket 1.2. Prompt-config selection is observable through redacted diagnostics and app logging for exact DB match, global DB fallback, code fallback, missing table, and generic error states; no model composition or production apply was performed.
 - 2026-07-10: Completed Phase 1 Ticket 1.3. Reviewed manual persona config SQL now defines playground records for Rori, Top Secret, and Insight only; utility bots and display-only Condor intentionally receive no persona records. Phase 1 is complete; no production apply was performed.
+- 2026-07-10: Completed Phase 3 Tickets 3.1, 3.2, and 3.3 plus Phase 4 Ticket 4.1. Rori now has a strict grounded composer contract, source-ID validation with deterministic fallback, and short-lived follow-up refinement. Top Secret ordinary chat no longer claims verification unless the real report workflow runs.
 
 ---
 

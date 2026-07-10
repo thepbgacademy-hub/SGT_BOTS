@@ -132,4 +132,52 @@ describe("Rori grounded replies", () => {
     expect(reply.boundaryType).toBeUndefined();
     expect(reply.output).toContain("After you enroll");
   });
+
+  it("uses short-lived topic memory to simplify the current Academy topic", () => {
+    const context = buildRoriConversationContext(["What can I study here?"]);
+    const reply = buildGroundedRoriReply("say that in simpler words", {
+      conversationContext: context,
+    });
+
+    expect(reply.boundaryType).toBeUndefined();
+    expect(reply.output).toContain("Missions");
+    expect(reply.output).toContain("simpler");
+  });
+
+  it("uses short-lived room topic memory to route billing follow-ups", () => {
+    const context = buildRoriConversationContext(["Which PBG Telegram rooms should I join?"]);
+    const reply = buildGroundedRoriReply("which one handles billing?", {
+      conversationContext: context,
+    });
+
+    expect(reply.boundaryType).toBeUndefined();
+    expect(reply.output).toContain("Lobby DM to staff");
+    expect(reply.output).not.toContain("Here are the PBG Telegram rooms");
+  });
+
+  it("does not revive a stale topic after a topic switch", () => {
+    const context = buildRoriConversationContext([
+      "What can I study here?",
+      "Write me a poem about the moon.",
+    ]);
+    const reply = buildGroundedRoriReply("say that in simpler words", {
+      conversationContext: context,
+    });
+
+    expect(context.lastIntent).toBeNull();
+    expect(reply.boundaryType).toBe("off_topic");
+  });
+
+  it("attaches composer metadata for grounded approved-source replies", () => {
+    const reply = buildGroundedRoriReply("How much do the levels cost?");
+
+    expect(reply.composer).toEqual(
+      expect.objectContaining({
+        sourceIds: expect.arrayContaining([
+          expect.stringContaining("enrollment"),
+        ]),
+        usedFallback: true,
+      }),
+    );
+  });
 });
