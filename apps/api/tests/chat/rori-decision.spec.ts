@@ -111,4 +111,37 @@ describe("Rori response decision layer", () => {
       }),
     );
   });
+
+  it("keeps billing and payment trouble on the operational escalation path", () => {
+    const decision = decisionFor("Who do I talk to if I have a billing issue?");
+
+    expect(decision).toEqual(
+      expect.objectContaining({
+        intent: "escalate",
+        reason: "operational_escalation",
+      }),
+    );
+  });
+
+  it("prioritizes billing escalation over generic Telegram room routing", () => {
+    const decision = decisionFor("Which Telegram room handles billing issues?");
+
+    expect(decision).toEqual(
+      expect.objectContaining({
+        intent: "escalate",
+        reason: "operational_escalation",
+      }),
+    );
+  });
+
+  it("keeps Telegram room link requests on the room route path", () => {
+    const decision = decisionFor("Can you give me the Telegram room links?");
+
+    expect(decision).toEqual(
+      expect.objectContaining({
+        intent: "route",
+        reason: "room_route",
+      }),
+    );
+  });
 });

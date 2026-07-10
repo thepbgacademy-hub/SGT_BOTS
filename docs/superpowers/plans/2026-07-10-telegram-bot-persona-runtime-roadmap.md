@@ -24,9 +24,10 @@ Out of scope for this roadmap:
   - [x] Ticket 1.1 - Verify/create migration path for `academy_bot_prompt_configs`
   - [x] Ticket 1.2 - Make config loading observable
   - [x] Ticket 1.3 - Define persona records for persona bots only
-- [ ] Phase 2 - Rori retrieval and decision-layer hardening
+- [x] Phase 2 - Rori retrieval and decision-layer hardening
   - [x] Ticket 2.1 - Refactor wiki retrieval result shape
   - [x] Ticket 2.2 - Add an explicit response decision layer
+  - [x] Ticket 2.3 - Preserve deterministic operational routes
 - [ ] Phase 3 - Rori grounded persona composer
 - [ ] Phase 4 - Top Secret chat to real workflow integration
 - [ ] Phase 5 - Insight approved-source tutoring runtime
@@ -264,6 +265,9 @@ Deliverables:
 
 Done when:
 - Warmth improves without losing operational reliability.
+
+Status:
+- Completed 2026-07-10. Focused Rori rule-path tests now pin deterministic handling for billing/support escalation, enrollment-contact routing, unconfigured Telegram room links, no live workshop/event records, and fixed jailbreak/off-topic boundaries. `apps/api/tests/chat/rori-decision.spec.ts` also locks branch priority so billing/payment issues win over generic Telegram room routing, and `apps/api/src/modules/chat/rori-decision.ts` now recognizes plural billing/payment issue phrasing. Verified with `corepack pnpm exec vitest run tests/chat/rori-decision.spec.ts tests/chat/rori-kb.spec.ts tests/e2e/bot-runtime.spec.ts` and `corepack pnpm --filter @sgt-bots/api lint`.
 
 Phase exit criteria:
 - Rori no longer treats vague in-scope prompts as generic off-topic.

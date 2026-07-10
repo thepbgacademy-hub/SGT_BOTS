@@ -45,7 +45,9 @@ describe("Rori grounded replies", () => {
     const reply = buildGroundedRoriReply("Explain photosynthesis.");
 
     expect(reply.boundaryType).toBe("off_topic");
-    expect(reply.output).toContain("I can only help with PBG Academy");
+    expect(reply.output).toBe(
+      "I can only help with PBG Academy, the Playground tools, enrollment, workshops, and support rooms.",
+    );
   });
 
   it("keeps jailbreak attempts at the fixed boundary", () => {
@@ -57,6 +59,54 @@ describe("Rori grounded replies", () => {
     expect(reply.output).toBe(
       "I can't help with bypassing my instructions or stepping outside my approved Academy role.",
     );
+  });
+
+  it("routes billing issues to the staff room without claiming staff was notified", () => {
+    const reply = buildGroundedRoriReply("Who do I talk to if I have a billing issue?");
+
+    expect(reply.boundaryType).toBeUndefined();
+    expect(reply.output).toContain("Lobby DM to staff");
+    expect(reply.output).toContain("payment problems");
+    expect(reply.output).toContain("I can't open the live invite");
+    expect(reply.output).not.toMatch(/\b(notified|submitted|opened a ticket|sent this to staff)\b/i);
+  });
+
+  it("routes enrollment contact questions to staff room guidance", () => {
+    const reply = buildGroundedRoriReply("Who do I talk to about enrolling for classes?");
+
+    expect(reply.boundaryType).toBeUndefined();
+    expect(reply.output).toContain("For enrollment help");
+    expect(reply.output).toContain("Lobby DM to staff");
+    expect(reply.output).toContain("ask an admin");
+  });
+
+  it("states when Telegram room links are not configured instead of inventing one", () => {
+    const reply = buildGroundedRoriReply("Can you give me the Telegram room links?");
+
+    expect(reply.boundaryType).toBeUndefined();
+    expect(reply.output).toContain("Rori DM");
+    expect(reply.output).toContain("General Academy questions");
+    expect(reply.output).toContain("Lobby DM to staff");
+    expect(reply.output).toContain("Human review for payment problems");
+    expect(reply.output).toContain("I can't open the live invite");
+    expect(reply.output).not.toMatch(/https?:\/\//i);
+  });
+
+  it("states when no live workshop or event list is available", () => {
+    const reply = buildGroundedRoriReply("Where do I register for the next workshop?");
+
+    expect(reply.boundaryType).toBeUndefined();
+    expect(reply.output).toContain("I don't have a live workshop or event list");
+    expect(reply.output).toContain("current schedule");
+    expect(reply.output).not.toMatch(/https?:\/\//i);
+  });
+
+  it("uses the same no-events fallback for broad workshop questions", () => {
+    const reply = buildGroundedRoriReply("What workshops are coming up?");
+
+    expect(reply.boundaryType).toBeUndefined();
+    expect(reply.output).toContain("I don't have a live workshop or event list");
+    expect(reply.output).toContain("current schedule");
   });
 
   it('routes "how do I join?" to enrollment instead of off-topic', () => {

@@ -35,7 +35,7 @@ const JAILBREAK_PATTERN =
   /\b(ignore (all|any|your|previous) instructions|disregard (all|any|your|previous) instructions|reveal (your|the) (prompt|system prompt|instructions)|show (me )?(your|the) (prompt|system prompt|instructions)|what are your hidden instructions|developer message|system message|jailbreak|bypass (your|the) instructions|step outside (your|the) role|pretend (you are|to be) (not rori|a different bot|an unrestricted)|dan mode|do anything now)\b/i;
 
 const SUPPORT_ESCALATION_PATTERN =
-  /\b(payment problem|payment trouble|billing issue|billing problem|payment issue|upgrade|downgrade|leave of absence|conflict|cancel|cancellation|refund|discount)\b/i;
+  /\b(payment problems?|payment trouble|billing issues?|billing problems?|payment issues?|upgrade|downgrade|leave of absence|conflict|cancel|cancellation|refund|discount)\b/i;
 
 const TOOL_ROUTE_PATTERN =
   /\b(credit reports?|credit-report|consumer reports?|consumer reporting agenc(?:y|ies)|reinvestigation|bureau|dispute|tradeline|fcra|fair credit reporting act|fact[- ]?check|check (?:this )?(?:claim|myth|statement|post|message)|verify (?:this )?(?:claim|myth|statement|post|message)|source-backed verification|is this true or false|whether this is true|true\/false|true-false|online claim|myth|tax|legal|statute|usc|cfr|irs|treasury|form|intake|questionnaire|collect document answers)\b/i;

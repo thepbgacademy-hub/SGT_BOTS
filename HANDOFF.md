@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Use `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` as the active execution map for persona/runtime work. Continue with Phase 2 Ticket 2.3: preserve deterministic Rori operational routes. Keep this ticket scoped to Rori rule-path tests and deterministic operational behavior; do not add provider/model usage or the persona composer yet.
+Use `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` as the active execution map for persona/runtime work. Continue with Phase 3 Ticket 3.1: build the grounded Rori response input contract. Keep this ticket scoped to the typed contract and validator first; do not add freeform provider/model response generation yet.
 
 ## Build Doc Sources
 
@@ -23,4 +23,4 @@ Use `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` 
 
 ## Last Completed Step
 
-Completed Phase 2 Ticket 2.2 in `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md`. Rori now has a pure response decision layer in `apps/api/src/modules/chat/rori-decision.ts` with `answer`, `clarify`, `boundary`, `escalate`, and `route` intents. `apps/api/src/modules/chat/rori-kb.ts` clarifies broad help prompts and context-free follow-ups, and answers thin approved-source prompts such as `What about Specialist?` while asking what part the user means instead of falling into the off-topic boundary. `apps/api/src/modules/chat/chat.service.ts` passes structured wiki retrieval results into Rori when available and preserves old page-only stubs. Verified with `corepack pnpm exec vitest run tests/chat/rori-decision.spec.ts tests/chat/rori-kb.spec.ts`, `corepack pnpm exec vitest run tests/e2e/bot-runtime.spec.ts`, and `corepack pnpm --filter @sgt-bots/api lint`. No provider/model composition or production apply was performed.
+Completed Phase 2 Ticket 2.3 in `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md`. Focused Rori rule-path tests now pin deterministic handling for billing/support escalation, enrollment-contact routing, unconfigured Telegram room links, no live workshop/event records, and fixed jailbreak/off-topic boundaries. `apps/api/tests/chat/rori-decision.spec.ts` also locks branch priority so billing/payment issues win over generic Telegram room routing, and `apps/api/src/modules/chat/rori-decision.ts` recognizes plural billing/payment issue phrasing. Verified with `corepack pnpm exec vitest run tests/chat/rori-decision.spec.ts tests/chat/rori-kb.spec.ts tests/e2e/bot-runtime.spec.ts` and `corepack pnpm --filter @sgt-bots/api lint`. No provider/model composition or production apply was performed.
