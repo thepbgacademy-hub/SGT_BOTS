@@ -4,9 +4,9 @@ Audit source:
 - `E:/Fable/Codex/docs/telegram-bot-persona-audit-plan.md`
 
 Scope:
-- Persona bots in playground: `Rori`, `Top Secret`, `Insight`
-- Utility bots in playground: `Cursive`, `ShAzZaM`
-- Display-only playground surface: `Condor`
+- Persona bots in playground: `Rori` (`concierge_general_academy_KB`), `Top Secret` (`verifier`), `Insight` (`tutor`)
+- Utility bots in playground: `Cursive` (`document_wizard`), `ShAzZaM!` (`form_wizard`)
+- Display-only playground surface for this roadmap: `Condor` (`tax_legal_research`)
 
 Out of scope for this roadmap:
 - Rebuilding Cursive intake/report architecture
@@ -17,9 +17,9 @@ Out of scope for this roadmap:
 
 ## Status Checklist
 
-- [ ] Phase 0 - Canonical source and live-state reconciliation
+- [x] Phase 0 - Canonical source and live-state reconciliation
   - [x] Ticket 0.1 - Establish canonical source revision
-  - [ ] Ticket 0.2 - Freeze the acceptance prompt set
+  - [x] Ticket 0.2 - Freeze the acceptance prompt set
 - [ ] Phase 1 - Persona config table and observable config loading
 - [ ] Phase 2 - Rori retrieval and decision-layer hardening
 - [ ] Phase 3 - Rori grounded persona composer
@@ -86,6 +86,9 @@ Deliverables:
 Done when:
 - We have one stable list of prompts to reuse after each phase.
 
+Status:
+- Completed 2026-07-10. See `docs/superpowers/plans/2026-07-10-telegram-bot-persona-acceptance-prompts.md`.
+
 Phase exit criteria:
 - Canonical branch is named.
 - Acceptance prompt set is recorded in-repo.
@@ -140,7 +143,7 @@ Done when:
 
 Boundaries:
 - `Rori`, `Top Secret`, `Insight`
-- No persona records for `Cursive` or `ShAzZaM`
+- No persona records for `Cursive` or `ShAzZaM!`
 
 Tasks:
 - Define reviewed config records for:
@@ -436,10 +439,10 @@ Deliverables:
 Done when:
 - Cursive stays deterministic and intake-driven.
 
-### Ticket 6.2 - Complete ShAzZaM workflow separation
+### Ticket 6.2 - Complete ShAzZaM! workflow separation
 
 Boundaries:
-- ShAzZaM only
+- ShAzZaM! only
 - No fake persona layer
 
 Tasks:
@@ -447,11 +450,11 @@ Tasks:
 - Keep microcopy clean and human, but not conversationally open-ended.
 
 Deliverables:
-- ShAzZaM workflow route
+- ShAzZaM! workflow route
 - Validation tests
 
 Done when:
-- ShAzZaM behaves like a form engine, not a pretend assistant.
+- ShAzZaM! behaves like a form engine, not a pretend assistant.
 
 Phase exit criteria:
 - Utility bots are cleanly outside persona composition.
@@ -568,6 +571,7 @@ Use this section as the running build ledger. Add one dated line per completed t
 
 - 2026-07-10: Roadmap created from external persona/runtime audit; no runtime changes applied in this document.
 - 2026-07-10: Completed Phase 0 Ticket 0.1. Canonical repo source line is `origin/codex/rori-academy-concierge`; `3bf7c8e15b5ec77ee2337a88e09b8980625bfac6` is the verified pre-ticket baseline commit used for the canonical-source review. The live runtime image is not proven to be built from that baseline or any later commit until source-revision build metadata exists.
+- 2026-07-10: Completed Phase 0 Ticket 0.2. The repo-owned acceptance prompt suite is now recorded at `docs/superpowers/plans/2026-07-10-telegram-bot-persona-acceptance-prompts.md`, scoped to Rori, Top Secret, Insight, Cursive, ShAzZaM!, and display-only Condor. No runtime behavior, schema, or production state changed in this ticket.
 
 ---
 
@@ -594,7 +598,7 @@ Known live mismatches remaining against the intended roadmap direction:
 - Rori's observed live chat path remains mostly deterministic and does not yet use a grounded model composer.
 - Top Secret ordinary chat is still separate from the real evidence/report workflow and must not imply verification unless that workflow succeeds.
 - Insight ordinary chat still needs approved-source tutoring behavior before it can be considered a real tutor.
-- ShAzZaM still needs dedicated utility workflow routing rather than generic persona-style chat behavior.
+- ShAzZaM! still needs dedicated utility workflow routing rather than generic persona-style chat behavior.
 
 Items intentionally left for later tickets:
 - Persona table creation, schema fixes, and config observability belong to Phase 1.
@@ -602,5 +606,5 @@ Items intentionally left for later tickets:
 - Rori grounded persona composition belongs to Phase 3.
 - Top Secret workflow integration belongs to Phase 4.
 - Insight tutoring runtime belongs to Phase 5.
-- ShAzZaM workflow separation belongs to Phase 6.
+- ShAzZaM! workflow separation belongs to Phase 6.
 - Runtime diagnostics and rollout gates belong to Phase 7.

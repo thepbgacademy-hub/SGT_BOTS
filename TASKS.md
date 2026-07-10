@@ -2,7 +2,7 @@
 
 ## Active
 
-- [ ] **Execute persona/runtime roadmap** - work through `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` in order; next ticket is Phase 0 Ticket 0.2 to freeze the acceptance prompt set in-repo before Phase 1 persona-config observability
+- [ ] **Execute persona/runtime roadmap** - work through `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` in order; next ticket is Phase 1 Ticket 1.1 to verify or create the migration path for `academy_bot_prompt_configs` with repo tests only and no production apply
 - [ ] **Load approved Rori wiki data** - wait for Academy-approved wiki pages from `E:\REPOS\wiki-architect`, generate reviewed Rori upsert SQL, apply after migrations `008` and `009`, then smoke test Rori in Telegram
 - [ ] **Prepare remaining bot workflow layers** - continue non-Cursive bot polish after Rori wiki data is ready
 

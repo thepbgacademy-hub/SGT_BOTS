@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Use `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` as the active execution map for persona/runtime work. Continue with Phase 0 Ticket 0.2: freeze the acceptance prompt set in-repo from the external audit prompt matrix, keeping it scoped to the current playground bots. Do not jump ahead to persona table changes or a model-backed persona composer until the Phase 0 checklist is complete. Keep persona work limited to `Rori`, `Top Secret`, and `Insight`; keep `Cursive` and `ShAzZaM` in deterministic utility lanes; keep `Condor` as a display-only playground surface.
+Use `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` as the active execution map for persona/runtime work. Continue with Phase 1 Ticket 1.1: verify or create the migration path for `academy_bot_prompt_configs`, keeping the work to migration/repo tests only with no production apply. Keep persona work limited to `Rori` (`concierge_general_academy_KB`), `Top Secret` (`verifier`), and `Insight` (`tutor`); keep `Cursive` (`document_wizard`) and `ShAzZaM!` (`form_wizard`) in deterministic utility lanes; keep `Condor` (`tax_legal_research`) as a display-only playground surface for this roadmap.
 
 ## Build Doc Sources
 
@@ -19,7 +19,8 @@ Use `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` 
 - `E:\REPOS\SGT_BOTS\.worktrees\rori-academy-concierge\docs\superpowers\plans\2026-05-29-playground-branch-map.md`
 - `E:\REPOS\SGT_BOTS\.worktrees\rori-academy-concierge\docs\superpowers\plans\2026-05-25-rori-error-log.md`
 - `E:\REPOS\SGT_BOTS\.worktrees\rori-academy-concierge\docs\superpowers\plans\2026-07-10-telegram-bot-persona-runtime-roadmap.md`
+- `E:\REPOS\SGT_BOTS\.worktrees\rori-academy-concierge\docs\superpowers\plans\2026-07-10-telegram-bot-persona-acceptance-prompts.md`
 
 ## Last Completed Step
 
-Completed Phase 0 Ticket 0.1 in `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md`. The canonical repo source line for roadmap work is now documented as `origin/codex/rori-academy-concierge`, with `3bf7c8e15b5ec77ee2337a88e09b8980625bfac6` recorded as the verified pre-ticket baseline commit rather than a permanent branch-tip pin. The live VPS2 runtime image is still not proven to be built from that baseline or any later commit because the repo does not yet have source-revision build metadata. No runtime code, schema, or production state changed in this ticket.
+Completed Phase 0 Ticket 0.2 in `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md`. The acceptance prompt suite is now frozen in-repo at `docs/superpowers/plans/2026-07-10-telegram-bot-persona-acceptance-prompts.md`, scoped to Rori (`concierge_general_academy_KB`), Top Secret (`verifier`), Insight (`tutor`), Cursive (`document_wizard`), ShAzZaM! (`form_wizard`), and display-only Condor (`tax_legal_research`). Phase 0 is complete. No runtime code, schema, or production state changed in this ticket.
