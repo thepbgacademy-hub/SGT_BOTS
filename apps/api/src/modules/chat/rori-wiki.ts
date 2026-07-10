@@ -13,6 +13,31 @@ export type RoriWikiPage = {
 
 export const RORI_WIKI_SOURCE_TITLE = "Rori Academy Wiki Source Pack";
 
+export type RoriWikiRetrievalOutcome =
+  | "exact"
+  | "partial"
+  | "no_match"
+  | "error";
+
+export type RoriWikiSearchMatch = {
+  page: RoriWikiPage;
+  score: number;
+  confidence: number;
+  matchedTerms: string[];
+  sourceId: string;
+};
+
+export type RoriWikiSearchResult = {
+  outcome: RoriWikiRetrievalOutcome;
+  pages: RoriWikiPage[];
+  matches: RoriWikiSearchMatch[];
+  queryTerms: string[];
+  bestScore: number;
+  confidence: number;
+  ambiguous: boolean;
+  errorMessage?: string;
+};
+
 export const FALLBACK_RORI_WIKI_PAGES: RoriWikiPage[] = [
   {
     slug: "academy-overview",
@@ -69,40 +94,195 @@ export const FALLBACK_RORI_WIKI_PAGES: RoriWikiPage[] = [
   },
 ];
 
+const STOP_WORDS = new Set([
+  "about",
+  "also",
+  "and",
+  "are",
+  "can",
+  "could",
+  "does",
+  "for",
+  "from",
+  "have",
+  "here",
+  "how",
+  "into",
+  "that",
+  "the",
+  "there",
+  "this",
+  "what",
+  "when",
+  "where",
+  "which",
+  "who",
+  "why",
+  "with",
+  "you",
+  "your",
+]);
+
+const WEAK_INTENT_TERMS = new Set(["help", "info", "information", "question", "questions"]);
+const BROAD_CONTEXT_TERMS = new Set([
+  "academy",
+  "help",
+  "info",
+  "information",
+  "overview",
+  "pbg",
+  "question",
+  "questions",
+  "support",
+]);
+
 function tokenize(value: string) {
   return value.toLowerCase().match(/[a-z0-9]+/gu) ?? [];
 }
 
-export function findRoriWikiPages(
+function uniqueSearchTerms(value: string) {
+  return [...new Set(tokenize(value))].filter(
+    (term) => term.length >= 3 && !STOP_WORDS.has(term),
+  );
+}
+
+function normalizedPhrase(value: string) {
+  return tokenize(value).join(" ");
+}
+
+function sourceIdForPage(page: RoriWikiPage) {
+  return page.sourceUrl ?? `sgt-bots://wiki/rori/${page.slug}`;
+}
+
+function termSet(value: string) {
+  return new Set(tokenize(value));
+}
+
+function scorePage(page: RoriWikiPage, query: string, queryTerms: string[]) {
+  const slugTerms = termSet(page.slug);
+  const titleTerms = termSet(page.title);
+  const summaryTerms = termSet(page.summary);
+  const bodyTerms = termSet(page.body);
+  const keywordTerms = termSet(page.keywords.join(" "));
+  const normalizedQuery = normalizedPhrase(query);
+  const keywordPhraseMatch = page.keywords.some((keyword) => {
+    const phrase = normalizedPhrase(keyword);
+    const phraseTerms = tokenize(keyword);
+    return (
+      phrase.length > 0 &&
+      !phraseTerms.every((term) => BROAD_CONTEXT_TERMS.has(term)) &&
+      normalizedQuery.includes(phrase)
+    );
+  });
+
+  let score = keywordPhraseMatch ? 6 : 0;
+  const matchedTerms = new Set<string>();
+
+  for (const term of queryTerms) {
+    let termScore = 0;
+
+    if (slugTerms.has(term)) termScore += 4;
+    if (titleTerms.has(term)) termScore += 4;
+    if (keywordTerms.has(term)) termScore += 4;
+    if (summaryTerms.has(term)) termScore += 2;
+    if (bodyTerms.has(term)) termScore += 1;
+    if (BROAD_CONTEXT_TERMS.has(term)) termScore = Math.min(termScore, 1);
+
+    if (termScore > 0) {
+      matchedTerms.add(term);
+      score += termScore;
+    }
+  }
+
+  return {
+    keywordPhraseMatch,
+    matchedTerms: [...matchedTerms],
+    score,
+  };
+}
+
+export function findRoriWikiSearchResult(
   content: string,
   pages: RoriWikiPage[] = FALLBACK_RORI_WIKI_PAGES,
-) {
-  const terms = new Set(tokenize(content));
+): RoriWikiSearchResult {
+  const queryTerms = uniqueSearchTerms(content);
 
-  return pages
+  if (queryTerms.length === 0) {
+    return {
+      outcome: "no_match",
+      pages: [],
+      matches: [],
+      queryTerms,
+      bestScore: 0,
+      confidence: 0,
+      ambiguous: false,
+    };
+  }
+
+  const matches = pages
     .filter((page) => page.status === "published")
     .map((page) => {
-      const haystack = [
-        page.slug,
-        page.title,
-        page.summary,
-        page.body,
-        ...page.keywords,
-      ]
-        .join(" ")
-        .toLowerCase();
-      const score = [...terms].reduce(
-        (total, term) => total + (haystack.includes(term) ? 1 : 0),
-        0,
-      );
+      const scoredPage = scorePage(page, content, queryTerms);
+      const confidence =
+        scoredPage.matchedTerms.length === 0
+          ? 0
+          : Math.min(1, scoredPage.score / Math.max(queryTerms.length * 6, 1));
 
-      return { page, score };
+      return {
+        page,
+        score: scoredPage.score,
+        confidence,
+        matchedTerms: scoredPage.matchedTerms,
+        sourceId: sourceIdForPage(page),
+        keywordPhraseMatch: scoredPage.keywordPhraseMatch,
+      };
     })
     .filter(({ score }) => score > 0)
     .sort(
       (left, right) =>
         right.score - left.score ||
         left.page.title.localeCompare(right.page.title),
-    )
-    .map(({ page }) => page);
+    );
+
+  const bestMatch = matches[0];
+  if (!bestMatch) {
+    return {
+      outcome: "no_match",
+      pages: [],
+      matches: [],
+      queryTerms,
+      bestScore: 0,
+      confidence: 0,
+      ambiguous: false,
+    };
+  }
+
+  const broadPrompt = queryTerms.every((term) => WEAK_INTENT_TERMS.has(term));
+  const ambiguous =
+    matches.length > 1 &&
+    matches[1].score >= Math.max(1, bestMatch.score - 2);
+  const exact =
+    !ambiguous &&
+    !broadPrompt &&
+    (bestMatch.keywordPhraseMatch ||
+      (bestMatch.score >= 8 &&
+        bestMatch.matchedTerms.length / queryTerms.length >= 0.5));
+  const outcome: RoriWikiRetrievalOutcome = exact ? "exact" : "partial";
+
+  return {
+    outcome,
+    pages: matches.map((match) => match.page),
+    matches: matches.map(({ keywordPhraseMatch: _keywordPhraseMatch, ...match }) => match),
+    queryTerms,
+    bestScore: bestMatch.score,
+    confidence: bestMatch.confidence,
+    ambiguous,
+  };
+}
+
+export function findRoriWikiPages(
+  content: string,
+  pages: RoriWikiPage[] = FALLBACK_RORI_WIKI_PAGES,
+) {
+  return findRoriWikiSearchResult(content, pages).pages;
 }

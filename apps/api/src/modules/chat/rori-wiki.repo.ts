@@ -2,12 +2,15 @@ import type { AppEnv } from "../../config/env";
 import {
   FALLBACK_RORI_WIKI_PAGES,
   findRoriWikiPages,
+  findRoriWikiSearchResult,
   type RoriWikiPage,
   type RoriWikiPageStatus,
+  type RoriWikiSearchResult,
 } from "./rori-wiki";
 
 export type RoriWikiRepo = {
   searchPages(query: string): Promise<RoriWikiPage[]>;
+  searchPagesResult?(query: string): Promise<RoriWikiSearchResult>;
 };
 
 const RORI_SCHEMA = "rori";
@@ -29,6 +32,9 @@ export function createFallbackRoriWikiRepo(
   pages: RoriWikiPage[] = FALLBACK_RORI_WIKI_PAGES,
 ): RoriWikiRepo {
   return {
+    async searchPagesResult(query: string) {
+      return findRoriWikiSearchResult(query, pages);
+    },
     async searchPages(query: string) {
       return findRoriWikiPages(query, pages);
     },
@@ -90,18 +96,33 @@ export function createSupabaseRoriWikiRepo(
 ): RoriWikiRepo {
   const fetchImpl = options?.fetchImpl ?? fetch;
   const fallbackRepo = options?.fallbackRepo ?? createFallbackRoriWikiRepo();
+  const searchPagesResult = async (
+    query: string,
+  ): Promise<RoriWikiSearchResult> => {
+    try {
+      const rows = await selectWikiRows({ env, fetchImpl });
+      const pages = rows.map(mapWikiRow);
+      const result = findRoriWikiSearchResult(query, pages);
+
+      return result;
+    } catch (error) {
+      const fallbackResult = fallbackRepo.searchPagesResult
+        ? await fallbackRepo.searchPagesResult(query)
+        : findRoriWikiSearchResult(query, await fallbackRepo.searchPages(query));
+
+      return {
+        ...fallbackResult,
+        outcome: "error",
+        errorMessage:
+          error instanceof Error ? error.message : "Rori wiki retrieval failed",
+      };
+    }
+  };
 
   return {
+    searchPagesResult,
     async searchPages(query: string) {
-      try {
-        const rows = await selectWikiRows({ env, fetchImpl });
-        const pages = rows.map(mapWikiRow);
-        const matches = findRoriWikiPages(query, pages);
-
-        return matches.length > 0 ? matches : fallbackRepo.searchPages(query);
-      } catch {
-        return fallbackRepo.searchPages(query);
-      }
+      return (await searchPagesResult(query)).pages;
     },
   };
 }

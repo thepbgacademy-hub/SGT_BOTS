@@ -25,6 +25,7 @@ Out of scope for this roadmap:
   - [x] Ticket 1.2 - Make config loading observable
   - [x] Ticket 1.3 - Define persona records for persona bots only
 - [ ] Phase 2 - Rori retrieval and decision-layer hardening
+  - [x] Ticket 2.1 - Refactor wiki retrieval result shape
 - [ ] Phase 3 - Rori grounded persona composer
 - [ ] Phase 4 - Top Secret chat to real workflow integration
 - [ ] Phase 5 - Insight approved-source tutoring runtime
@@ -209,6 +210,9 @@ Deliverables:
 
 Done when:
 - Retrieval can distinguish weak matches from strong ones.
+
+Status:
+- Completed 2026-07-10. `apps/api/src/modules/chat/rori-wiki.ts` now returns structured retrieval results with `exact`, `partial`, `no_match`, and `error` outcome support, score/confidence fields, matched terms, source IDs, and ambiguity detection while preserving the old page-only helper as a compatibility adapter. `apps/api/src/modules/chat/rori-wiki.repo.ts` exposes `searchPagesResult()` beside `searchPages()` so current bot stubs remain stable; Supabase no-match results stay no-match, while Supabase retrieval failures return an explicit `error` outcome with fallback pages for degraded continuity. Focused coverage lives in `apps/api/tests/chat/rori-wiki.spec.ts` and `apps/api/tests/chat/rori-wiki-repo.spec.ts`; verified with `corepack pnpm exec vitest run tests/chat/rori-wiki.spec.ts tests/chat/rori-wiki-repo.spec.ts`, `corepack pnpm exec vitest run tests/e2e/bot-runtime.spec.ts`, and `corepack pnpm --filter @sgt-bots/api lint`.
 
 ### Ticket 2.2 - Add an explicit response decision layer
 

@@ -78,7 +78,45 @@ describe("Rori wiki repo", () => {
     );
   });
 
-  it("uses local wiki pages when Supabase has no matching published pages", async () => {
+  it("returns structured match details for Supabase wiki results", async () => {
+    const repo = createSupabaseRoriWikiRepo(
+      {
+        ...BASE_ENV,
+        supabaseServiceRoleKey: "service-role",
+        supabaseUrl: "https://supabase.test",
+      },
+      {
+        fetchImpl: vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => [
+            {
+              page_key: "tool-guide",
+              title: "Tool Guide",
+              summary: "Which Playground tool or bot does what.",
+              body: "Cursive handles disputes. Top Secret checks online claims.",
+              keywords: ["tool", "tools", "bot", "bots"],
+              source_url: "sgt-bots://wiki/rori/tool-guide",
+              updated_at: "2026-05-25T00:00:00.000Z",
+            },
+          ],
+        }),
+      },
+    );
+
+    await expect(repo.searchPagesResult?.("what do the bots do")).resolves.toEqual(
+      expect.objectContaining({
+        outcome: "exact",
+        matches: [
+          expect.objectContaining({
+            matchedTerms: expect.arrayContaining(["bots"]),
+            sourceId: "sgt-bots://wiki/rori/tool-guide",
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("returns no_match when the approved Supabase wiki has no matching published pages", async () => {
     const repo = createSupabaseRoriWikiRepo(
       {
         ...BASE_ENV,
@@ -93,14 +131,13 @@ describe("Rori wiki repo", () => {
       },
     );
 
-    await expect(repo.searchPages("How do I enroll?")).resolves.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          slug: "enrollment",
-          title: "Academy Enrollment",
-        }),
-      ]),
+    await expect(repo.searchPagesResult?.("How do I enroll?")).resolves.toEqual(
+      expect.objectContaining({
+        outcome: "no_match",
+        pages: [],
+      }),
     );
+    await expect(repo.searchPages("How do I enroll?")).resolves.toEqual([]);
   });
 
   it("falls back to local wiki pages when Supabase fails", async () => {
@@ -126,6 +163,35 @@ describe("Rori wiki repo", () => {
           title: "Telegram Troubleshooting",
         }),
       ]),
+    );
+  });
+
+  it("marks Supabase failures as retrieval errors in structured results", async () => {
+    const repo = createSupabaseRoriWikiRepo(
+      {
+        ...BASE_ENV,
+        supabaseServiceRoleKey: "service-role",
+        supabaseUrl: "https://supabase.test",
+      },
+      {
+        fetchImpl: vi.fn().mockResolvedValue({
+          ok: false,
+          status: 500,
+          text: async () => "database unavailable",
+        }),
+      },
+    );
+
+    await expect(repo.searchPagesResult?.("telegram troubleshooting")).resolves.toEqual(
+      expect.objectContaining({
+        outcome: "error",
+        errorMessage: expect.stringContaining("database unavailable"),
+        pages: expect.arrayContaining([
+          expect.objectContaining({
+            slug: "telegram-troubleshooting",
+          }),
+        ]),
+      }),
     );
   });
 });
