@@ -495,14 +495,14 @@ describe("bot runtime routes", () => {
       "utf8",
     );
 
-    expect(sql).toContain("create table if not exists academy_bot_prompt_configs");
+    expect(sql).toContain("create table if not exists public.academy_bot_prompt_configs");
     expect(sql).toContain("bot_id text not null");
     expect(sql).toContain("surface text not null default 'global'");
     expect(sql).toContain("persona_prompt text not null");
     expect(sql).toContain("tone_rules jsonb not null default '[]'::jsonb");
     expect(sql).toContain("guardrails jsonb not null default '[]'::jsonb");
-    expect(sql).toContain("grant select on academy_bot_prompt_configs to authenticated, service_role");
-    expect(sql).toContain("alter table academy_bot_prompt_configs enable row level security");
+    expect(sql).toContain("grant select on public.academy_bot_prompt_configs to authenticated, service_role");
+    expect(sql).toContain("alter table public.academy_bot_prompt_configs enable row level security");
     expect(sql).toContain("Authenticated users can read active Academy bot prompt configs");
     expect(sql).toContain("'concierge_general_academy_KB'");
   });

@@ -1,4 +1,4 @@
-create table if not exists academy_bot_prompt_configs (
+create table if not exists public.academy_bot_prompt_configs (
   bot_id text not null,
   surface text not null default 'global',
   version text not null,
@@ -20,22 +20,51 @@ create table if not exists academy_bot_prompt_configs (
   )
 );
 
+with ranked_active_configs as (
+  select
+    ctid,
+    row_number() over (
+      partition by bot_id, surface
+      order by updated_at desc, version desc
+    ) as active_rank
+  from public.academy_bot_prompt_configs
+  where active is true
+)
+update public.academy_bot_prompt_configs
+set
+  active = false,
+  updated_at = timezone('utc', now())
+where ctid in (
+  select ctid
+  from ranked_active_configs
+  where active_rank > 1
+);
+
 create unique index if not exists academy_bot_prompt_configs_active_surface_idx
-  on academy_bot_prompt_configs (bot_id, surface)
+  on public.academy_bot_prompt_configs (bot_id, surface)
   where active is true;
 
-grant select on academy_bot_prompt_configs to authenticated, service_role;
+grant select on public.academy_bot_prompt_configs to authenticated, service_role;
 
-alter table academy_bot_prompt_configs enable row level security;
+alter table public.academy_bot_prompt_configs enable row level security;
 
-drop policy if exists "Authenticated users can read active Academy bot prompt configs" on academy_bot_prompt_configs;
+drop policy if exists "Authenticated users can read active Academy bot prompt configs" on public.academy_bot_prompt_configs;
 
 create policy "Authenticated users can read active Academy bot prompt configs"
-on academy_bot_prompt_configs for select
+on public.academy_bot_prompt_configs for select
 to authenticated
 using (active is true);
 
-insert into academy_bot_prompt_configs (
+update public.academy_bot_prompt_configs
+set
+  active = false,
+  updated_at = timezone('utc', now())
+where bot_id = 'concierge_general_academy_KB'
+  and surface = 'playground'
+  and version <> 'phase-6-v1'
+  and active is true;
+
+insert into public.academy_bot_prompt_configs (
   bot_id,
   surface,
   version,
@@ -50,7 +79,7 @@ insert into academy_bot_prompt_configs (
 values (
   'concierge_general_academy_KB',
   'playground',
-  'rori-v1',
+  'phase-6-v1',
   'You are Rori, the PBG Academy concierge. Sound like a warm scholarly guide: friendly, grounded, composed, and teacher-like. Answer first, then clarify. Use first-person language when speaking directly, and use we naturally when speaking for the Academy. Keep the tone human, encouraging, and calm without sounding salesy, robotic, or overexcited.',
   '[
     "Answer the user directly before adding caveats.",
