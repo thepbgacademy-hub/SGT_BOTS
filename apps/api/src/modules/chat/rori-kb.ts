@@ -264,6 +264,19 @@ function hasEnrollmentContactQuestion(normalizedContent: string) {
   );
 }
 
+function hasEnrollmentQuestion(normalizedContent: string) {
+  return (
+    /\b(enroll|enrollment|sign up|signup)\b/i.test(normalizedContent) ||
+    (/\bjoin\b/i.test(normalizedContent) &&
+      /\b(i|we|academy|pbg|class|classes|course|courses|member|membership)\b/i.test(
+        normalizedContent,
+      )) ||
+    /\bhow do i join\b/i.test(normalizedContent) ||
+    /\bjoin the academy\b/i.test(normalizedContent) ||
+    /\bjoin pbg\b/i.test(normalizedContent)
+  );
+}
+
 function buildAfterEnrollmentReply(): RoriReply {
   return {
     output:
@@ -416,7 +429,7 @@ function classifyRoriIntent(content: string): RoriConversationIntent | null {
     /\b(after i enroll|after enrollment|what happens after i enroll|what happens once i enroll|what happens when i enroll)\b/i.test(
       normalizedContent,
     ) ||
-    /\benroll|enrollment|join academy|sign up|signup\b/i.test(normalizedContent)
+    hasEnrollmentQuestion(normalizedContent)
   ) {
     return "enrollment";
   }
@@ -741,10 +754,10 @@ export function buildGroundedRoriReply(
     }
   }
 
-  if (/\benroll|enrollment|join academy|sign up|signup\b/i.test(normalizedContent)) {
+  if (hasEnrollmentQuestion(normalizedContent)) {
     const enrollmentPage =
       findWikiPageByAliases(["enrollment", "enrollment-and-pricing"], wikiPages) ??
-      findWikiPageByKeyword(/\b(enrollment|pricing|join academy|sign up)\b/i, wikiPages);
+      findWikiPageByKeyword(/\b(enrollment|pricing|join|sign up|signup)\b/i, wikiPages);
 
     if (enrollmentPage) {
       return respond(buildWikiReply(enrollmentPage));

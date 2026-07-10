@@ -349,3 +349,13 @@
 **Fix applied:** Expanded the overview reply in `rori-kb.ts` so it now names Cursive, Top Secret, Condor, ShAzZaM, Insight, and Rori, and adds the line that there are `37 tools and gadgets at PBG to assist Cadets along their learning journey.` Updated the bot-runtime coverage to assert Insight and the `37 tools and gadgets` line are present.
 
 **Rule going forward:** Overview answers about the playground lineup should mention the full current bot set, not a partial subset. If the user asks what the bots do, answer with the whole visible playground picture.
+
+## 2026-06-27 - Plain "Join" Wording Was Too Narrow For Enrollment Intent
+
+**Context:** Live Rori playground review after the broader tool overview work was already in place.
+
+**Problem:** Natural enrollment phrasing like `how do i join?` fell through to the off-topic boundary reply even though the user was clearly asking about Academy enrollment. The runtime only treated `enroll`, `enrollment`, `join academy`, `sign up`, and `signup` as enrollment cues, so plain `join` questions were missed.
+
+**Fix applied:** Added a shared `hasEnrollmentQuestion(...)` matcher in `rori-kb.ts`, wired both intent classification and the main enrollment branch to use it, and broadened the wiki keyword fallback so `join` phrasing can still resolve the enrollment page. Added focused Rori KB tests for `how do i join?`, `how do i join the academy?`, and the existing enrollment follow-up behavior.
+
+**Rule going forward:** Enrollment detection should match natural human phrasing, not just product-approved keywords. When a question clearly asks how to join the Academy, route it into enrollment before considering the off-topic boundary.
