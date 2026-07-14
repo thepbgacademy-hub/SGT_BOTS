@@ -1,4 +1,5 @@
 import type { BotPromptConfig } from "../bots/bot-prompt-config.repo";
+import type { ChatRuntimeReplyDiagnostics } from "./runtime-diagnostics";
 
 type InsightCitation = {
   sourceId: "knowledge_base";
@@ -10,6 +11,7 @@ type InsightReply = {
   boundaryType?: "off_topic";
   output: string;
   citations: InsightCitation[];
+  runtimeDiagnostics?: ChatRuntimeReplyDiagnostics;
 };
 
 type InsightLesson = {
@@ -130,6 +132,11 @@ export function buildInsightTutorReply(
       output:
         "Insight can only tutor from approved Academy lessons in the playground. I can't explain a topic without approved sources, but I can use the approved lesson material when you ask about Missions, PBG credits, or the Academy overview.",
       citations: [INSIGHT_SOURCE],
+      runtimeDiagnostics: {
+        decisionIntent: "boundary",
+        decisionReason: "source_bypass_refused",
+        retrievalOutcome: "not_applicable",
+      },
     };
   }
 
@@ -139,6 +146,11 @@ export function buildInsightTutorReply(
       output:
         "I can't make up examples that are not in an approved Academy lesson. I can still use approved Academy lesson material to explain the idea or ask a practice question.",
       citations: [INSIGHT_SOURCE],
+      runtimeDiagnostics: {
+        decisionIntent: "boundary",
+        decisionReason: "unsupported_example_refused",
+        retrievalOutcome: "not_applicable",
+      },
     };
   }
 
@@ -151,6 +163,11 @@ export function buildInsightTutorReply(
         options.promptConfig?.offTopicPolicy?.trim() ||
         "Insight can only tutor from approved Academy lessons in the playground. Ask about Missions, PBG credits, or the Academy overview and I can walk through it one clear step at a time.",
       citations: [INSIGHT_SOURCE],
+      runtimeDiagnostics: {
+        decisionIntent: "boundary",
+        decisionReason: "no_approved_lesson",
+        retrievalOutcome: "no_match",
+      },
     };
   }
 
@@ -158,6 +175,11 @@ export function buildInsightTutorReply(
     return {
       output: lesson.quizQuestion,
       citations: [{ ...INSIGHT_SOURCE, url: lesson.url }],
+      runtimeDiagnostics: {
+        decisionIntent: "answer",
+        decisionReason: "quiz_request",
+        retrievalOutcome: "exact",
+      },
     };
   }
 
@@ -168,5 +190,10 @@ export function buildInsightTutorReply(
   return {
     output: applyTutorTone(output, options.promptConfig),
     citations: [{ ...INSIGHT_SOURCE, url: lesson.url }],
+    runtimeDiagnostics: {
+      decisionIntent: "answer",
+      decisionReason: "lesson_match",
+      retrievalOutcome: "exact",
+    },
   };
 }

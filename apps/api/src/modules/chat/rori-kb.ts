@@ -23,6 +23,7 @@ import {
   type RoriWikiSearchResult,
 } from "./rori-wiki";
 import type { BotPromptConfig } from "../bots/bot-prompt-config.repo";
+import type { ChatRuntimeReplyDiagnostics } from "./runtime-diagnostics";
 
 type RoriCitation = {
   sourceId: "knowledge_base";
@@ -45,6 +46,7 @@ type RoriReply = {
   };
   output: string;
   citations: RoriCitation[];
+  runtimeDiagnostics?: ChatRuntimeReplyDiagnostics;
 };
 
 const RORI_OFF_TOPIC_REPLY =
@@ -716,13 +718,32 @@ export function buildGroundedRoriReply(
   const wikiSearchResult =
     grounding.wikiSearchResult ??
     findRoriWikiSearchResult(resolvedContent, wikiPages);
+  const attachRuntimeDiagnostics = (reply: RoriReply): RoriReply => ({
+    ...reply,
+    runtimeDiagnostics: {
+      decisionIntent: decision.intent,
+      decisionReason: decision.reason,
+      providerFallbackState: reply.composer
+        ? reply.composer.usedFallback
+          ? "composer_fallback"
+          : "live_provider"
+        : "deterministic_runtime",
+      retrievalOutcome: wikiSearchResult.outcome,
+      sourceIds:
+        reply.composer && reply.composer.sourceIds.length > 0
+          ? reply.composer.sourceIds
+          : reply.citations.map((citation) => citation.url),
+    },
+  });
   const respond = (reply: RoriReply) =>
-    finalizeRoriReply(
-      {
-        ...reply,
-        composer: buildComposerMetadata(reply),
-      },
-      promptConfig,
+    attachRuntimeDiagnostics(
+      finalizeRoriReply(
+        {
+          ...reply,
+          composer: buildComposerMetadata(reply),
+        },
+        promptConfig,
+      ),
     );
   const decision = decideRoriResponse({
     content: resolvedContent,
@@ -769,7 +790,18 @@ export function buildGroundedRoriReply(
   };
 
   if (isJailbreakAttempt(normalizedContent)) {
-    return buildJailbreakReply();
+    const jailbreakReply = buildJailbreakReply();
+
+    return {
+      ...jailbreakReply,
+      runtimeDiagnostics: {
+        decisionIntent: "boundary",
+        decisionReason: "jailbreak_attempt",
+        providerFallbackState: "deterministic_runtime",
+        retrievalOutcome: wikiSearchResult.outcome,
+        sourceIds: jailbreakReply.citations.map((citation) => citation.url),
+      },
+    };
   }
 
   if (decision.intent === "escalate" && decision.reason === "operational_escalation") {

@@ -28,6 +28,11 @@ import {
   findRoriWikiSearchResult,
   type RoriWikiSearchResult,
 } from "./rori-wiki";
+import {
+  buildChatRuntimeDiagnostic,
+  type ChatRuntimeDiagnostic,
+  type ChatRuntimeReplyDiagnostics,
+} from "./runtime-diagnostics";
 
 type ChatRole = "user" | "assistant";
 
@@ -62,6 +67,7 @@ type RuntimeReply = {
   boundaryType?: "jailbreak_attempt" | "off_topic";
   output: string;
   citations?: ChatCitation[];
+  runtimeDiagnostics?: ChatRuntimeReplyDiagnostics;
 };
 
 type RuntimeReplyResult = RuntimeReply | Promise<RuntimeReply>;
@@ -105,13 +111,14 @@ function buildAcademyConciergeReply(
   requireToolPermission(manifest, "knowledge_base_search");
 
   return Promise.all([
-    botPromptConfigRepo.getActiveConfig(manifest.id, "playground"),
+    botPromptConfigRepo.getActiveConfigResult(manifest.id, "playground"),
     directoryRepo.listTelegramRooms(),
     directoryRepo.listUpcomingEvents(),
     searchRoriWiki(wikiRepo, content),
-  ]).then(([promptConfig, telegramRooms, workshops, wikiSearchResult]) =>
-    buildGroundedRoriReply(content, {
-      promptConfig: (promptConfig as RoriPromptConfig | null) ?? undefined,
+  ]).then(([promptConfigResult, telegramRooms, workshops, wikiSearchResult]) => {
+    const reply = buildGroundedRoriReply(content, {
+      promptConfig:
+        (promptConfigResult.config as RoriPromptConfig | null) ?? undefined,
       conversationContext: buildRoriConversationContext(
         priorMessages
           .filter((message) => message.role === "user")
@@ -121,8 +128,17 @@ function buildAcademyConciergeReply(
       workshops,
       wikiPages: wikiSearchResult.pages,
       wikiSearchResult,
-    }),
-  );
+    });
+
+    return {
+      ...reply,
+      runtimeDiagnostics: {
+        ...reply.runtimeDiagnostics,
+        configSource: promptConfigResult.diagnostic.source,
+        configVersion: promptConfigResult.diagnostic.version,
+      },
+    };
+  });
 }
 
 async function searchRoriWiki(
@@ -147,12 +163,24 @@ async function buildTutorReply(
   requireCapability(manifest, "rag_query");
   requireSourceBinding(manifest, "knowledge_base");
   requireToolPermission(manifest, "knowledge_base_search");
-  const promptConfig = await botPromptConfigRepo.getActiveConfig(
+  const promptConfigResult = await botPromptConfigRepo.getActiveConfigResult(
     manifest.id,
     "playground",
   );
+  const reply = buildInsightTutorReply(content, {
+    promptConfig: promptConfigResult.config,
+  });
 
-  return buildInsightTutorReply(content, { promptConfig });
+  return {
+    ...reply,
+    runtimeDiagnostics: {
+      ...reply.runtimeDiagnostics,
+      configSource: promptConfigResult.diagnostic.source,
+      configVersion: promptConfigResult.diagnostic.version,
+      providerFallbackState: "deterministic_runtime",
+      sourceIds: reply.citations.map((citation) => citation.url),
+    },
+  };
 }
 
 function buildVerifierReply(
@@ -189,6 +217,20 @@ function buildVerifierReply(
     .trim();
   const hasConcreteClaim = /[A-Za-z0-9]{18,}/u.test(concreteClaimRemainder);
 
+  const verifierDiagnostics = (
+    decisionIntent: "boundary" | "clarify" | "route",
+    decisionReason:
+      | "source_bypass_refused"
+      | "claim_clarification"
+      | "workflow_route",
+  ): RuntimeReply["runtimeDiagnostics"] => ({
+    decisionIntent,
+    decisionReason,
+    providerFallbackState: "deterministic_runtime",
+    retrievalOutcome: "not_applicable",
+    sourceIds: citations.map((citation) => citation.url),
+  });
+
   if (sourceBypassPattern.test(normalizedContent)) {
     return {
       output:
@@ -196,6 +238,10 @@ function buildVerifierReply(
           ? `${promptConfig.offTopicPolicy} ${promptConfig.fallbackPolicy}`
           : "I can't verify a claim without reliable sources. Top Secret is built to compare the pasted message against trusted references, so use the report workflow when you want the actual source-backed check.",
       citations,
+      runtimeDiagnostics: verifierDiagnostics(
+        "boundary",
+        "source_bypass_refused",
+      ),
     };
   }
 
@@ -209,6 +255,7 @@ function buildVerifierReply(
         promptConfig?.fallbackPolicy?.trim() ||
         "Please paste the exact statement or how-to message you want checked. Top Secret needs the actual wording before it can build a source-backed report.",
       citations,
+      runtimeDiagnostics: verifierDiagnostics("clarify", "claim_clarification"),
     };
   }
 
@@ -218,6 +265,7 @@ function buildVerifierReply(
         ? "Use the Top Secret report workflow for this claim, then choose Create report. That path keeps the answer evidence-first and tied to reliable sources before it reaches a conclusion."
         : "Use the Top Secret report workflow for this claim, then choose Create report. That path runs the source-backed review and gives you the PDF when the report is ready.",
     citations,
+    runtimeDiagnostics: verifierDiagnostics("route", "workflow_route"),
   };
 }
 
@@ -238,6 +286,13 @@ function buildTaxLegalResearchReply(manifest: BotManifest): RuntimeReply {
         url: "sgt-bots://docs/condor/tax-legal-research-index",
       },
     ],
+    runtimeDiagnostics: {
+      decisionIntent: "static_reply",
+      decisionReason: "display_only_notice",
+      providerFallbackState: "deterministic_runtime",
+      retrievalOutcome: "not_applicable",
+      sourceIds: ["sgt-bots://docs/condor/tax-legal-research-index"],
+    },
   };
 }
 
@@ -249,6 +304,7 @@ export function createChatService(deps?: {
     getDefaultCategoryConfig(): CursiveCategoryConfig;
   };
   now?: () => number;
+  onRuntimeDiagnostic?: (diagnostic: ChatRuntimeDiagnostic) => void;
   roriDirectoryRepo?: RoriAcademyDirectoryRepo;
   roriWikiRepo?: RoriWikiRepo;
   resolveManifest?: (botId: string) => BotManifest;
@@ -363,6 +419,31 @@ export function createChatService(deps?: {
         conversations.set(conversation.id, conversation);
       }
 
+      if (deps?.onRuntimeDiagnostic) {
+        try {
+          deps.onRuntimeDiagnostic(
+            buildChatRuntimeDiagnostic({
+              botId: manifest.id,
+              boundaryType: runtimeReply.boundaryType,
+              configSource: runtimeReply.runtimeDiagnostics?.configSource,
+              configVersion: runtimeReply.runtimeDiagnostics?.configVersion,
+              conversationId: conversation.id,
+              decisionIntent: runtimeReply.runtimeDiagnostics?.decisionIntent,
+              decisionReason: runtimeReply.runtimeDiagnostics?.decisionReason,
+              providerFallbackState:
+                runtimeReply.runtimeDiagnostics?.providerFallbackState,
+              retrievalOutcome:
+                runtimeReply.runtimeDiagnostics?.retrievalOutcome,
+              sourceIds:
+                runtimeReply.runtimeDiagnostics?.sourceIds ??
+                (runtimeReply.citations ?? []).map((citation) => citation.url),
+            }),
+          );
+        } catch {
+          // Diagnostics must never break chat delivery.
+        }
+      }
+
       const userMessage: ChatMessage = {
         id: nextMessageId(),
         role: "user",
@@ -412,10 +493,23 @@ function buildRuntimeReply(
       throw new Error("shazzam workflow only");
     case "verifier":
       return botPromptConfigRepo
-        .getActiveConfig(manifest.id, "playground")
-        .then((promptConfig) =>
-          buildVerifierReply(manifest, trimmedContent, promptConfig),
-        );
+        .getActiveConfigResult(manifest.id, "playground")
+        .then((promptConfigResult) => {
+          const reply = buildVerifierReply(
+            manifest,
+            trimmedContent,
+            promptConfigResult.config,
+          );
+
+          return {
+            ...reply,
+            runtimeDiagnostics: {
+              ...reply.runtimeDiagnostics,
+              configSource: promptConfigResult.diagnostic.source,
+              configVersion: promptConfigResult.diagnostic.version,
+            },
+          };
+        });
     case "concierge_general_academy_KB":
       return buildAcademyConciergeReply(
         manifest,

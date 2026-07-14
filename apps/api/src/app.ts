@@ -194,6 +194,9 @@ export async function buildApp(options?: {
           },
         }),
       now: options?.now,
+      onRuntimeDiagnostic(diagnostic) {
+        app.log.info({ chatRuntime: diagnostic }, "chat runtime diagnostic");
+      },
       roriDirectoryRepo:
         options?.roriDirectoryRepo ?? createRoriDirectoryRepo(appEnv),
       roriWikiRepo: options?.roriWikiRepo ?? createRoriWikiRepo(appEnv),
