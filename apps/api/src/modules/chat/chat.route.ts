@@ -19,7 +19,8 @@ function replyForChatRuntimeError(message: string) {
 
   if (
     message === "conversation belongs to a different bot" ||
-    message === "cursive workflow only"
+    message === "cursive workflow only" ||
+    message === "shazzam workflow only"
   ) {
     return 409;
   }

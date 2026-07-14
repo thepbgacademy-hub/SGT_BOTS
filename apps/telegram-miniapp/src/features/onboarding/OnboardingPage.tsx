@@ -86,7 +86,7 @@ export function OnboardingPage({
             <span className="hero-stat-label">Session-only provider access</span>
           </div>
           <div className="hero-stat-card">
-            <span className="hero-stat-value">5</span>
+            <span className="hero-stat-value">6</span>
             <span className="hero-stat-label">Specialized bot lanes</span>
           </div>
         </div>

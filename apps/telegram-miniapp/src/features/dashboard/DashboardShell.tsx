@@ -33,6 +33,7 @@ import {
   type TopSecretFinding,
   type TopSecretWorkflowState,
 } from "../top-secret/TopSecretWorkspace";
+import { FormWizardPanel } from "../form-wizard/FormWizardPanel";
 import { RoriWorkspace } from "../rori/RoriWorkspace";
 
 type SessionSnapshot = {
@@ -1123,6 +1124,7 @@ export function DashboardShell({
   const [bots, setBots] = useState<BotCatalogEntry[]>([]);
   const [botError, setBotError] = useState<string | null>(null);
   const [selectedMenuBotId, setSelectedMenuBotId] = useState<PlaygroundMenuBotId | null>(null);
+  const [isEndSessionArmed, setEndSessionArmed] = useState(false);
   const [artifacts, setArtifacts] = useState<ArtifactListItem[]>([]);
   const [artifactError, setArtifactError] = useState<string | null>(null);
   const [remainingCountdownSeconds, setRemainingCountdownSeconds] = useState<number | null>(
@@ -1204,6 +1206,7 @@ export function DashboardShell({
   const isCursiveWorkspace = selectedBot?.id === "document_wizard";
   const isTopSecretWorkspace = selectedBot?.id === "verifier";
   const isRoriWorkspace = selectedBot?.id === "concierge_general_academy_KB";
+  const isFormWizardWorkspace = selectedBot?.id === "form_wizard";
   useEffect(() => {
     if (!activeSessionId || !sessionToken) {
       setConversations({});
@@ -2120,13 +2123,35 @@ export function DashboardShell({
                   Back to Menu
                 </button>
               ) : null}
-              <button
-                className="secondary-button secondary-button--danger"
-                onClick={handleEndPlayground}
-                type="button"
-              >
-                Danger Zone
-              </button>
+              {isEndSessionArmed ? (
+                <>
+                  <button
+                    className="secondary-button"
+                    onClick={() => setEndSessionArmed(false)}
+                    type="button"
+                  >
+                    Keep session
+                  </button>
+                  <button
+                    className="secondary-button secondary-button--danger"
+                    onClick={() => {
+                      setEndSessionArmed(false);
+                      void handleEndPlayground();
+                    }}
+                    type="button"
+                  >
+                    Confirm end
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="secondary-button secondary-button--danger"
+                  onClick={() => setEndSessionArmed(true)}
+                  type="button"
+                >
+                  End session
+                </button>
+              )}
             </div>
           </section>
           {botError ? <p role="alert" className="alert-banner">{botError}</p> : null}
@@ -2257,6 +2282,12 @@ export function DashboardShell({
                   ) : null}
                 </div>
                 <div className="workspace-shell-overlay workspace-shell-overlay--chat workspace-shell-overlay--chat-enter">
+                  {isFormWizardWorkspace ? (
+                    <FormWizardPanel
+                      sessionId={session.id}
+                      sessionToken={sessionToken}
+                    />
+                  ) : (
                   <ChatPanel
                     key={selectedBot?.id ?? "no-bot-selected"}
                     bot={selectedBot}
@@ -2286,6 +2317,7 @@ export function DashboardShell({
                     sessionId={session.id}
                     sessionToken={sessionToken}
                   />
+                  )}
                 </div>
               </section>
               )

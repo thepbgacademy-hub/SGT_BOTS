@@ -2163,6 +2163,34 @@ describe("bot runtime routes", () => {
     expect(body.citations.every((citation) => !citation.url.includes("example.invalid"))).toBe(true);
   }, 40000);
 
+  it("keeps Condor display-only and never claims research ran in chat", async () => {
+    const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/chat/messages",
+      headers: {
+        authorization: `Bearer ${sessionToken}`,
+      },
+      payload: {
+        sessionId,
+        botId: "tax_legal_research",
+        message: "Research this tax statute for me.",
+      },
+    });
+
+    const body = response.json() as {
+      output: string;
+    };
+
+    expect(response.statusCode).toBe(200);
+    expect(body.output).toContain("display-only");
+    expect(body.output).not.toMatch(
+      /I (researched|found|verified|checked|reviewed|surfaced)/i,
+    );
+    expect(body.output).not.toContain("Research this tax statute");
+  }, 40000);
+
   it("asks Top Secret users for the exact claim when chat has no claim to review", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
 

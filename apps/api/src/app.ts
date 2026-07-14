@@ -35,6 +35,8 @@ import {
 import { createCursiveConfigService, type CursiveConfigService } from "./modules/cursive/cursive-live-config.service";
 import { registerCursiveRoutes } from "./modules/cursive/cursive.route";
 import { createCursiveService } from "./modules/cursive/cursive.service";
+import { registerFormWizardRoutes } from "./modules/form-wizard/form-wizard.route";
+import { createFormWizardService } from "./modules/form-wizard/form-wizard.service";
 import {
   createInMemoryProfileRepo,
   createSupabaseProfileRepo,
@@ -93,6 +95,7 @@ declare module "fastify" {
     reportService: ReturnType<typeof createReportService>;
     chatService: ReturnType<typeof createChatService>;
     cursiveService: Pick<ReturnType<typeof createCursiveService>, "getWorkflowEntry">;
+    formWizardService: ReturnType<typeof createFormWizardService>;
     reviewService: ReturnType<typeof createReviewService>;
     sessionService: ReturnType<typeof createSessionService>;
     cursiveConfigService: CursiveConfigService;
@@ -197,6 +200,7 @@ export async function buildApp(options?: {
     }),
   );
   app.decorate("cursiveService", createCursiveService());
+  app.decorate("formWizardService", createFormWizardService());
   app.decorate("cursiveConfigService", createCursiveConfigService(appEnv));
   app.decorate(
     "topSecretReviewRepo",
@@ -270,6 +274,7 @@ export async function buildApp(options?: {
   await registerBotRoutes(app);
   await registerChatRoutes(app);
   await registerCursiveRoutes(app);
+  await registerFormWizardRoutes(app);
   await registerReportRoutes(app);
   await registerReviewRoutes(app);
   await registerTopSecretAdminRoutes(app);

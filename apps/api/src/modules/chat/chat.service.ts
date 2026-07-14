@@ -155,20 +155,6 @@ async function buildTutorReply(
   return buildInsightTutorReply(content, { promptConfig });
 }
 
-function buildFormWizardReply(
-  manifest: BotManifest,
-  content: string,
-): RuntimeReply {
-  requireCapability(manifest, "chat");
-  requireCapability(manifest, "structured_form");
-  requireCapability(manifest, "html_report");
-  requireToolPermission(manifest, "document_intake");
-
-  return {
-    output: `I can turn "${content}" into a guided intake workflow, capture the right fields, and assemble the final output cleanly.`,
-  };
-}
-
 function buildVerifierReply(
   manifest: BotManifest,
   content: string,
@@ -235,10 +221,7 @@ function buildVerifierReply(
   };
 }
 
-function buildTaxLegalResearchReply(
-  manifest: BotManifest,
-  content: string,
-): RuntimeReply {
+function buildTaxLegalResearchReply(manifest: BotManifest): RuntimeReply {
   requireCapability(manifest, "chat");
   requireCapability(manifest, "citations");
   requireCapability(manifest, "rag_query");
@@ -246,7 +229,8 @@ function buildTaxLegalResearchReply(
   requireToolPermission(manifest, "knowledge_base_search");
 
   return {
-    output: `I researched "${content}" and surfaced the most relevant tax and legal lead to start your analysis.`,
+    output:
+      "Condor is display-only in this playground, so no research has run on your request yet. When the Condor research workflow goes live, it will start from the approved Tax and Legal Research Index instead of answering from memory. For Academy questions in the meantime, Rori can route you to the right lane.",
     citations: [
       {
         sourceId: "knowledge_base",
@@ -425,7 +409,7 @@ function buildRuntimeReply(
     case "tutor":
       return buildTutorReply(manifest, trimmedContent, botPromptConfigRepo);
     case "form_wizard":
-      return buildFormWizardReply(manifest, trimmedContent);
+      throw new Error("shazzam workflow only");
     case "verifier":
       return botPromptConfigRepo
         .getActiveConfig(manifest.id, "playground")
@@ -442,7 +426,7 @@ function buildRuntimeReply(
         priorMessages,
       );
     case "tax_legal_research":
-      return buildTaxLegalResearchReply(manifest, trimmedContent);
+      return buildTaxLegalResearchReply(manifest);
     default: {
       const exhaustiveCheck: never = manifest.id;
       throw new Error(`unsupported bot: ${exhaustiveCheck}`);

@@ -201,7 +201,7 @@ export function ProviderConnectPanel({
       {error ? <p role="alert" className="alert-banner">{error}</p> : null}
       <p className="provider-hint field--full">
         Connect once here to unlock the whole playground session. Cursive, Top
-        Secret, Rori, Condor, and the rest of the bots all use this same
+        Secret, Rori, Insight, ShAzZaM!, and Condor all use this same
         three-hour connection.
       </p>
       <label className="field field--full">
