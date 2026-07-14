@@ -31,7 +31,7 @@ Out of scope for this roadmap:
 - [x] Phase 3 - Rori grounded persona composer
 - [x] Phase 4 - Top Secret chat to real workflow integration
 - [x] Phase 5 - Insight approved-source tutoring runtime
-- [ ] Phase 6 - Utility-bot separation finalization
+- [x] Phase 6 - Utility-bot separation finalization
 - [ ] Phase 7 - Observability, QA matrix, and rollout gate
 
 ---
@@ -513,8 +513,14 @@ Deliverables:
 Done when:
 - ShAzZaM! behaves like a form engine, not a pretend assistant.
 
+Status:
+- Completed 2026-07-13. ShAzZaM! `form_wizard` chat now hard-rejects with `shazzam workflow only` (409) before persona config load or conversation persistence, mirroring the Cursive gate. A dedicated workflow surface exists: `apps/api/src/modules/form-wizard/form-wizard.service.ts` defines the chat-disabled guided-intake workflow entry and required-field validation, exposed at `GET /api/form-wizard/workflow/entry` and `POST /api/form-wizard/workflow/guided-intake/validate` (incomplete intakes return the missing field labels and do not complete). The mini app ShAzZaM! workspace renders `FormWizardPanel` (guided intake form) instead of an open ChatPanel. No persona layer was added. Coverage lives in `apps/api/tests/form-wizard/form-wizard-workflow.spec.ts` and `apps/telegram-miniapp/src/features/form-wizard/FormWizardPanel.spec.tsx`.
+
 Phase exit criteria:
 - Utility bots are cleanly outside persona composition.
+
+Status:
+- Phase 6 completed 2026-07-13. Cursive and ShAzZaM! both reject chat deterministically before persona composition, and each has an explicit chat-disabled workflow entry route.
 
 ---
 
@@ -634,6 +640,8 @@ Use this section as the running build ledger. Add one dated line per completed t
 - 2026-07-10: Completed Phase 1 Ticket 1.3. Reviewed manual persona config SQL now defines playground records for Rori, Top Secret, and Insight only; utility bots and display-only Condor intentionally receive no persona records. Phase 1 is complete; no production apply was performed.
 - 2026-07-10: Completed Phase 3 Tickets 3.1, 3.2, and 3.3 plus Phase 4 Ticket 4.1. Rori now has a strict grounded composer contract, source-ID validation with deterministic fallback, and short-lived follow-up refinement. Top Secret ordinary chat no longer claims verification unless the real report workflow runs.
 - 2026-07-10: Completed Phase 4 Ticket 4.2, Phase 5 Tickets 5.1 and 5.2, and Phase 6 Ticket 6.1. Top Secret chat now uses verifier persona config for source-first guidance, Insight now has an approved-source tutoring module and boundary note, and Cursive remains workflow-only with route coverage. Verified with `corepack pnpm exec vitest run tests/chat/insight-tutor.spec.ts tests/e2e/bot-runtime.spec.ts tests/cursive/cursive-service.spec.ts`, `corepack pnpm --filter @sgt-bots/api lint`, and `git diff --check`.
+- 2026-07-13: Completed Phase 6 Ticket 6.2. ShAzZaM! chat is workflow-gated (`shazzam workflow only`, 409), the `form_wizard` guided-intake workflow entry and validation routes exist, and the mini app renders a guided intake form instead of chat for ShAzZaM!. Phase 6 is complete. Verified with `corepack pnpm exec vitest run tests/form-wizard/form-wizard-workflow.spec.ts tests/cursive/cursive-service.spec.ts tests/e2e/bot-runtime.spec.ts`, miniapp component specs, `corepack pnpm --filter @sgt-bots/api lint`, and `corepack pnpm --filter @sgt-bots/telegram-miniapp lint`. No production apply was performed.
+- 2026-07-13: Corrected Condor display-only chat. `tax_legal_research` chat no longer claims "I researched" or echoes user input; it states that Condor is display-only and no research ran, keeping the approved research-index citation. E2E assertion added in `apps/api/tests/e2e/bot-runtime.spec.ts` mirroring the Top Secret no-false-verification checks. Also fixed mini app copy (6 bot lanes, provider hint now lists Insight and ShAzZaM!) and replaced the unconfirmed "Danger Zone" end-session button with an End session -> Confirm end two-step.
 
 ---
 
