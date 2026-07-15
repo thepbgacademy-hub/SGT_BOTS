@@ -4,10 +4,8 @@ Consult `docs/superpowers/plans/2026-07-13-playground-build-inspection-audit.md`
 
 ## Active
 
-- [ ] **Execute persona/runtime roadmap** - work through `docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md` in order; next ticket is Phase 7 Ticket 7.2 acceptance runbook, then 7.3 production readiness gate (7.1 redacted runtime diagnostics completed 2026-07-14)
 - [ ] **Load approved Rori wiki data** - wait for Academy-approved wiki pages from `E:\REPOS\wiki-architect`, generate reviewed Rori upsert SQL, apply after migrations `008` and `009`, then smoke test Rori in Telegram
 - [ ] **Prepare remaining bot workflow layers** - continue non-Cursive bot polish after Rori wiki data is ready
-- [ ] **Fix 3 pre-existing test failures on this branch** - `tests/e2e/report-isolation.spec.ts` expects the old `top-secret-claim-review.pdf` filename (runtime now embeds the user slug), and two `tests/top-secret/top-secret-researcher.spec.ts` cases expect `not_verified` currentness when retrieval fails but receive `verified_current`/`partially_verified`; confirmed failing at baseline commit `2019e7e` with no local changes on 2026-07-13
 
 ## Waiting On
 
@@ -23,6 +21,7 @@ Consult `docs/superpowers/plans/2026-07-13-playground-build-inspection-audit.md`
 ## Done
 
 - [x] ~~Complete Phase 7 Ticket 7.1 redacted runtime diagnostics: per-message ChatRuntimeDiagnostic (config source, retrieval outcome, decision outcome, provider fallback state, source IDs) with safe-logging tests and app-logger wiring~~ (2026-07-14)
+- [x] ~~Complete Phase 7 Tickets 7.2 and 7.3: acceptance runbook, production-readiness gate, currentness contract repairs, report-isolation E2E coverage, and full API verification~~ (2026-07-15)
 - [x] ~~Complete ShAzZaM! workflow separation (Phase 6 Ticket 6.2), fix Condor display-only false-research claim, and fix onboarding/provider copy plus end-session confirm~~ (2026-07-13)
 - [x] ~~Complete Top Secret persona config usage, Insight approved-source tutoring runtime, and Cursive workflow-only dispatcher coverage~~ (2026-07-10)
 - [x] ~~Complete Rori grounded composer contract, bounded validation, follow-up memory, and Top Secret chat-mode separation~~ (2026-07-10)

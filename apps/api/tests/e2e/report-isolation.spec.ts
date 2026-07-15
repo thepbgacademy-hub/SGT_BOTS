@@ -21,6 +21,11 @@ async function buildSharedApp() {
     profileRepo: createInMemoryProfileRepo(),
     sessionMetadataRepo: createInMemorySessionMetadataRepo(),
     sessionSecretStore: createInMemorySessionSecretStore(),
+    reportQueueJobRunner: async (input) => ({
+      artifactId: input.artifactId,
+      bytes: Buffer.from("%PDF-isolation"),
+      fileName: input.artifactFileName,
+    }),
   });
 }
 
@@ -197,6 +202,7 @@ describe("report artifact isolation", () => {
       telegramUserId: 123502,
       username: "top_secret_user",
     });
+    const sameUserOtherSessionId = "same-user-other-session";
 
     const cursiveQueued = await queueCursiveArtifact({
       app,
@@ -250,7 +256,7 @@ describe("report artifact isolation", () => {
       expect.arrayContaining([
         expect.objectContaining({
           botId: "verifier",
-          fileName: "top-secret-claim-review.pdf",
+          fileName: "top_secret_user_top_secret_review.pdf",
           id: topSecretQueued.artifact.id,
           status: "ready",
         }),
@@ -278,5 +284,17 @@ describe("report artifact isolation", () => {
     expect(crossUserDownload.json()).toMatchObject({
       message: "artifact not found",
     });
+
+    const crossSessionDownload = await app.inject({
+      headers: {
+        authorization: `Bearer ${topSecretUser.sessionToken}`,
+      },
+      method: "GET",
+      url: `/api/reports/artifacts/${topSecretQueued.artifact.id}/download?sessionId=${encodeURIComponent(
+        sameUserOtherSessionId,
+      )}`,
+    });
+
+    expect(crossSessionDownload.statusCode).toBe(401);
   }, 40000);
 });

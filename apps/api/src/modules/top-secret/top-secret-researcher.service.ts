@@ -494,7 +494,7 @@ export async function retrieveTopSecretSourceBundles(input: {
   if (candidates.length > 0) {
     return candidates.map((candidate, index) => ({
       ...candidate,
-      currentnessStatus: assessTopSecretSourceCurrentness(candidate),
+      currentnessStatus: "not_verified",
       detectedCitations: extractTopSecretLegalCitations(candidate.title),
       id: `source-${index + 1}`,
       retrievedText:

@@ -222,6 +222,23 @@ describe("Top Secret researcher", () => {
     expect(bundles[0].detectedCitations).toContain("31 C.F.R. Sec. 363.6");
   });
 
+  it("detects CFR citations written with a section sign", async () => {
+    const bundles = await retrieveTopSecretSourceBundles({
+      claim: "TreasuryDirect account claims should be checked with 31 CFR § 363.6.",
+      mode: "live",
+      fetchImpl: async () =>
+        new Response(
+          "<html><body>Official regulation text retained for section-sign citation coverage.</body></html>",
+          {
+            status: 200,
+            headers: { "content-type": "text/html" },
+          },
+        ),
+    });
+
+    expect(bundles[0].detectedCitations).toContain("31 C.F.R. Sec. 363.6");
+  });
+
   it("falls back to stub sources when live retrieval cannot retain a source", async () => {
     const bundles = await retrieveTopSecretSourceBundles({
       claim: "TreasuryDirect accounts can discharge every debt.",
@@ -234,6 +251,23 @@ describe("Top Secret researcher", () => {
         expect.objectContaining({
           currentnessStatus: "not_verified",
           url: "https://www.treasurydirect.gov/marketable-securities/",
+        }),
+      ]),
+    );
+  });
+
+  it("does not call an official-current fallback verified", async () => {
+    const bundles = await retrieveTopSecretSourceBundles({
+      claim: "TreasuryDirect account claims should be checked against 31 CFR 363.6.",
+      mode: "live",
+      fetchImpl: async () => new Response("not found", { status: 404 }),
+    });
+
+    expect(bundles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          currentnessStatus: "not_verified",
+          url: "https://www.ecfr.gov/current/title-31/section-363.6",
         }),
       ]),
     );

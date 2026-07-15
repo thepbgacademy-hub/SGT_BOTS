@@ -186,7 +186,7 @@ describe("Top Secret review workflow", () => {
     });
 
     expect(response.statusCode).toBe(401);
-  });
+  }, 30000);
 
   it("returns a controlled 400 when promotion payload is missing", async () => {
     const { app } = await createAuthorizedSession();

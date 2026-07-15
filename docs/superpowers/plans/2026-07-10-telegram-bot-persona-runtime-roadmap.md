@@ -566,6 +566,9 @@ Deliverables:
 Done when:
 - Future phases can be evaluated consistently and not re-litigated from scratch.
 
+Status:
+- Completed 2026-07-15. The repeatable QA procedure is recorded in `docs/superpowers/plans/2026-07-15-telegram-bot-persona-acceptance-runbook.md`, including frozen prompt IDs, non-prompt checks, human tone review, thresholds, evidence capture, failure recording, and sign-off.
+
 ### Ticket 7.3 - Production readiness gate
 
 Boundaries:
@@ -586,8 +589,14 @@ Deliverables:
 Done when:
 - Rollout is evidence-based, not intuition-based.
 
+Status:
+- Completed 2026-07-15. The staging/canary go-no-go checklist is recorded in `docs/superpowers/plans/2026-07-15-telegram-bot-persona-production-readiness-gate.md`. It requires source validation, no unsupported claims, deterministic utility bots, Top Secret verification discipline, safe diagnostics, artifact isolation, and commit-to-image traceability. No deployment was performed.
+
 Phase exit criteria:
 - We have observable, test-backed confidence before rollout.
+
+Status:
+- Phase 7 completed 2026-07-15. Full API verification passed with 45 test files and 373 tests. API and queue-worker lint passed, `git diff --check` passed, and the scoped reviewer approved the batch.
 
 ---
 
@@ -642,6 +651,7 @@ Use this section as the running build ledger. Add one dated line per completed t
 - 2026-07-10: Completed Phase 4 Ticket 4.2, Phase 5 Tickets 5.1 and 5.2, and Phase 6 Ticket 6.1. Top Secret chat now uses verifier persona config for source-first guidance, Insight now has an approved-source tutoring module and boundary note, and Cursive remains workflow-only with route coverage. Verified with `corepack pnpm exec vitest run tests/chat/insight-tutor.spec.ts tests/e2e/bot-runtime.spec.ts tests/cursive/cursive-service.spec.ts`, `corepack pnpm --filter @sgt-bots/api lint`, and `git diff --check`.
 - 2026-07-13: Completed Phase 6 Ticket 6.2. ShAzZaM! chat is workflow-gated (`shazzam workflow only`, 409), the `form_wizard` guided-intake workflow entry and validation routes exist, and the mini app renders a guided intake form instead of chat for ShAzZaM!. Phase 6 is complete. Verified with `corepack pnpm exec vitest run tests/form-wizard/form-wizard-workflow.spec.ts tests/cursive/cursive-service.spec.ts tests/e2e/bot-runtime.spec.ts`, miniapp component specs, `corepack pnpm --filter @sgt-bots/api lint`, and `corepack pnpm --filter @sgt-bots/telegram-miniapp lint`. No production apply was performed.
 - 2026-07-13: Corrected Condor display-only chat. `tax_legal_research` chat no longer claims "I researched" or echoes user input; it states that Condor is display-only and no research ran, keeping the approved research-index citation. E2E assertion added in `apps/api/tests/e2e/bot-runtime.spec.ts` mirroring the Top Secret no-false-verification checks. Also fixed mini app copy (6 bot lanes, provider hint now lists Insight and ShAzZaM!) and replaced the unconfirmed "Danger Zone" end-session button with an End session -> Confirm end two-step.
+- 2026-07-15: Completed Phase 7 Tickets 7.2 and 7.3. Added the acceptance runbook and production-readiness gate, repaired user-scoped report filename and non-retained currentness contracts, made report-isolation E2E rendering deterministic, added same-user wrong-session rejection and CFR section-sign coverage, and extended one existing admin-route E2E timeout to match its integration setup. Full API verification passed with 45 files and 373 tests. No production apply.
 
 ---
 
