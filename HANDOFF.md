@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Load Academy-approved Rori wiki data from `E:\\REPOS\\wiki-architect`: generate reviewed Rori upsert SQL, apply it after migrations `008` and `009`, then smoke test Rori in Telegram. Continue the remaining bot workflow layers after that data is approved.
+Complete the Rori wiki load gate: apply the generated upserts after migrations `008` and `009` are confirmed on the target, verify published rows through the `rori` schema, then smoke test Rori in Telegram. The local preflight is complete; the remote step is still pending because VPS/Supabase access timed out.
 
 ## Build Doc Sources
 
@@ -11,6 +11,7 @@ Load Academy-approved Rori wiki data from `E:\\REPOS\\wiki-architect`: generate 
 - `E:\\REPOS\\SGT_BOTS\\.worktrees\\rori-academy-concierge\\docs\\superpowers\\plans\\2026-07-10-telegram-bot-persona-acceptance-prompts.md`
 - `E:\\REPOS\\SGT_BOTS\\.worktrees\\rori-academy-concierge\\docs\\superpowers\\plans\\2026-07-15-telegram-bot-persona-acceptance-runbook.md`
 - `E:\\REPOS\\SGT_BOTS\\.worktrees\\rori-academy-concierge\\docs\\superpowers\\plans\\2026-07-15-telegram-bot-persona-production-readiness-gate.md`
+- `E:\\REPOS\\SGT_BOTS\\.worktrees\\rori-academy-concierge\\docs\\superpowers\\plans\\2026-07-15-rori-wiki-load-preflight.md`
 - `E:\\REPOS\\SGT_BOTS\\.worktrees\\rori-academy-concierge\\docs\\superpowers\\plans\\2026-07-13-playground-build-inspection-audit.md`
 - `E:\\REPOS\\SGT_BOTS\\.worktrees\\rori-academy-concierge\\docs\\superpowers\\specs\\2026-07-10-insight-approved-source-boundary.md`
 - `E:\\REPOS\\SGT_BOTS\\.worktrees\\rori-academy-concierge\\docs\\superpowers\\specs\\2026-05-25-rori-academy-concierge-design.md`
@@ -26,4 +27,4 @@ Load Academy-approved Rori wiki data from `E:\\REPOS\\wiki-architect`: generate 
 
 ## Last Completed Step
 
-Completed Phase 7 Tickets 7.2 and 7.3 on 2026-07-15. Added the repeatable acceptance runbook and staging/canary go-no-go gate. Repaired the user-scoped Top Secret filename contract, non-retained source currentness status, report-isolation E2E coverage, and CFR section-sign regression coverage. The full API suite passed with 45 files and 373 tests. API and queue-worker TypeScript lint passed, `git diff --check` passed, and the scoped reviewer approved the batch. No VPS or production apply was performed.
+Completed the local Rori wiki load preflight on 2026-07-15. The reviewed bundle generated dedicated-schema upsert SQL successfully, and the import, retrieval, and Rori grounding checks passed with 3 files and 29 tests. The remote schema confirmation, Supabase apply, and Telegram smoke test remain pending because VPS/Supabase access timed out. No remote write was performed.

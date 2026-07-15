@@ -22,6 +22,7 @@ Consult `docs/superpowers/plans/2026-07-13-playground-build-inspection-audit.md`
 
 - [x] ~~Complete Phase 7 Ticket 7.1 redacted runtime diagnostics: per-message ChatRuntimeDiagnostic (config source, retrieval outcome, decision outcome, provider fallback state, source IDs) with safe-logging tests and app-logger wiring~~ (2026-07-14)
 - [x] ~~Complete Phase 7 Tickets 7.2 and 7.3: acceptance runbook, production-readiness gate, currentness contract repairs, report-isolation E2E coverage, and full API verification~~ (2026-07-15)
+- [x] ~~Complete local Rori wiki load preflight: bundle validation, dedicated-schema SQL generation, runtime retrieval checks, and Rori grounding checks~~ (2026-07-15; remote apply remains pending)
 - [x] ~~Complete ShAzZaM! workflow separation (Phase 6 Ticket 6.2), fix Condor display-only false-research claim, and fix onboarding/provider copy plus end-session confirm~~ (2026-07-13)
 - [x] ~~Complete Top Secret persona config usage, Insight approved-source tutoring runtime, and Cursive workflow-only dispatcher coverage~~ (2026-07-10)
 - [x] ~~Complete Rori grounded composer contract, bounded validation, follow-up memory, and Top Secret chat-mode separation~~ (2026-07-10)
