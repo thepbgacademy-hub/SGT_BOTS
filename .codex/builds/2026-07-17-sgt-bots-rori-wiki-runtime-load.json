@@ -1,0 +1,239 @@
+{
+  "$schema": "../references/build-work.schema.json",
+  "schema_version": "1.0.0",
+  "revision": 9,
+  "build": {
+    "id": "2026-07-17-sgt-bots-rori-wiki-runtime-load",
+    "title": "SGT Bots Rori Wiki Runtime Load",
+    "type": "software",
+    "status": "completed",
+    "workspace": "E:\\REPOS\\SGT_BOTS\\.worktrees\\rori-academy-concierge",
+    "parent": null,
+    "created_at": "2026-07-17T04:45:26Z",
+    "updated_at": "2026-07-17T04:57:39Z"
+  },
+  "objective": {
+    "summary": "Complete the Rori wiki runtime load gate by proving the reviewed public wiki bundle is present in the dedicated rori schema and that the deployed SGT Bots backend can read published rows through its normal Supabase boundary.",
+    "deliverables": [
+      "Verified dedicated-schema Rori wiki and directory records",
+      "Deployed-backend runtime read smoke evidence",
+      "Updated handoff and roadmap evidence"
+    ],
+    "out_of_scope": [
+      "Changing Academy wiki content, pricing, room links, or policy facts",
+      "Changing other VPS applications or schemas",
+      "Rebuilding the Rori chat runtime"
+    ],
+    "acceptance_criteria": [
+      "Only rori schema records are inspected or written",
+      "The reviewed bundle remains seven published visible wiki pages, two visible rooms, and zero events",
+      "The deployed backend returns the published Rori rows through accept-profile rori",
+      "No credentials appear in tracked artifacts or evidence"
+    ]
+  },
+  "requirements": [
+    "Use the reviewed rori-academy-data.pbg-wiki.json bundle and the existing upsert-only generator.",
+    "Confirm migrations 008 and 009 before treating the schema as ready.",
+    "Run a deployed-backend smoke check rather than relying only on local tests."
+  ],
+  "constraints": [
+    "No destructive database or VPS actions.",
+    "No subagent access to the VPS or secrets.",
+    "No user, provider, or Telegram credentials recorded in this build file."
+  ],
+  "decisions": [
+    "The existing remote records are verified before any attempt to reapply the upsert bundle.",
+    "The direct PostgREST read from the deployed backend is the minimum runtime proof because it uses the same Supabase environment and rori schema header as the Rori repository."
+  ],
+  "open_questions": [],
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Verify remote Rori schema and reviewed record counts",
+      "status": "completed",
+      "owner": "codex",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "rori.rori_academy_wiki_pages, rori.rori_telegram_rooms, and rori.rori_academy_events exist",
+        "Counts are seven wiki rows, seven published visible wiki rows, two room rows, two visible room rows, and zero events"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-001]"
+      ],
+      "artifacts": [
+        "docs/superpowers/plans/2026-07-15-rori-wiki-load-preflight.md"
+      ],
+      "evidence": [
+        "Direct psql inspection on VPS2 returned rori.rori_academy_wiki_pages, rori.rori_telegram_rooms, and rori.rori_academy_events.",
+        "The same read-only query returned seven total wiki rows, seven published visible wiki rows, two total and visible room rows, and zero events."
+      ],
+      "handoffs": [],
+      "blockers": []
+    },
+    {
+      "id": "TASK-002",
+      "title": "Prove the deployed backend reads published Rori rows",
+      "status": "completed",
+      "owner": "codex",
+      "dependencies": [
+        "TASK-001"
+      ],
+      "acceptance_criteria": [
+        "A process inside the deployed SGT Bots backend performs the published wiki PostgREST read with accept-profile rori",
+        "The smoke result returns HTTP 200 and the seven reviewed page keys"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-002]"
+      ],
+      "artifacts": [
+        "apps/api/src/modules/chat/rori-wiki.repo.ts"
+      ],
+      "evidence": [
+        "A Node process inside sgt-bots-app-sgt-bots-backend-1 used the deployed Supabase environment with accept-profile rori.",
+        "The deployed-backend probe received HTTP 200 and returned all seven expected published page keys."
+      ],
+      "handoffs": [],
+      "blockers": []
+    },
+    {
+      "id": "TASK-003",
+      "title": "Record evidence and review the Rori wiki runtime gate",
+      "status": "completed",
+      "owner": "codex",
+      "dependencies": [
+        "TASK-002"
+      ],
+      "acceptance_criteria": [
+        "Handoff and roadmap accurately state the completed runtime check",
+        "A scoped reviewer finds no unresolved ticket or blueprint drift"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-003]"
+      ],
+      "artifacts": [
+        "HANDOFF.md",
+        "TASKS.md",
+        "docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md"
+      ],
+      "evidence": [
+        "Scoped review found one documentation scope issue, which was removed.",
+        "Follow-up scoped reviewer approved the corrected handoff, task list, roadmap, preflight, and error-log entries with no remaining findings."
+      ],
+      "handoffs": [],
+      "blockers": []
+    }
+  ],
+  "risks": [
+    "The deployed image may predate the current local branch, so the smoke test is limited to the stable Supabase retrieval contract.",
+    "Full Telegram conversation smoke testing still requires a valid playground session and is not performed by a database-only probe."
+  ],
+  "artifacts": [
+    "vps-supabase-manual/rori-academy-data.pbg-wiki.json",
+    "vps-supabase-manual/rori-academy-data.generated.sql",
+    "supabase/migrations/008_rori_academy_directory.sql",
+    "supabase/migrations/009_rori_academy_wiki.sql"
+  ],
+  "verification": {
+    "required_checks": [
+      "Focused Rori import, repository, and grounding tests",
+      "API TypeScript lint",
+      "Remote schema and count query",
+      "Deployed-backend PostgREST smoke read",
+      "Scoped reviewer approval"
+    ],
+    "results": [
+      "Focused import, repository, and grounding tests previously passed: 29 tests.",
+      "API TypeScript lint previously passed.",
+      "Remote psql inspection returned the three rori tables and the expected seven, seven, two, two, zero record counts.",
+      "The deployed backend's direct PostgREST probe returned HTTP 200 and the seven expected published Rori page keys.",
+      "Scoped reviewer approved the corrected documentation with no remaining findings."
+    ],
+    "final_status": "passed"
+  },
+  "extensions": {
+    "enabled": [
+      "software",
+      "multi-agent"
+    ],
+    "software": {
+      "languages": [
+        "TypeScript",
+        "SQL",
+        "JavaScript"
+      ],
+      "frameworks": [
+        "Fastify",
+        "Supabase PostgREST",
+        "Vitest"
+      ],
+      "entry_points": [
+        "apps/api/src/modules/chat/rori-wiki.repo.ts"
+      ],
+      "test_commands": [
+        "corepack pnpm exec vitest run apps/api/tests/chat/rori-academy-data-import.spec.ts apps/api/tests/chat/rori-wiki-repo.spec.ts apps/api/tests/chat/rori-kb.spec.ts --pool=forks --maxWorkers=1 --minWorkers=1"
+      ],
+      "deployment_targets": [
+        "VPS2 sgt-bots-app-sgt-bots-backend-1"
+      ]
+    },
+    "multi-agent": {
+      "orchestrator_id": "codex",
+      "assignments": [
+        {
+          "agent_id": "019f68e4-c52e-7203-aa6e-3e687ed66abc",
+          "task_id": "TASK-001",
+          "write_scope": "tasks[id=TASK-001]"
+        },
+        {
+          "agent_id": "019f68e4-9f44-72a2-b29f-cc789fa7fe68",
+          "task_id": "TASK-002",
+          "write_scope": "tasks[id=TASK-002]"
+        },
+        {
+          "agent_id": "019f6e69-e229-7ee2-b341-837937046091",
+          "task_id": "TASK-003",
+          "write_scope": "tasks[id=TASK-003]"
+        },
+        {
+          "agent_id": "019f6e6c-0666-7ae2-bc37-78f899416bee",
+          "task_id": "TASK-003",
+          "write_scope": "tasks[id=TASK-003]"
+        }
+      ],
+      "merge_policy": "orchestrator-controlled"
+    }
+  },
+  "history": [
+    "2026-07-17: Initialized the canonical record for the existing Rori wiki runtime-load gate and recorded direct remote schema evidence without secrets.",
+    "2026-07-17: Completed deployed-backend Rori schema smoke evidence. The remaining task is documentation and scoped review; human Telegram conversation smoke remains an external interactive check.",
+    "2026-07-17: Completed scoped documentation review after removing unnecessary operational access detail. The Rori wiki runtime-load gate is ready to close; the human Telegram conversation smoke remains tracked separately in TASKS.md.",
+    {
+      "event": "status-transition",
+      "from": "draft",
+      "to": "ready",
+      "orchestrator": "codex",
+      "timestamp": "2026-07-17T04:47:07Z"
+    },
+    {
+      "event": "status-transition",
+      "from": "ready",
+      "to": "active",
+      "orchestrator": "codex",
+      "timestamp": "2026-07-17T04:48:20Z"
+    },
+    {
+      "event": "status-transition",
+      "from": "active",
+      "to": "verifying",
+      "orchestrator": "codex",
+      "timestamp": "2026-07-17T04:57:37Z"
+    },
+    {
+      "event": "status-transition",
+      "from": "verifying",
+      "to": "completed",
+      "orchestrator": "codex",
+      "timestamp": "2026-07-17T04:57:39Z"
+    }
+  ]
+}

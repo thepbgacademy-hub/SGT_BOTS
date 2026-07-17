@@ -359,3 +359,13 @@
 **Fix applied:** Added a shared `hasEnrollmentQuestion(...)` matcher in `rori-kb.ts`, wired both intent classification and the main enrollment branch to use it, and broadened the wiki keyword fallback so `join` phrasing can still resolve the enrollment page. Added focused Rori KB tests for `how do i join?`, `how do i join the academy?`, and the existing enrollment follow-up behavior.
 
 **Rule going forward:** Enrollment detection should match natural human phrasing, not just product-approved keywords. When a question clearly asks how to join the Academy, route it into enrollment before considering the off-topic boundary.
+
+## 2026-07-17 - Rori Remote Runtime Gate Needed Direct Verification
+
+**Context:** The Rori wiki load preflight had local evidence, but the remote schema and deployed-backend read path had not yet been confirmed.
+
+**Problem:** Treating a prior connectivity timeout as a database problem would have risked an unnecessary migration, restart, or data reapply.
+
+**Fix applied:** Ran read-only schema/count queries and a deployed-backend PostgREST probe. The dedicated `rori` tables and expected records were already present, and the backend returned HTTP 200 with all seven published page keys.
+
+**Rule going forward:** Confirm the target with read-only schema and runtime queries before considering a migration, restart, or data reapply.

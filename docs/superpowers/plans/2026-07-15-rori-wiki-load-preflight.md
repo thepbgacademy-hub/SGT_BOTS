@@ -14,7 +14,7 @@ This preflight covers the next bounded Rori data-load ticket. It does not apply 
 - [x] **Ticket 1: Bundle integrity** - the checked-in bundle contains seven public wiki pages, two support-room records, and no event records. Student-only pages are excluded.
 - [x] **Ticket 2: Safe SQL generation** - the generator completed successfully and produced only transactional `insert ... on conflict do update` statements for the dedicated `rori` schema.
 - [x] **Ticket 3: Runtime contract** - import validation, Supabase retrieval, and Rori response grounding tests passed together: 29 tests.
-- [ ] **Ticket 4: Target load and Telegram smoke test** - blocked until VPS/Supabase access is available and migrations `008_rori_academy_directory.sql` and `009_rori_academy_wiki.sql` are confirmed on the target. No remote write was attempted after SSH timed out.
+- [x] **Ticket 4: Target schema and deployed-backend read** - VPS2 already had the dedicated Rori tables and expected reviewed records. A process in the deployed backend received HTTP 200 and all seven published page keys through the `rori` PostgREST profile. No reapply, restart, or database write was required.
 
 ## Verification run
 
@@ -27,4 +27,4 @@ Result: 3 test files passed, 29 tests passed.
 
 ## Remote gate
 
-Before applying the generated SQL, confirm the target has migrations `008` and `009`. If legacy public Rori tables exist, confirm `012_rori_schema_segregation.sql` has been applied first. Apply only the generated upserts, then verify published rows are returned through the `rori` schema before running the Telegram smoke prompts.
+The target already has the expected dedicated-schema tables and reviewed rows. The remaining manual check is a real Telegram Rori conversation using the frozen acceptance prompts. Before any future reapply, confirm the target still has migrations `008` and `009`; if legacy public Rori tables exist, confirm `012_rori_schema_segregation.sql` has been applied first.

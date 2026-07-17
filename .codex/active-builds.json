@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "revision": 1,
+  "generated_at": "2026-07-17T04:45:26Z",
+  "builds": {
+    "2026-07-17-sgt-bots-rori-wiki-runtime-load": {
+      "path": ".codex/builds/2026-07-17-sgt-bots-rori-wiki-runtime-load.json",
+      "title": "SGT Bots Rori Wiki Runtime Load",
+      "type": "software",
+      "status": "draft",
+      "revision": 1
+    }
+  }
+}

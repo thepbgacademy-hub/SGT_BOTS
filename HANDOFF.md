@@ -2,7 +2,7 @@
 
 ## Next Step
 
-Complete the Rori wiki load gate: apply the generated upserts after migrations `008` and `009` are confirmed on the target, verify published rows through the `rori` schema, then smoke test Rori in Telegram. The local preflight is complete; the remote step is still pending because VPS/Supabase access timed out.
+Run the human Telegram conversation smoke for Rori in the Playground. The reviewed wiki rows, dedicated `rori` schema, and deployed backend retrieval path are verified. Use the frozen Rori prompts from the acceptance runbook, then continue remaining bot workflow layers.
 
 ## Build Doc Sources
 
@@ -27,4 +27,4 @@ Complete the Rori wiki load gate: apply the generated upserts after migrations `
 
 ## Last Completed Step
 
-Completed the local Rori wiki load preflight on 2026-07-15. The reviewed bundle generated dedicated-schema upsert SQL successfully, and the import, retrieval, and Rori grounding checks passed with 3 files and 29 tests. The remote schema confirmation, Supabase apply, and Telegram smoke test remain pending because VPS/Supabase access timed out. No remote write was performed.
+Completed the Rori wiki remote runtime gate on 2026-07-17. VPS2 already contained the expected dedicated-schema data: seven published visible wiki pages, two visible support rooms, and no events. A process inside the deployed SGT Bots backend retrieved all seven published Rori pages through the `rori` PostgREST profile with HTTP 200. Focused Rori tests passed with 29 tests and API lint passed. No database write or container restart was required.
