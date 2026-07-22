@@ -1,0 +1,100 @@
+# TASK-010 — staged for audit (cycle 1)
+
+Deferred safety hardening: PDF upload byte cap and %PDF- sniff, Telegram 429 retry_after,
+initData via header, auth_date future-skew rejection.
+
+Record: revision 6. TASK-010 status left at `pending` — only the Auditor's sign-off permits
+`completed`. Record validates clean (beginning-builds validate-build.ps1, ok: true).
+
+## What was done
+
+Classification: FULL CREW (four independent security concerns, 15 files across two packages,
+one request-contract change). The engineer, given that classification plus an explicit
+authorization to right-size dispatch, implemented all four items directly rather than
+dispatching builders, and said so in its envelope. I accept that call: the four items were
+each individually small and fully pinned down by file/line references in the brief, and four
+sequential 15-minute builders would have exceeded the engineer's own 45-minute budget.
+
+All four items implemented. 15 files changed, +300/-38.
+
+1. **Upload cap + sniff** — `MAX_PDF_UPLOAD_BYTES = 5 MiB` in `upload.service.ts`;
+   `looksLikePdf` reduced to the `%PDF-` header check, dropping the whole-buffer
+   `toString("utf8")` the audit was flagging. New `"pdf upload too large"` message mapped to
+   **413** in `report.route.ts`.
+2. **429 retry_after** — `sendTelegramMessage` honors `parameters.retry_after`, bounded to 3
+   attempts and a 30s max delay, via a new injectable `wait()` seam alongside the existing
+   `fetchImpl` seam. Non-429 failures still throw immediately. Loop is exhaustive: the 429
+   branch is guarded by `attempt < MAX`, so the final attempt always returns or throws.
+3. **initData via header** — `/api/telegram/launch` and `/api/telegram/prefill` read
+   `x-telegram-init-data`, matching the existing `provider.route.ts` convention; mini app
+   `fetchLaunchContext` sends the header. Clean cutover, no query fallback, with a regression
+   test asserting the old query parameter is now inert (401).
+4. **auth_date future skew** — `Math.abs` removed; past age keeps the 300s budget, future
+   dating gets a separate 60s tolerance and a distinct `"future-dated telegram init data"`
+   error preserved across the multi-token retry loop.
+
+## Evidence — all re-derived by me, not accepted on the engineer's word
+
+- **Full API suite: 47 files / 390 tests pass, 0 fail.** Baseline re-measured at 373/373, net +17.
+- **Both linters (`tsc --noEmit`) exit 0**, no diagnostics.
+- **Mini app suite: 8 files / 42 tests pass.**
+- **Fail-without-the-change proven by mutation check** for all four items: source stashed,
+  tests retained, the new tests fail; tree then restored and verified byte-identical against a
+  patch backup. Details in `tasks[TASK-010].evidence[2]`.
+- **Signature-before-age ordering confirmed** in `init-data.ts` (HMAC compare line 48 precedes
+  age checks lines 58-66), which is what makes the item 4 multi-token decision safe.
+- **REQ-004 verified**: only synthetic fixture tokens with locally computed HMACs; no real
+  token, initData, or hash anywhere. **REQ-003 verified**: no migrations, no rori schema or
+  PostgREST changes.
+
+Artifacts: `reports/TASK-010-engineer-cycle1-result.json`,
+`reports/TASK-010-qc-review-cycle1.md`, `reports/TASK-010-reviewer-cycle1-result.json`,
+`prompts/task010-diff.patch` (the exact 15-file diff reviewed).
+
+## QC review
+
+Blank-context reviewer returned `VERDICT: findings` with 2 findings, **both self-labeled
+UNVERIFIED** by the reviewer itself. Both dismissed on inspection of code outside the diff:
+`telegram.route.ts:19-23` and `app.ts:266-270` catch init-data errors with an unconditional
+`reply.code(401)` and no message matching, so the new error message cannot surface as a 500 at
+either endpoint. The same risk class was real at the 4 sites that *do* match on message
+strings (`profile.route.ts` x1, `provider.route.ts` x3) and the diff handles all 4. Full
+adjudication with line references in `reports/TASK-010-qc-review-cycle1.md`. No redispatch needed.
+
+## Two things the Auditor should look at
+
+1. **`profile.route.ts` and `provider.route.ts` were touched, and the brief named
+   `profile.route.ts` as out of scope.** I judged this in-scope and correct, but it is a
+   judgement call and I am flagging it rather than burying it. The brief's exclusion was about
+   that route's *POST-body initData contract*, which is untouched. What changed is 4 lines
+   adding the new `"future-dated telegram init data"` message alongside the existing
+   `"stale telegram init data"` in each 401 status mapping. Without it, a future-dated token
+   would 500 instead of 401 at those routes — the change is required for item 4 to be correct,
+   and is the same caller-contract wiring the brief explicitly demanded for item 1's upload error.
+
+2. **A pre-existing test-isolation flake, reported not fixed (out of scope).** `apps/api` tests
+   share the gitignored `apps/api/.runtime-artifacts` directory as mutable on-disk state.
+   Concurrent test files race in `hydrateArtifactsFromDisk` (`report.service.ts:226`), producing
+   intermittent ENOENT failures that grow more frequent as that directory accumulates. My first
+   verification run showed 1 failure and my second showed 4 — which is why the "390/390" claim
+   needs the qualifier that follows.
+
+   **I proved this is pre-existing, not introduced**: with all TASK-010 changes stashed, baseline
+   runs gave 373/373, then 372/373 (1 failed), then 373/373. The affected code path is untouched
+   by this ticket.
+
+   **Honest statement of the green**: the suite is 390/390 deterministically *when
+   `apps/api/.runtime-artifacts` is cleared first*. Without clearing, any run of the full suite
+   may show unrelated ENOENT failures. This matters beyond this ticket — it makes "full API suite
+   green" (an acceptance criterion of this build, and a TASK-008 gate input) non-deterministic as
+   currently run. Recorded as a finding on TASK-010; suggest a dedicated ticket alongside TASK-012.
+
+## Process note
+
+The engineer's envelope placed its evidence at the envelope's schema-required top level, but the
+merge engine only merges keys under `proposed_changes`, so the first merge (rev 5) left
+`task.evidence` empty. I merged a second orchestrator envelope (rev 6) carrying my own verified
+evidence in the correct location. No hand-editing of the record at any point; both envelopes went
+through the engine and validated. Worth fixing in the brief template.
+
+Budget: cycle completed in roughly 35 minutes of the 2-hour ticket allowance.

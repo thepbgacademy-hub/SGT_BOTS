@@ -9,7 +9,13 @@ import { BotSupportPanel } from "./BotSupportPanel";
 import { formatRemaining } from "../../lib/timer";
 import { SessionEndModal, type SessionEndPrompt } from "./SessionEndModal";
 import { MainMenu } from "./MainMenu";
-import { openTelegramReviewLink } from "../../lib/telegram";
+import {
+  applyTelegramThemeParams,
+  openTelegramReviewLink,
+  setTelegramBackButton,
+  setTelegramClosingConfirmation,
+  triggerTelegramHaptic,
+} from "../../lib/telegram";
 import { getBotWorkspacePanel } from "./bot-workspace-panels";
 import {
   getMenuItem,
@@ -35,6 +41,7 @@ import {
 } from "../top-secret/TopSecretWorkspace";
 import { FormWizardPanel } from "../form-wizard/FormWizardPanel";
 import { RoriWorkspace } from "../rori/RoriWorkspace";
+import { getStarterPromptsForBot } from "../rori/starter-prompts";
 
 type SessionSnapshot = {
   id: string;
@@ -52,6 +59,34 @@ type DashboardShellProps = {
 };
 
 const DEFAULT_REVIEW_GROUP_URL = "https://t.me/+1wagxfyhnAcwMDJh";
+
+export type LowTimeNudgeThreshold = "ten_minute" | "two_minute";
+
+export const LOW_TIME_NUDGE_COPY: Record<LowTimeNudgeThreshold, string> = {
+  ten_minute: "10 minutes left in your session.",
+  two_minute: "2 minutes left in your session.",
+};
+
+// Threshold-crossing (<=) rather than equality: remainingSeconds can jump
+// (server resync, a skipped tick) without ever landing exactly on 600 or 120.
+export function getLowTimeNudgeThreshold(
+  remainingSeconds: number,
+  isSessionActive: boolean,
+): LowTimeNudgeThreshold | null {
+  if (!isSessionActive) {
+    return null;
+  }
+
+  if (remainingSeconds <= 120) {
+    return "two_minute";
+  }
+
+  if (remainingSeconds <= 600) {
+    return "ten_minute";
+  }
+
+  return null;
+}
 
 type CursiveStep =
   | "mode"
@@ -1130,6 +1165,8 @@ export function DashboardShell({
   const [remainingCountdownSeconds, setRemainingCountdownSeconds] = useState<number | null>(
     null,
   );
+  const [lowTimeNudge, setLowTimeNudge] = useState<LowTimeNudgeThreshold | null>(null);
+  const firedLowTimeNudgesRef = useRef<Set<LowTimeNudgeThreshold>>(new Set());
   const [conversations, setConversations] = useState<
     Record<
       string,
@@ -1182,7 +1219,7 @@ export function DashboardShell({
       } catch {
         setSessionError("Unable to refresh provider session.");
       }
-    }, 1000);
+    }, 8000);
 
     return () => {
       window.clearInterval(intervalId);
@@ -1194,12 +1231,53 @@ export function DashboardShell({
   const remainingSeconds = isSessionActive
     ? remainingCountdownSeconds ?? session?.remainingSeconds ?? 0
     : 0;
+
+  useEffect(() => {
+    firedLowTimeNudgesRef.current = new Set();
+    setLowTimeNudge(null);
+  }, [activeSessionId]);
+
+  useEffect(() => {
+    const threshold = getLowTimeNudgeThreshold(remainingSeconds, isSessionActive);
+
+    if (!threshold || firedLowTimeNudgesRef.current.has(threshold)) {
+      return;
+    }
+
+    firedLowTimeNudgesRef.current.add(threshold);
+    setLowTimeNudge(threshold);
+  }, [isSessionActive, remainingSeconds]);
+
+  useEffect(() => {
+    applyTelegramThemeParams();
+  }, []);
+
+  useEffect(() => {
+    setTelegramClosingConfirmation(isSessionActive);
+
+    return () => {
+      setTelegramClosingConfirmation(false);
+    };
+  }, [isSessionActive]);
+
   const selectedBot =
     bots.find((bot) => bot.id === selectedMenuBotId) ?? null;
   const selectedConversation = selectedBot
     ? conversations[selectedBot.id]
     : undefined;
   const selectedMenuItem = getMenuItem(bots, selectedMenuBotId);
+
+  useEffect(() => {
+    if (!selectedMenuItem) {
+      return undefined;
+    }
+
+    // handleBackToMenu only touches stable setState setters/refs, so it is
+    // safe to omit from deps: re-running this effect on every render would
+    // just re-show/re-bind the same BackButton.
+    return setTelegramBackButton(() => handleBackToMenu());
+  }, [selectedMenuItem?.id]);
+
   const selectedWorkspacePanel = selectedBot
     ? getBotWorkspacePanel(selectedBot.id)
     : null;
@@ -1493,6 +1571,7 @@ export function DashboardShell({
   }
 
   function handleMenuSelection(menuBotId: PlaygroundMenuBotId) {
+    triggerTelegramHaptic("light");
     setSelectedMenuBotId(menuBotId);
     setBotError(null);
   }
@@ -2154,6 +2233,18 @@ export function DashboardShell({
               )}
             </div>
           </section>
+          {lowTimeNudge ? (
+            <p role="status" className="low-time-nudge">
+              {LOW_TIME_NUDGE_COPY[lowTimeNudge]}
+              <button
+                className="low-time-nudge-dismiss"
+                onClick={() => setLowTimeNudge(null)}
+                type="button"
+              >
+                Dismiss
+              </button>
+            </p>
+          ) : null}
           {botError ? <p role="alert" className="alert-banner">{botError}</p> : null}
           {artifactError ? <p role="alert" className="alert-banner">{artifactError}</p> : null}
           {selectedMenuItem ? (
@@ -2293,6 +2384,7 @@ export function DashboardShell({
                     bot={selectedBot}
                     conversationId={selectedConversation?.conversationId}
                     messages={selectedConversation?.messages ?? []}
+                    starterPrompts={getStarterPromptsForBot(selectedBot?.id)}
                     onArtifactQueued={(artifact) => {
                       setArtifacts((currentArtifacts) => [
                         artifact,

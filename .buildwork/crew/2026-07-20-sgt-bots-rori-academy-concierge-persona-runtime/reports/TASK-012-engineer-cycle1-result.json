@@ -1,0 +1,14 @@
+{
+  "status": "completed",
+  "output": "All four items are done and the envelope is written to `.buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/outbox/UPD-TASK-012-cycle1.json` (validated against the schema manually \u2014 no `crew_state.py` present in this environment). Summary:\n\n- **Item 1a**: Reverified the audit's claim myself, removed the dead `ArtifactList` component/props from `ArtifactList.tsx`, kept the file and `ArtifactListItem` export (no rename \u2014 documented why).\n- **Item 1b**: Removed `buildCreditBureauDisputeHelperReply`, its 4 tests, and 5 private helper functions that became orphaned as a direct result (scope extension noted in `proposed_decisions`).\n- **Item 2**: Deleted the exact inventoried ~3.3 GB of stray tarballs/zips/tmp files/`.deploy-src` (sizes re-verified immediately before deletion), gitignored `.deploy-images` without deleting it, added 6 new `.gitignore` entries and verified them with `git check-ignore -v`.\n- **Item 3**: Relaxed only the network session-poll interval (1000ms \u2192 8000ms), left the local countdown ticker untouched, confirmed the low-time nudges still fire exactly once each regardless of poll cadence, and left the unrelated 2000ms artifact-refresh interval alone.\n- **Item 4** (scope extension): Root-caused the flake to `process.cwd()` being shared across all test files; made `artifactRoot` injectable on `createReportService`, added a vitest setup file giving each test file its own temp directory via env var, and fixed `report.service.spec.ts` to pass `artifactRoot` directly instead of a now-defeated `process.chdir` pattern.\n\nVerification: API suite green 3x in a row from the dirty `.runtime-artifacts` state (47 files/386 tests each run, exact expected -4 delta), mini app suite green (9 files/67 tests), both linters exit 0, zero remaining references to the removed symbols, clean `git status`. I did not set TASK-012 to completed \u2014 that's the Auditor's call.\n",
+  "duration": 1000.4847902000001,
+  "command": [
+    "C:\\Users\\homes\\AppData\\Roaming\\npm\\claude.CMD",
+    "-p",
+    "--model",
+    "claude-sonnet-5",
+    "--allowedTools",
+    "Bash,Read,Write,Edit,Glob,Grep"
+  ],
+  "returncode": 0
+}

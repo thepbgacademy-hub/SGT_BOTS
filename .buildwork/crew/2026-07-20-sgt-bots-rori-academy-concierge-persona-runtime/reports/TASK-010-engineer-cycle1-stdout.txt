@@ -1,0 +1,14 @@
+{
+  "status": "completed",
+  "output": "All four TASK-010 items are implemented, tested, and reported. Summary:\n\n- **Item 1** (upload cap + `%PDF-` sniff): 5 MiB cap, header-only sniff, 413 mapping in `report.route.ts`.\n- **Item 2** (429 `retry_after`): bounded (3 attempts, 30s cap), injectable `wait()` seam, non-429 unchanged.\n- **Item 3** (initData via header): `/api/telegram/launch` and `/api/telegram/prefill` now read `x-telegram-init-data`, matching `provider.route.ts`'s pattern with a clean cutover (no query fallback).\n- **Item 4** (`auth_date` future-skew): 60s future tolerance vs. 300s past budget, distinct `\"future-dated telegram init data\"` error preserved through the multi-token retry loop, plus the caller-contract fix at `profile.route.ts`/`provider.route.ts` that was needed to avoid it silently 500ing.\n\nEvidence: apps/api suite 390/390 passing (baseline 373 + 17 new), both `tsc --noEmit` lints exit 0, mini-app specs 42/42 passing. The envelope (`UPD-TASK-010-cycle1.json`) is validated and sitting in the outbox for the orchestrator.\n",
+  "duration": 632.1843762999997,
+  "command": [
+    "C:\\Users\\homes\\AppData\\Roaming\\npm\\claude.CMD",
+    "-p",
+    "--model",
+    "claude-sonnet-5",
+    "--allowedTools",
+    "Bash,Read,Write,Edit,Glob,Grep"
+  ],
+  "returncode": 0
+}

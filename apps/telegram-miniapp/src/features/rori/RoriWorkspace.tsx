@@ -1,5 +1,6 @@
 import type { BotCatalogEntry } from "../../../../../packages/shared/src/bots/manifests";
 import { ChatPanel, type ChatMessage } from "../chat/ChatPanel";
+import { RORI_STARTER_PROMPTS } from "./starter-prompts";
 
 type RoriWorkspaceProps = {
   bot: BotCatalogEntry | null;
@@ -38,7 +39,6 @@ export function RoriWorkspace({
           bot={bot}
           conversationId={conversationId}
           hideCitations
-          hideEmptyState
           hideHeader
           inputPlaceholder="Ask Rori about the Academy..."
           latestExchangeOnly
@@ -49,6 +49,7 @@ export function RoriWorkspace({
           sendErrorCopy="Rori could not answer right now. Please try again."
           sessionId={sessionId}
           sessionToken={sessionToken}
+          starterPrompts={RORI_STARTER_PROMPTS}
         />
       </div>
     </section>

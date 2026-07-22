@@ -1,0 +1,26 @@
+{
+  "update_id": "UPD-TASK-012-auditor-signoff-cycle1",
+  "build_id": "2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime",
+  "task_id": "TASK-012",
+  "agent_id": "build-crew-orchestrator-task-012-signoff",
+  "created_at": "2026-07-20T18:31:16Z",
+  "expected_revision": 15,
+  "write_scope": "tasks[id=TASK-012]",
+  "evidence": [
+    {
+      "type": "summary",
+      "summary": "See proposed_changes.evidence for the mergeable auditor-signoff entry recording AUDIT: PASS for TASK-012 cycle 1.",
+      "reference": "proposed_changes.evidence"
+    }
+  ],
+  "proposed_changes": {
+    "evidence": [
+      {
+        "type": "auditor-signoff",
+        "summary": "AUDIT: PASS (cycle 1, auditor = main session), with one completion condition fulfilled at this sign-off (promote the scope-extension decision to DEC-005; the auditor explicitly authorized that single top-level write). Independently re-derived by the auditor, not accepted from the engineer or orchestrator: validate-build.ps1 returned ok: true at revision 15; the full apps/api vitest suite was run TWICE by the auditor from the pre-existing dirty .runtime-artifacts state with no manual clearing, 47 files / 386 tests passed and 0 failed on both runs, with the directory's entry count identical before and after (isolation verifiably engaged) -- combined with the orchestrator's three runs that is five consecutive deterministic greens; the test delta was adjudicated exact (390 baseline minus the 4 removed buildCreditBureauDisputeHelperReply tests = 386, which becomes the new API-suite gate baseline); the mini app suite passed 9 files / 67 tests; both typecheck gates exit 0. The full diff was read end to end. Dead-code removal verified independently: the ArtifactList component and ArtifactListProps are gone while the ArtifactListItem type is retained with its four live importers, buildCreditBureauDisputeHelperReply and its five orphaned private helpers are gone, and the auditor re-ran the greps itself finding zero remaining references (the single hit is the live type usage). Deletions verified: zero *.tar / *.zip / tmp-rori-* files at repo root and .deploy-src/ absent, while every protected path is present -- .deploy-images/ (gitignored, not deleted), BLUEPRINT-2026-07-20.md, CLAUDE.md, Dockerfile.backend.hotfix, and .buildwork/ (correctly NOT gitignored). The polling change was verified surgical: only the network session-refresh interval moved 1000 -> 8000 ms, the local countdown ticker feeding the TASK-011 low-time nudges is untouched, and the nudges' threshold-crossing logic tolerates 8s ticks by design. The flake-fix mechanism was read and approved (injectable artifactRoot resolving deps -> RUNTIME_ARTIFACTS_ROOT -> cwd fallback, per-test-file mkdtemp via a vitest setupFiles hook with cleanup) with the standing non-recommendation against redesigning the runtime store respected. Four adjudications accepted: the orchestrator's pre-dispatch correction of the audit line's inaccurate 'remove ArtifactList.tsx' wording (which would have broken four importers), the removal of the five orphaned helpers beyond the briefed literal scope (verified zero-reference; same concern, not creep), the root-anchored .gitignore patterns (broader than the literal filenames but correctly anchored to root only), and the ~3.3 GB irreversible deletion (the ticket's explicit user-dispatched content, with a full path+size inventory in the engineer envelope as the audit trail). Two non-blocking notes recorded, neither gating: the 8000 ms interval was not exercised against a live backend (structural verification accepted here; TASK-007's human smoke will exercise it for real -- watch session-timer freshness there), and all future gates including TASK-008 must use 386 as the API-suite baseline.",
+        "reference": ".buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/findings/TASK-012-audit-1.md"
+      }
+    ]
+  },
+  "merge_status": "merged"
+}

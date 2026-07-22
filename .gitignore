@@ -56,3 +56,11 @@ playwright-report/
 
 # Local worktrees
 .worktrees/
+
+# Deploy scratch bundles / snapshots
+/*.tar
+/*.tar.gz
+/*.zip
+/tmp-rori-*
+/.deploy-src/
+/.deploy-images/

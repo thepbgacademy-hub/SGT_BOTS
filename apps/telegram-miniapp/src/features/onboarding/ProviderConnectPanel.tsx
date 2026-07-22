@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 type SessionSnapshot = {
   id: string;
@@ -9,6 +9,53 @@ type SessionSnapshot = {
   remainingSeconds: number;
   state: "active" | "expired" | "reauth_required";
 };
+
+type CodexOAuthStatusPayload = {
+  message?: string;
+  session?: SessionSnapshot;
+  sessionToken?: string;
+  status?: "pending" | "connected" | "expired" | "failed";
+};
+
+export type CodexOAuthPollAction =
+  | { type: "connected"; session: SessionSnapshot; sessionToken: string }
+  | { type: "stop"; message: string }
+  | { type: "continue" };
+
+export function resolveCodexOAuthPollAction(
+  payload: CodexOAuthStatusPayload | null,
+): CodexOAuthPollAction {
+  if (!payload) {
+    return { type: "continue" };
+  }
+
+  if (
+    payload.status === "connected" &&
+    payload.session &&
+    payload.sessionToken
+  ) {
+    return {
+      type: "connected",
+      session: payload.session,
+      sessionToken: payload.sessionToken,
+    };
+  }
+
+  if (payload.status === "expired" || payload.status === "failed") {
+    return {
+      type: "stop",
+      message:
+        payload.message ?? "OpenAI Codex login needs to be restarted.",
+    };
+  }
+
+  return { type: "continue" };
+}
+
+// Approval happens in a separate Telegram/browser tab, so this only needs to
+// notice a completed human action, not react in real time like the 1s
+// session-timer poll (flagged separately as too aggressive).
+const CODEX_OAUTH_POLL_INTERVAL_MS = 4_000;
 
 type ProviderConnectPanelProps = {
   initData: string;
@@ -130,6 +177,27 @@ export function ProviderConnectPanel({
     }
   }
 
+  async function fetchCodexOAuthStatus(
+    oauthSessionId: string,
+  ): Promise<CodexOAuthStatusPayload | null> {
+    try {
+      const response = await fetch(
+        `/api/providers/openai-codex/oauth/${encodeURIComponent(
+          oauthSessionId,
+        )}/status`,
+        {
+          headers: {
+            "x-telegram-init-data": initData,
+          },
+        },
+      );
+
+      return (await response.json()) as CodexOAuthStatusPayload;
+    } catch {
+      return null;
+    }
+  }
+
   async function checkCodexLogin() {
     if (!codexLogin) {
       setError("Start OpenAI Codex login first.");
@@ -139,43 +207,76 @@ export function ProviderConnectPanel({
     setError(null);
     setSubmitting(true);
 
-    try {
-      const response = await fetch(
-        `/api/providers/openai-codex/oauth/${encodeURIComponent(
-          codexLogin.oauthSessionId,
-        )}/status`,
-        {
-          headers: {
-            "x-telegram-init-data": initData,
-          },
-        },
-      );
-      const payload = (await response.json()) as {
-        message?: string;
-        session?: SessionSnapshot;
-        sessionToken?: string;
-        status?: "pending" | "connected" | "expired" | "failed";
-      };
+    const payload = await fetchCodexOAuthStatus(codexLogin.oauthSessionId);
 
-      if (payload.status === "connected" && payload.session && payload.sessionToken) {
-        onConnected({
-          session: payload.session,
-          sessionToken: payload.sessionToken,
-        });
-        return;
-      }
-
-      setError(
-        payload.status === "pending"
-          ? "OpenAI Codex login is still waiting for approval."
-          : payload.message ?? "OpenAI Codex login needs to be restarted.",
-      );
-      setSubmitting(false);
-    } catch {
+    if (!payload) {
       setError("Unable to check OpenAI Codex login.");
       setSubmitting(false);
+      return;
     }
+
+    const action = resolveCodexOAuthPollAction(payload);
+
+    if (action.type === "connected") {
+      onConnected({ session: action.session, sessionToken: action.sessionToken });
+      return;
+    }
+
+    if (action.type === "stop") {
+      setError(action.message);
+      setCodexLogin(null);
+      setSubmitting(false);
+      return;
+    }
+
+    setError("OpenAI Codex login is still waiting for approval.");
+    setSubmitting(false);
   }
+
+  useEffect(() => {
+    if (provider !== "openai_codex" || !codexLogin) {
+      return;
+    }
+
+    let cancelled = false;
+    const oauthSessionId = codexLogin.oauthSessionId;
+
+    const intervalId = window.setInterval(() => {
+      void (async () => {
+        const payload = await fetchCodexOAuthStatus(oauthSessionId);
+
+        if (cancelled || !payload) {
+          return;
+        }
+
+        const action = resolveCodexOAuthPollAction(payload);
+
+        if (action.type === "connected") {
+          cancelled = true;
+          window.clearInterval(intervalId);
+          onConnected({
+            session: action.session,
+            sessionToken: action.sessionToken,
+          });
+          return;
+        }
+
+        if (action.type === "stop") {
+          cancelled = true;
+          window.clearInterval(intervalId);
+          setError(action.message);
+          setCodexLogin(null);
+        }
+      })();
+    }, CODEX_OAUTH_POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+    // onConnected/setError/setCodexLogin are stable setters/props; keying on
+    // codexLogin+provider is what actually starts/stops/restarts the poll.
+  }, [codexLogin, provider]);
 
   function openProviderLogin(verificationUrl: string) {
     const telegram = (

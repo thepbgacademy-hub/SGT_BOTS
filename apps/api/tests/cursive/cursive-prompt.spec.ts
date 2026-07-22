@@ -5,7 +5,6 @@ import {
   composeCreditBureauDisputeDraftContent,
 } from "../../src/modules/cursive/cursive-prompt.service";
 import { createCursiveRepo } from "../../src/modules/cursive/cursive.repo";
-import { createCursiveService } from "../../src/modules/cursive/cursive.service";
 import type { BotManifest } from "../../../../packages/shared/src/bots/manifests";
 
 const cursiveRepo = createCursiveRepo();
@@ -247,63 +246,6 @@ describe("buildCursivePromptPackage", () => {
 });
 
 describe("createChatService", () => {
-  it("keeps unrelated helper prompts bounded to the active credit dispute lane", () => {
-    const cursiveService = createCursiveService();
-
-    const reply = cursiveService.buildCreditBureauDisputeHelperReply(
-      "Draft a launch brief for tomorrow.",
-    );
-
-    expect(reply).toContain(
-      "Cursive currently supports Credit Bureau Dispute letters",
-    );
-    expect(reply).toContain(
-      "does not look like a credit-bureau dispute request yet",
-    );
-    expect(reply).toContain("tap Start official letter");
-    expect(reply).not.toContain(
-      'I can help with a Credit Bureau Dispute in helper-only mode for "Draft a launch brief for tomorrow."',
-    );
-  });
-
-  it("does not treat generic account wording as enough to enter the dispute drafting path", () => {
-    const cursiveService = createCursiveService();
-
-    const reply = cursiveService.buildCreditBureauDisputeHelperReply(
-      "Help me reconcile my account balance.",
-    );
-
-    expect(reply).toContain(
-      "does not look like a credit-bureau dispute request yet",
-    );
-    expect(reply).not.toContain(
-      "I can help shape this Credit Bureau Dispute request",
-    );
-  });
-
-  it("answers greetings conversationally instead of pushing intake immediately", () => {
-    const cursiveService = createCursiveService();
-
-    const reply = cursiveService.buildCreditBureauDisputeHelperReply("hello");
-
-    expect(reply).toContain("Hi. I'm Cursive");
-    expect(reply).toContain("Ask me what to gather");
-    expect(reply).toContain("tap Start official letter");
-    expect(reply).not.toContain("send Consumer name");
-  });
-
-  it("answers general process questions without jumping straight into form capture", () => {
-    const cursiveService = createCursiveService();
-
-    const reply = cursiveService.buildCreditBureauDisputeHelperReply(
-      "What can you help me with here?",
-    );
-
-    expect(reply).toContain("I can help answer questions");
-    expect(reply).toContain("tap Start official letter");
-    expect(reply).not.toContain("send Consumer name");
-  });
-
   it("does not leave behind a new document_wizard conversation when reply generation fails", async () => {
     const buildRuntimeReply: (
       manifest: BotManifest,

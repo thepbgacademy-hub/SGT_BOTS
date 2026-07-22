@@ -84,6 +84,7 @@ export async function registerProviderRoutes(app: FastifyInstance) {
         message === "missing telegram init data" ||
         message === "invalid telegram init data" ||
         message === "stale telegram init data" ||
+        message === "future-dated telegram init data" ||
         message === "profile not found"
           ? 401
           : message === "unsupported provider" ||
@@ -147,6 +148,7 @@ export async function registerProviderRoutes(app: FastifyInstance) {
         message === "missing telegram init data" ||
         message === "invalid telegram init data" ||
         message === "stale telegram init data" ||
+        message === "future-dated telegram init data" ||
         message === "profile not found"
           ? 401
           : message === PLAYGROUND_ALREADY_PARTICIPATED_MESSAGE
@@ -201,6 +203,7 @@ export async function registerProviderRoutes(app: FastifyInstance) {
           message === "missing telegram init data" ||
           message === "invalid telegram init data" ||
           message === "stale telegram init data" ||
+          message === "future-dated telegram init data" ||
           message === "profile not found"
             ? 401
             : 500;

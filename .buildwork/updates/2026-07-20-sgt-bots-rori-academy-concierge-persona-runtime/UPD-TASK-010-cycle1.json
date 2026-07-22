@@ -1,0 +1,73 @@
+{
+  "update_id": "UPD-TASK-010-cycle1",
+  "build_id": "2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime",
+  "task_id": "TASK-010",
+  "agent_id": "senior-engineer-task-010-cycle1",
+  "created_at": "2026-07-20T15:45:00Z",
+  "expected_revision": 4,
+  "write_scope": "tasks[id=TASK-010]",
+  "proposed_changes": {
+    "progress": "All four deferred safety-hardening items from the 2026-07-13 audit (docs/superpowers/plans/2026-07-13-playground-build-inspection-audit.md, line 71) are implemented directly (no builder dispatch needed — each item's scope was already fully pinned down by the ticket's file/line references, so implementing solo was faster than the coordination overhead of work orders). Item 1: upload.service.ts caps createPdfUpload at 5 MiB and reduces looksLikePdf to a %PDF- header-only sniff, dropping the whole-buffer stringify; report.route.ts maps the new 'pdf upload too large' message to 413. Item 2: telegram-bot.service.ts sendTelegramMessage now honors 429 retry_after via the existing fetchImpl seam plus a new injectable wait() seam, bounded to 3 attempts and a 30s max delay; non-429 failures still throw immediately. Item 3: /api/telegram/launch (telegram.route.ts) and /api/telegram/prefill (app.ts) now read x-telegram-init-data from the header, matching provider.route.ts's existing pattern exactly (clean cutover, no query fallback); apps/telegram-miniapp/src/lib/telegram.ts fetchLaunchContext sends the header instead of a query string. Item 4: init-data.ts splits the auth_date age check into a 300s past-age budget (unchanged) and a new 60s future-skew tolerance, throwing a distinct 'future-dated telegram init data' message; validateTelegramInitDataWithTokens now preserves either age-error message across multi-token retry instead of only 'stale'. All changes stayed within apps/api and apps/telegram-miniapp; no rori schema, migration, persona, or content changes.",
+    "findings": [
+      "Item 1 scope decision: the pre-existing test 'rejects spoofed pdf uploads when bytes contain only a fake pdf header' (apps/api/tests/e2e/uploads-and-reports.spec.ts) encoded exactly the old whole-buffer-stringify behavior the audit wants removed — content starting with the literal %PDF- header would now pass the header-only sniff by design. Rewrote it to 'rejects uploads whose bytes do not start with the %PDF- header' using content with no %PDF- prefix at all, which still fails under the new sniff and preserves the required 'non-%PDF- bytes rejected' negative case from the acceptance criteria. This is a deliberate behavior narrowing called for by the audit, not a dropped test.",
+      "Item 4 required a caller-contract fix beyond init-data.ts itself: apps/api/src/modules/profiles/profile.route.ts (line ~36) and apps/api/src/modules/providers/provider.route.ts (3 call sites, lines ~86/150/205) each pattern-match on the literal string 'stale telegram init data' to return 401. Without adding 'future-dated telegram init data' to those same checks, a future-dated token would have silently fallen through to a 500 at every one of those routes. Added the new message alongside 'stale' at all 4 sites — same category of caller-contract wiring the brief called out explicitly for item 1's upload error, just not itself named in the item 4 file list.",
+      "telegram.route.ts and app.ts's prefill handler catch all init-data errors unconditionally and return 401 regardless of message, so no caller-contract change was needed there for item 4.",
+      "No existing apps/api/tests hit /api/telegram/launch or /api/telegram/prefill directly (grepped for the routes across apps/api/tests before changing the contract), so the header cutover in item 3 could not silently break a query-string-based test that already existed; new tests were added instead (apps/api/tests/telegram/launch-prefill.spec.ts) including one asserting a stale initData query parameter is now ignored (401) now that the header is authoritative."
+    ],
+    "artifacts": [
+      "apps/api/src/modules/uploads/upload.service.ts",
+      "apps/api/src/modules/reports/report.route.ts",
+      "apps/api/tests/e2e/uploads-and-reports.spec.ts",
+      "apps/api/src/modules/telegram/telegram-bot.service.ts",
+      "apps/api/tests/e2e/telegram-bot.spec.ts",
+      "apps/api/src/modules/telegram/telegram.route.ts",
+      "apps/api/src/app.ts",
+      "apps/telegram-miniapp/src/lib/telegram.ts",
+      "apps/telegram-miniapp/src/lib/telegram.spec.ts",
+      "apps/api/tests/telegram/launch-prefill.spec.ts",
+      "apps/api/src/modules/telegram/init-data.ts",
+      "apps/api/src/modules/profiles/profile.route.ts",
+      "apps/api/src/modules/providers/provider.route.ts",
+      "apps/api/tests/e2e/onboarding.spec.ts",
+      "apps/api/tests/telegram/init-data.spec.ts"
+    ],
+    "handoffs": [],
+    "blockers": [],
+    "risks": [
+      "None identified for this cycle's scope. Out-of-scope items confirmed untouched: apps/api/src/modules/profiles/profile.route.ts's POST body-based initData contract (audit names launch/prefill only), rori wiki/persona content, TASK-011/TASK-012 adjacent deferral items."
+    ],
+    "proposed_decisions": [
+      "Item 1 upload cap: chose MAX_PDF_UPLOAD_BYTES = 5 MiB (5 * 1024 * 1024) in upload.service.ts. Relationship to the 8 MiB Fastify bodyLimit (app.ts line 125, JSON body): 5 MiB of raw bytes base64-encodes to ~6.7 MB, leaving ~1.3 MB of headroom under the 8 MiB bodyLimit for the surrounding JSON envelope (filename, form fields, etc.), so an oversize upload reliably surfaces our deliberate 413 'pdf upload too large' rather than Fastify's blunt request-too-large rejection at the transport layer. Verified the existing 'accepts base64 pdf uploads above Fastify's default body limit' test (900 KB decoded) still passes well under the new cap.",
+      "Item 3 query fallback: chose a clean cutover (header only, no query-string fallback) over a temporary dual-read. Reasoning: the brief explicitly says to match provider.route.ts's existing pattern and 'not invent a second convention' — provider.route.ts has no fallback for its analogous header-only read, and adding a query+header dual-read here would itself be a second convention. The mini app and API ship from the same monorepo/deploy path with no evidence in this repo of independently cached or independently deployed mini-app bundles (no CDN-fronted static hosting found for the mini app), so the deployment-ordering risk the brief flagged (an old cached bundle hitting a new backend) appears low here. Added a regression test confirming the old query parameter is now inert (returns 401) so this is verifiably a hard cutover, not an accidental partial fallback.",
+      "Item 4 skew tolerance: chose 60 seconds for TELEGRAM_INIT_DATA_MAX_FUTURE_SKEW_SECONDS in init-data.ts, well below the existing 300s past-age budget. Reasoning: 60s comfortably covers ordinary unsynced-client clock drift (NTP-desynced consumer devices are typically within tens of seconds) while staying far short of anything that would meaningfully widen the replay window, and is consistent with common clock-skew allowances in adjacent auth ecosystems (e.g. 30-60s in JWT validators).",
+      "Item 4 multi-token loop: extended validateTelegramInitDataWithTokens to preserve either 'stale telegram init data' or 'future-dated telegram init data' across candidate bot tokens (previously only 'stale' was preserved), rather than letting a future-dated token degrade into the generic 'invalid telegram init data'. This is safe because the age check only runs after the HMAC signature already validated for that specific candidate token — a wrong token fails on signature mismatch before it ever reaches the age check, so preserving the age-error message cannot mask a genuinely bad signature from a different token. Covered by apps/api/tests/telegram/init-data.spec.ts."
+    ]
+  },
+  "evidence": [
+    {
+      "type": "test",
+      "summary": "Full apps/api vitest suite: 47 files, 390 tests passed, 0 failed. Baseline was 373; net +17 new tests across the four items (uploads-and-reports +1, telegram-bot +4, onboarding +1, telegram/init-data.spec.ts new file +6, telegram/launch-prefill.spec.ts new file +5).",
+      "reference": "cd apps/api && corepack pnpm exec vitest run",
+      "falsifiability": "Re-run the same command from apps/api; expect 'Test Files 47 passed (47)' and 'Tests 390 passed (390)' with 0 failed."
+    },
+    {
+      "type": "lint",
+      "summary": "apps/api lint (tsc --noEmit) exited 0, no diagnostics.",
+      "reference": "corepack pnpm --filter @sgt-bots/api lint",
+      "falsifiability": "Re-run from repo root; expect exit code 0 and no stdout/stderr diagnostics."
+    },
+    {
+      "type": "lint",
+      "summary": "apps/telegram-miniapp lint (tsc --noEmit) exited 0, no diagnostics.",
+      "reference": "corepack pnpm --filter @sgt-bots/telegram-miniapp lint",
+      "falsifiability": "Re-run from repo root; expect exit code 0 and no stdout/stderr diagnostics."
+    },
+    {
+      "type": "test",
+      "summary": "Mini app component/lib specs: 8 files, 42 tests passed, 0 failed, including src/lib/telegram.spec.ts (now asserting the x-telegram-init-data header is sent) and all feature-panel specs that transitively depend on App.tsx's use of lib/telegram.ts.",
+      "reference": "cd apps/telegram-miniapp && corepack pnpm exec vitest run",
+      "falsifiability": "Re-run the same command from apps/telegram-miniapp; expect 'Test Files 8 passed (8)' and 'Tests 42 passed (42)' with 0 failed."
+    }
+  ],
+  "merge_status": "merged"
+}

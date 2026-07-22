@@ -1,5 +1,10 @@
 # Handoff
 
+> **SUPERSEDED 2026-07-20 — historical reference only. Do not add or update items here.**
+> Task status and next steps now live in the beginning-builds record:
+> `.buildwork/builds/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime.json`
+> (context: `BLUEPRINT-2026-07-20.md`, authority: `CLAUDE.md`).
+
 ## Next Step
 
 Run the human Telegram conversation smoke for Rori in the Playground. The reviewed wiki rows, dedicated `rori` schema, and deployed backend retrieval path are verified. Use the frozen Rori prompts from the acceptance runbook, then continue remaining bot workflow layers.

@@ -1,0 +1,105 @@
+{
+  "update_id": "UPD-TASK-012-cycle1",
+  "build_id": "2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime",
+  "task_id": "TASK-012",
+  "agent_id": "engineer-task-012-cycle1",
+  "created_at": "2026-07-20T21:00:00Z",
+  "expected_revision": 13,
+  "write_scope": "tasks[id=TASK-012]",
+  "merge_status": "merged",
+  "evidence": [
+    {
+      "type": "summary",
+      "summary": "See proposed_changes.evidence for the full, mergeable evidence list (deletion inventory, gitignore diff, 3x API test runs, mini app run, both lint runs, zero-reference greps) for this cycle.",
+      "reference": "proposed_changes.evidence"
+    }
+  ],
+  "proposed_changes": {
+    "progress": "Implemented directly rather than dispatching python-based crew builders: no launch_role.py/crew_state.py exist in this workspace (confirmed by search before starting), so the four items were executed myself, verifying each brief claim against the code first. Item 1a: verified ArtifactList component has zero render sites (only match for '<ArtifactList'/'ArtifactList(' is its own definition) and ArtifactListItem has exactly the four importers the brief named; removed the ArtifactList() function and ArtifactListProps type from apps/telegram-miniapp/src/features/artifacts/ArtifactList.tsx, kept the file (no rename) and the ArtifactListItem export unchanged. Item 1b: confirmed no dynamic/string-keyed dispatch reaches cursiveService by name (chat.service.ts throws 'cursive workflow only' before any Cursive-specific method call; report.route.ts and cursive.route.ts only ever call getWorkflowEntry/generateCreditBureauDisputeDraft/reviewCreditBureauDisputeDraft as static property access) -- removed buildCreditBureauDisputeHelperReply from cursive.service.ts and its 4 call sites in cursive-prompt.spec.ts (kept the rest of that file, including all buildCursivePromptPackage/composeCreditBureauDisputeDraftContent and createChatService coverage, intact). Also removed the now-unused import of createCursiveService from that spec file (would otherwise fail tsc as an unused import) and removed 5 private helper functions in cursive.service.ts (formatFieldLabelList, formatCreditBureauAddressSummary, looksLikeCreditBureauDisputeIntent, looksLikeGreeting, looksLikeGeneralQuestion) that existed solely to serve the removed method and had zero remaining callers after its removal -- this is a scope extension beyond the brief's literal 'remove the method and the four tests' wording, flagged in proposed_decisions. Confirmed formatCityStatePostal and the CursiveRepoAddress type import are still used elsewhere in the file and were left untouched. Item 2: re-verified every byte size in the brief's inventory table immediately before deleting (all matched exactly), deleted the 8 tarball/zip files, the 4 tmp-rori-* files, and the .deploy-src/ mirror (all untracked, none of them git-tracked, so deletion carried no history risk); left .deploy-images/ on disk and added it to .gitignore per the brief's explicit 'gitignore it; do not delete it' instruction; added 6 new .gitignore entries (/*.tar, /*.tar.gz, /*.zip, /tmp-rori-*, /.deploy-src/, /.deploy-images/) anchored to repo root with a leading slash, matching the file's existing style for generated/local-only paths; verified with git check-ignore -v that recreated copies of each deleted category (and .deploy-images) are now caught. Item 3: read DashboardShell.tsx end to end around all four intervals named in the brief; confirmed the :1203-1222 interval is the only one that performs a network fetch (GET /api/sessions/:id) and relaxed it from 1000ms to 8000ms; left the :1346-1350 local countdown ticker (setRemainingCountdownSeconds) at 1000ms untouched since it feeds remainingSeconds with no network involvement; traced the low-time nudge effect (:1240-1249) and confirmed it dedupes by threshold via a Set ref (firedLowTimeNudgesRef), so it fires 'ten_minute' and 'two_minute' exactly once each regardless of how coarse the network poll is, since its input (remainingSeconds) is driven by the untouched local ticker, not the relaxed poll; the getLowTimeNudgeThreshold function at :70-85 already uses <= comparisons and is unaffected by this change. Inspected the third interval at :1515 (artifact-status refresh poll, already 2000ms, unrelated to session state) and left it alone. No mini app test depended on the old 1000ms session-poll cadence via fake timers (grepped DashboardShell.spec.tsx for setInterval/advanceTimersByTime/useFakeTimers -- no matches), so no test changes were needed for this item. Item 4 (scope-extended flake fix): root-caused per the brief -- process.cwd() is shared process-wide across all test files/workers, so every createReportService() call that didn't explicitly override its artifact root pointed at the same physical apps/api/.runtime-artifacts directory, racing hydrateArtifactsFromDisk's readdirSync/readFileSync walk against concurrent purgeArtifactsForSessionBot/purgeExpiredArtifacts deletions in other files. Fixed at the source: added an optional artifactRoot to createReportService's deps (report.service.ts:100-113), with resolution order deps.artifactRoot ?? process.env.RUNTIME_ARTIFACTS_ROOT ?? path.join(process.cwd(), '.runtime-artifacts') -- byte-identical to the old behavior when neither override is supplied (confirmed: app.ts's createReportService call passes neither, so production/dev behavior is unchanged). Added apps/api/vitest.config.ts wiring a new setupFiles entry, apps/api/tests/setup/runtime-artifacts.ts, which mkdtempSyncs one fresh OS temp directory per test FILE in beforeAll and points RUNTIME_ARTIFACTS_ROOT at it, then rm -rf's it in afterAll -- this gives every test file (including e2e files that build the whole app via buildApp and never touch report.service.ts directly, e.g. report-isolation.spec.ts, uploads-and-reports.spec.ts) its own isolated directory tree with zero call-site changes needed in those files. One file needed a direct edit: tests/reports/report.service.spec.ts previously called process.chdir(tempRoot) before each of its 5 it() blocks to get a fresh empty artifact directory per test -- since the new env-var default now outranks the cwd-based fallback, that chdir would have silently stopped doing anything (all 5 blocks would have collapsed onto the same per-file env-var directory, breaking the per-test isolation those tests rely on for correctness, e.g. the six-hour-retention and Top-Secret-replacement assertions). Rewrote that file to pass artifactRoot: tempRoot explicitly to every createReportService() call instead of chdir, and removed the now-dead originalCwd/afterEach(chdir-restore) boilerplate. Did not touch hydrateArtifactsFromDisk's walk/read logic (no defensive try/catch added) since real per-run isolation removes the race at its source; noted this choice explicitly in proposed_decisions per the brief's requirement to say which of the two acceptable approaches was taken. Did not touch the in-memory artifact Map/queue design, matching the standing non-recommendation against replacing it while the deploy is single-container.",
+    "findings": [
+      "The audit's item-1a wording ('remove dead ArtifactList.tsx') was inaccurate as briefed and as independently reverified: only the component was dead, the type export is live with 4 importers -- resolved per the brief's directive to keep the file and the type.",
+      "Removing buildCreditBureauDisputeHelperReply orphaned 5 private helper functions in cursive.service.ts with no other callers; removed them too as in-scope dead-code cleanup rather than leaving new dead code behind (see proposed_decisions).",
+      ".deploy-images/ (~4.9 GB, untracked, not previously gitignored) is not named by audit line 73 and was not deleted; it is now gitignored per the brief's explicit instruction so it stops appearing as an untracked blob in git status.",
+      "Root cause of the .runtime-artifacts flake was process.cwd() being process-wide, not per-worker/per-thread: every test file that didn't manage its own directory shared one real on-disk path, so one file's purge could race another file's hydrate walk regardless of vitest's pool type."
+    ],
+    "artifacts": [
+      "apps/telegram-miniapp/src/features/artifacts/ArtifactList.tsx",
+      "apps/api/src/modules/cursive/cursive.service.ts",
+      "apps/api/tests/cursive/cursive-prompt.spec.ts",
+      ".gitignore",
+      "apps/telegram-miniapp/src/features/dashboard/DashboardShell.tsx",
+      "apps/api/src/modules/reports/report.service.ts",
+      "apps/api/vitest.config.ts",
+      "apps/api/tests/setup/runtime-artifacts.ts",
+      "apps/api/tests/reports/report.service.spec.ts"
+    ],
+    "evidence": [
+      {
+        "type": "deletion-inventory",
+        "summary": "Re-verified every byte size immediately before deletion (all matched the brief's table exactly), then deleted: codex-oauth-fix-20260531.tar (547571200), rori-memory-followup-20260531.tar (547585024), rori-voice-fix-20260531.tar (542601728), rori-voice-full-20260531.tar (547569664), top-secret-quality-fix-20260531.tar (542607360), codex-oauth-fix-20260531.tar.gz (544224917), sgt-bots-rori-fix.tar.gz (9356246), sgt-bots-rori-fix.zip (9458502), tmp-rori-fetch.mjs (498), tmp-rori-kb-latest.ts (23445), tmp-rori-runtime-check.mjs (946), tmp-rori-runtime-matrix.mjs (1159), and .deploy-src/ (10792194 bytes, 255 files). .deploy-images/ (4945659904 bytes) was left on disk, gitignored only, per the brief.",
+        "reference": "stat -c '%s %n' <each path> run twice (once at briefing-verification time, once immediately pre-delete) -- both runs matched the brief's table exactly"
+      },
+      {
+        "type": "diff",
+        "summary": ".gitignore: added 6 new entries under a new '# Deploy scratch bundles / snapshots' section -- /*.tar, /*.tar.gz, /*.zip, /tmp-rori-*, /.deploy-src/, /.deploy-images/ -- all anchored to repo root with a leading slash, no .buildwork/ entry added.",
+        "reference": "git diff -- .gitignore"
+      },
+      {
+        "type": "manual-check",
+        "summary": "git check-ignore -v confirmed recreated copies of codex-oauth-fix-20260531.tar, tmp-rori-fetch.mjs, sgt-bots-rori-fix.zip, .deploy-src/ (with a file inside it), and .deploy-images all now match the new .gitignore rules; test files were removed again immediately after.",
+        "reference": "touch/mkdir the paths, git check-ignore -v <paths>, then rm -f/rm -rf the test artifacts"
+      },
+      {
+        "type": "test",
+        "summary": "Full API suite, run 1 of 3, from the pre-existing dirty .runtime-artifacts state (23 files, never cleared before, during, or between runs): 47 files / 386 tests passed. Baseline was 47 files / 390 tests; expected delta was -4 (the item-1b test removals); 390-4=386, confirmed exactly.",
+        "reference": "cd apps/api && corepack pnpm exec vitest run  =>  Test Files 47 passed (47); Tests 386 passed (386)"
+      },
+      {
+        "type": "test",
+        "summary": "Full API suite, run 2 of 3, same dirty state, no manual clearing between runs: 47 files / 386 tests passed.",
+        "reference": "corepack pnpm exec vitest run  =>  Test Files 47 passed (47); Tests 386 passed (386)"
+      },
+      {
+        "type": "test",
+        "summary": "Full API suite, run 3 of 3, same dirty state, no manual clearing between runs: 47 files / 386 tests passed. Confirmed .runtime-artifacts still held its original 23 files / ~530K afterward -- never manually cleared at any point across all 3 runs.",
+        "reference": "corepack pnpm exec vitest run  =>  Test Files 47 passed (47); Tests 386 passed (386); find .runtime-artifacts -type f | wc -l => 23"
+      },
+      {
+        "type": "test",
+        "summary": "Mini app suite green, no regressions: 9 files / 67 tests, matching the stated baseline exactly (items 1a and 3 touch this app).",
+        "reference": "cd apps/telegram-miniapp && corepack pnpm exec vitest run  =>  Test Files 9 passed (9); Tests 67 passed (67)"
+      },
+      {
+        "type": "lint",
+        "summary": "API lint (tsc --noEmit) exit 0, no output.",
+        "reference": "corepack pnpm --filter @sgt-bots/api lint  =>  exit 0"
+      },
+      {
+        "type": "lint",
+        "summary": "telegram-miniapp lint (tsc --noEmit) exit 0, no output.",
+        "reference": "corepack pnpm --filter @sgt-bots/telegram-miniapp lint  =>  exit 0"
+      },
+      {
+        "type": "grep",
+        "summary": "Zero remaining references to the ArtifactList component (pattern matched only its own removed definition/JSX call sites, none found) and to buildCreditBureauDisputeHelperReply (zero matches anywhere under apps/) after removal.",
+        "reference": "rg '<ArtifactList[\\s(]|function ArtifactList\\(' apps/  =>  no matches; rg 'buildCreditBureauDisputeHelperReply' apps/  =>  no matches"
+      },
+      {
+        "type": "manual-check",
+        "summary": "git status after cleanup shows no stray tarballs/zips/tmp-rori-*/.deploy-src; .deploy-images no longer appears (now ignored); only TASK-012's own edits plus the pre-existing TASK-010/011 baseline files are modified/untracked.",
+        "reference": "git status --short (full output retained in this cycle's session transcript)"
+      }
+    ],
+    "handoffs": [],
+    "blockers": [],
+    "risks": [
+      "The 8s session-refresh interval means a server-side session state change (expiry, reauth_required, retirement) can take up to ~8s to reach the UI instead of ~1s; judged acceptable given the local countdown ticker and nudge-dedup logic are unaffected -- see proposed_decisions for the explicit tradeoff."
+    ],
+    "proposed_decisions": [
+      "Item 1a -- kept ArtifactList.tsx as a type-only file, did not rename it to .ts. Adjudication: independently reverified the brief's finding (ArtifactList component: zero render sites; ArtifactListItem: exactly the 4 named importers) before acting, then removed only the component/props and kept the type export, per the brief's directive. Skipped the optional .tsx->.ts rename: the file is genuinely type-only now and the rename is purely cosmetic (imports are extensionless so no importer would need edits), and both linters already exit 0 with the .tsx extension retained, so the rename would add file-history churn (blame/rename tracking across 4 importers' git history) for zero functional or type-safety benefit. If the auditor prefers the rename for repo hygiene, it is a pure follow-up with no behavior risk.",
+      "Item 1b -- extended the directive from 'remove the method and the four tests' to also remove 5 now-orphaned private helper functions (formatFieldLabelList, formatCreditBureauAddressSummary, looksLikeCreditBureauDisputeIntent, looksLikeGreeting, looksLikeGeneralQuestion) in cursive.service.ts. These existed solely to implement buildCreditBureauDisputeHelperReply and had zero other callers immediately after its removal (verified by grep across apps/api). Leaving them would have introduced new dead code as a direct side effect of this same cleanup ticket, which seemed to contradict item 1b's own purpose; tsc would not have flagged them (noUnusedLocals is not set in tsconfig.base.json) so this was a judgment call, not a lint-forced one. Did not touch formatCityStatePostal (still used by formatBureauAddressLines) or the credit_bureau_dispute category slug/templates/repo entries/cursive-review/cursive-draft logic, all confirmed still live and untouched.",
+      "Item 3 -- picked 8000ms for the network session-refresh poll (from the brief's 5-15s band). Tradeoff: an 8x reduction in request volume and mobile radio/battery wake-ups versus up to ~8s of staleness in `session.state`/`session.remainingSeconds` after a server-side change (expiry, reauth_required, retirement) before the next poll picks it up. Verified and state explicitly: this does NOT coarsen the low-time nudge granularity, because remainingSeconds (consumed by getLowTimeNudgeThreshold at DashboardShell.tsx:72-89 and the firing effect at :1240-1249) is driven by the separate local countdown ticker at :1346-1350 (setInterval, still 1000ms, no network call), not by the relaxed network poll -- confirmed by reading the full effect chain, not just asserting it. Also confirmed the nudge-firing effect dedupes via firedLowTimeNudgesRef (a Set), so each of 'two_minute' (<=120s) and 'ten_minute' (<=600s) fires exactly once per session regardless of poll cadence. The third interval at DashboardShell.tsx:1515 is a 2000ms artifact-status refresh poll, unrelated to session state -- left unchanged.",
+      "Item 4 -- scope of TASK-012 was extended to cover the apps/api/.runtime-artifacts test-isolation flake, per the user's approval at the ticket boundary, traceable to nit 2 recorded in findings/TASK-010-audit-1.md during the TASK-010 audit. Chosen fix: real per-test-file isolation via an injectable artifactRoot on createReportService's deps (highest priority), a RUNTIME_ARTIFACTS_ROOT env var set per-file by a new vitest setupFiles hook (middle priority, used automatically by every test file that doesn't manage its own directory, including e2e files that never call createReportService directly), falling back to the original path.resolve(process.cwd(), '.runtime-artifacts') when neither is set (production-identical, confirmed app.ts passes neither). This is real isolation, not defensiveness: did not make hydrateArtifactsFromDisk tolerate a file vanishing mid-walk, and did not disable parallelism (no singleThread/fileParallelism:false) -- both were explicitly available per the brief but were judged unnecessary once each test file gets its own physical directory, and disabling parallelism repo-wide would have traded the flake for a slower suite while leaving the underlying directory-sharing design uncorrected. Did not touch the in-memory artifact Map, the queue, or the retention/purge logic itself -- this is test-infrastructure-scoped only, consistent with the 2026-07-13 audit's standing non-recommendation against replacing the in-memory store."
+    ]
+  }
+}

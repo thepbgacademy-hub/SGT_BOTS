@@ -1,6 +1,10 @@
 import crypto from "node:crypto";
 
 const TELEGRAM_INIT_DATA_MAX_AGE_SECONDS = 300;
+// Small tolerance for legitimate client clock drift only; well below the
+// past-age budget above and in line with typical clock-skew allowances
+// (e.g. 30-60s in JWT ecosystems).
+const TELEGRAM_INIT_DATA_MAX_FUTURE_SKEW_SECONDS = 60;
 
 export type ValidatedTelegramInitData = {
   telegramUserId: string;
@@ -51,10 +55,14 @@ export function validateTelegramInitData(
     throw new Error("invalid telegram init data");
   }
 
-  const ageSeconds = Math.abs(Math.floor(Date.now() / 1000) - authDate);
+  const ageSeconds = Math.floor(Date.now() / 1000) - authDate;
 
   if (ageSeconds > TELEGRAM_INIT_DATA_MAX_AGE_SECONDS) {
     throw new Error("stale telegram init data");
+  }
+
+  if (ageSeconds < -TELEGRAM_INIT_DATA_MAX_FUTURE_SKEW_SECONDS) {
+    throw new Error("future-dated telegram init data");
   }
 
   const user = JSON.parse(userValue) as {
@@ -79,24 +87,31 @@ export function validateTelegramInitData(
   };
 }
 
+function isTelegramInitDataAgeError(message: string) {
+  return (
+    message === "stale telegram init data" ||
+    message === "future-dated telegram init data"
+  );
+}
+
 export function validateTelegramInitDataWithTokens(
   initData: string,
   botTokens: string[],
 ): ValidatedTelegramInitData {
-  let staleError: Error | null = null;
+  let ageError: Error | null = null;
 
   for (const botToken of botTokens) {
     try {
       return validateTelegramInitData(initData, botToken);
     } catch (error) {
-      if ((error as Error).message === "stale telegram init data") {
-        staleError = error as Error;
+      if (isTelegramInitDataAgeError((error as Error).message)) {
+        ageError = error as Error;
       }
     }
   }
 
-  if (staleError) {
-    throw staleError;
+  if (ageError) {
+    throw ageError;
   }
 
   throw new Error("invalid telegram init data");

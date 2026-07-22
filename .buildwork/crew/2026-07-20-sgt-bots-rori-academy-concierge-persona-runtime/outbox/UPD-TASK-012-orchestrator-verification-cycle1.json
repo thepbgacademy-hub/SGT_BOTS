@@ -1,0 +1,80 @@
+{
+  "update_id": "UPD-TASK-012-orchestrator-verification-cycle1",
+  "build_id": "2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime",
+  "task_id": "TASK-012",
+  "agent_id": "build-crew-orchestrator-task-012-cycle1",
+  "created_at": "2026-07-20T18:35:00Z",
+  "expected_revision": 14,
+  "write_scope": "tasks[id=TASK-012]",
+  "evidence": [
+    {
+      "type": "summary",
+      "summary": "See proposed_changes.evidence for the full, mergeable orchestrator re-derivation list (3x API suite from dirty state, isolation proof, mini app run, both lints, setup-hook timing check, production-path equivalence, deletion inventory, protected-path check, zero-reference greps, CON-003 mtime check, QC review outcome).",
+      "reference": "proposed_changes.evidence"
+    }
+  ],
+  "proposed_changes": {
+    "evidence": [
+      {
+        "type": "test-run",
+        "summary": "Orchestrator re-derivation (not the engineer's claim): full apps/api vitest suite run 3 consecutive times WITHOUT clearing the gitignored apps/api/.runtime-artifacts directory, which held 23 files from earlier runs. All three runs: 47 files / 386 tests passed, 0 failed. The 386 count is exactly the TASK-010 baseline of 390 minus the 4 buildCreditBureauDisputeHelperReply tests removed by item 1b, as predicted.",
+        "reference": "cd apps/api && for i in 1 2 3; do corepack pnpm exec vitest run; done  (no rm -rf)"
+      },
+      {
+        "type": "test-run",
+        "summary": "Decisive proof that item 4's isolation is real rather than incidental: apps/api/.runtime-artifacts held 23 files with a newest mtime of 10:25:19 (predating the engineer's 12:55 start) BEFORE the three runs, and still held exactly 23 files with the identical newest mtime AFTER them. Test runs previously wrote into that shared directory, which is how it became dirty in the first place. Zero writes across three full suite runs is only possible if the new vitest setup file executed and redirected every test file to its own temp directory. This also closes the QC reviewer's third UNVERIFIED item (whether apps/api/vitest.config.ts is actually picked up).",
+        "reference": "find apps/api/.runtime-artifacts -type f | wc -l; find apps/api/.runtime-artifacts -type f -printf '%T+ %p\\n' | sort -r | head -3"
+      },
+      {
+        "type": "test-run",
+        "summary": "Mini app suite re-derived: 9 files / 67 tests passed, 0 failed, matching the stated baseline exactly. Items 1a and 3 both touch this app.",
+        "reference": "cd apps/telegram-miniapp && corepack pnpm exec vitest run"
+      },
+      {
+        "type": "lint",
+        "summary": "Both linters re-derived from repo root, each exit 0 with no diagnostics. These are tsc --noEmit and serve as the dangling-import detector for the item 1 removals.",
+        "reference": "corepack pnpm --filter @sgt-bots/api lint; corepack pnpm --filter @sgt-bots/telegram-miniapp lint"
+      },
+      {
+        "type": "manual-check",
+        "summary": "Setup-hook timing risk investigated and cleared. vitest setupFiles beforeAll hooks run AFTER test-file module evaluation, so any test constructing the report service at module scope would miss RUNTIME_ARTIFACTS_ROOT and continue racing on the shared directory. Grepped all 16 test files referencing buildApp/createReportService: zero module-scope construction, every call sits inside a hook or helper function. The env var is therefore always set before any service is built.",
+        "reference": "grep -rn '^const .*buildApp|^const .*createReportService|^const app = ' apps/api/tests/"
+      },
+      {
+        "type": "manual-check",
+        "summary": "Production path confirmed byte-identical. With neither deps.artifactRoot nor RUNTIME_ARTIFACTS_ROOT set, path.resolve(path.join(process.cwd(), '.runtime-artifacts')) is equivalent to the original path.resolve(process.cwd(), '.runtime-artifacts'). app.ts passes neither, so runtime behavior is unchanged.",
+        "reference": "apps/api/src/modules/reports/report.service.ts:106-112; apps/api/src/app.ts"
+      },
+      {
+        "type": "manual-check",
+        "summary": "Deletion inventory re-verified post-hoc, closing the QC reviewer's first UNVERIFIED item. All 13 inventoried targets confirmed absent: 5 *-20260531.tar, codex-oauth-fix-20260531.tar.gz, sgt-bots-rori-fix.tar.gz, sgt-bots-rori-fix.zip, 4 tmp-rori-* files, and .deploy-src/. Approximately 3.3 GB reclaimed. git status shows no stray entries remaining.",
+        "reference": "per-path existence check over the brief's inventory table; git status --porcelain"
+      },
+      {
+        "type": "manual-check",
+        "summary": "Protected paths confirmed intact, closing the QC reviewer's second UNVERIFIED item: .deploy-images (4.7 G, preserved and now ignored), BLUEPRINT-2026-07-20.md, CLAUDE.md, .buildwork/, Dockerfile.backend.hotfix. git check-ignore -v confirms .deploy-images/ is ignored via .gitignore:66 while .buildwork/ is correctly NOT ignored.",
+        "reference": "git check-ignore -v .deploy-images .buildwork; per-path existence check"
+      },
+      {
+        "type": "grep",
+        "summary": "Dead-code removal re-verified independently: zero remaining references to buildCreditBureauDisputeHelperReply and to the 5 removed private helpers (formatFieldLabelList, formatCreditBureauAddressSummary, looksLikeCreditBureauDisputeIntent, looksLikeGreeting, looksLikeGeneralQuestion) across apps/ and packages/. formatCityStatePostal correctly retained with 2 live references (still used by formatBureauAddressLines). The ArtifactListItem type retains all 4 importers; only the component and its props type were removed.",
+        "reference": "grep -rn over apps/ packages/ for each removed symbol"
+      },
+      {
+        "type": "manual-check",
+        "summary": "CON-003 compliance verified by mtime rather than by assertion: HANDOFF.md, TASKS.md, and docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md all still carry their 08:24 session-baseline modification times, while the engineer ran 12:55-13:11 and the files it did touch carry 13:00-13:03 mtimes. No historical doc was edited.",
+        "reference": "stat -c '%y %n' on the three historical docs vs .gitignore, vitest.config.ts, report.service.ts"
+      },
+      {
+        "type": "review",
+        "summary": "QC review PASS from a fresh blank-context reviewer (23.7s) against a frozen diff that excluded the signed-off TASK-010/TASK-011 changes; DashboardShell.tsx was reduced to only the single 1000->8000 hunk, since the file's other two hunks were verified to belong to signed-off TASK-011 cycle-2 work. No blocking or non-blocking findings against the diff. The reviewer's three UNVERIFIED items were all filesystem facts a diff structurally cannot show, and all three were closed by the orchestrator above.",
+        "reference": ".buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/reports/TASK-012-qc-review-cycle1.md"
+      }
+    ],
+    "findings": [
+      "AUDITOR ACTION REQUIRED: the ticket required a build-level `decision` recording TASK-012's scope extension to cover the .runtime-artifacts flake. Because the engineer's write_scope is tasks[id=TASK-012], that decision could only be staged as tasks[TASK-012].proposed_decisions[3], not written into the top-level decisions array. Promoting it to DEC-005 at sign-off requires auditor authority and is not something this orchestrator may do.",
+      ".gitignore uses root-anchored /*.tar, /*.tar.gz and /*.zip rather than the specific inventoried filenames. Broader than the literal audit wording but root-anchored and judged defensible: no legitimate root-level archive exists in this monorepo and the entry's purpose is to stop the category silently reappearing untracked. Surfaced for auditor visibility rather than as a defect."
+    ]
+  },
+  "merge_status": "merged"
+}

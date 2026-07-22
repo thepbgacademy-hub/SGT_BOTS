@@ -55,12 +55,20 @@ export function MainMenu({
             key={item.id}
             onClick={() => onSelect(item.id)}
             type="button"
-            aria-label={`Open ${item.displayName}`}
+            aria-label={`Open ${item.displayName}: ${item.description}`}
           >
             <span className="sr-only">{item.displayName}</span>
           </button>
         ))}
       </div>
+      <ul className="menu-specialist-guide" aria-label="Specialist guide">
+        {menuItems.map((item) => (
+          <li key={item.id}>
+            <span className="menu-specialist-guide-name">{item.displayName}</span>
+            <span className="menu-specialist-guide-description">{item.description}</span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

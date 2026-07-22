@@ -1,0 +1,20 @@
+{
+  "update_id": "UPD-TASK-010-auditor-signoff-cycle1",
+  "build_id": "2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime",
+  "task_id": "TASK-010",
+  "agent_id": "build-crew-auditor-task-010-cycle1",
+  "created_at": "2026-07-20T15:28:10Z",
+  "expected_revision": 6,
+  "write_scope": "tasks[id=TASK-010]",
+  "proposed_changes": {
+    "evidence": [
+      {
+        "type": "auditor-signoff",
+        "summary": "AUDIT: PASS (cycle 1, auditor = main session). Independently re-derived, not accepted from the engineer or orchestrator: record validation ok at revision 6 with TASK-010 still pending; full apps/api suite 47 files / 390 tests passed, 0 failed, after clearing the gitignored apps/api/.runtime-artifacts scratch directory (matches the staged claim including its qualifier); both typecheck gates exit 0 (@sgt-bots/api and @sgt-bots/telegram-miniapp); mini app suite 8 files / 42 tests passed, 0 failed; the full diff read end to end (13 modified files + 2 new test files, +300/-38) with every changed file explained by one of the four ticket items or its caller-contract wiring; both QC dismissals independently verified by inspecting code outside the diff (telegram.route.ts:18-22 and app.ts:266-270 catch with an unconditional reply.code(401) and no message matching, so the reviewer's 500-risk findings cannot occur at those sites, while the four message-matching sites in profile.route.ts x1 and provider.route.ts x3 are all handled by the diff); new tests read in full with negative cases present for all four items, synthetic-only fixtures (REQ-004 clean), and a query-parameter-inert regression test for the item 3 cutover. Scope adjudications accepted: the profile.route.ts / provider.route.ts 401 status mapping is in-scope caller-contract wiring (the brief's exclusion covered the untouched POST-body initData contract), and the engineer implementing directly instead of spawning builders is accepted as disclosed, budget-justified, and verifiably complete. Two non-blocking nits recorded, neither gating: duplicate entries in this ticket's artifacts list (addressed in this same revision), and the pre-existing .runtime-artifacts test-isolation flake needing its own ticket when TASK-012 is scoped.",
+        "reference": ".buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/findings/TASK-010-audit-1.md"
+      }
+    ]
+  },
+  "evidence": [],
+  "merge_status": "merged"
+}

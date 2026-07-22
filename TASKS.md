@@ -1,5 +1,10 @@
 # Tasks
 
+> **SUPERSEDED 2026-07-20 — historical reference only. Do not add or tick items here.**
+> Task status now lives in the beginning-builds record:
+> `.buildwork/builds/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime.json`
+> (context: `BLUEPRINT-2026-07-20.md`, authority: `CLAUDE.md`).
+
 Consult `docs/superpowers/plans/2026-07-13-playground-build-inspection-audit.md` alongside this list: it records the 2026-07-13 build inspection, the corrections already applied, and the reasoning behind the deferred Someday items below.
 
 ## Active

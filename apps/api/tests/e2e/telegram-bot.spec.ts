@@ -4,7 +4,36 @@ import {
   clearTelegramWebhook,
   handleTelegramUpdate,
   pollTelegramUpdatesOnce,
+  sendTelegramMessage,
 } from "../../src/modules/telegram/telegram-bot.service";
+
+function telegramRateLimitResponse(retryAfterSeconds: number) {
+  return new Response(
+    JSON.stringify({
+      ok: false,
+      error_code: 429,
+      description: `Too Many Requests: retry after ${retryAfterSeconds}`,
+      parameters: { retry_after: retryAfterSeconds },
+    }),
+    {
+      status: 429,
+      headers: { "content-type": "application/json" },
+    },
+  );
+}
+
+function telegramOkResponse() {
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+const testMessage = {
+  chatId: -100123,
+  text: "hello",
+  replyMarkup: { inline_keyboard: [] },
+};
 
 const env = readEnv({
   APP_PORT: "3001",
@@ -240,5 +269,85 @@ describe("Telegram bot runtime", () => {
         method: "POST",
       }),
     );
+  });
+
+  it("honors retry_after on 429 and succeeds on the next attempt", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(telegramRateLimitResponse(5))
+      .mockResolvedValueOnce(telegramOkResponse());
+    const wait = vi.fn().mockResolvedValue(undefined);
+
+    await sendTelegramMessage({
+      env,
+      fetchImpl: fetchMock,
+      message: testMessage,
+      wait,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(wait).toHaveBeenCalledTimes(1);
+    expect(wait).toHaveBeenCalledWith(5000);
+  });
+
+  it("bounds a hostile retry_after to the configured cap", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(telegramRateLimitResponse(1_000_000))
+      .mockResolvedValueOnce(telegramOkResponse());
+    const wait = vi.fn().mockResolvedValue(undefined);
+
+    await sendTelegramMessage({
+      env,
+      fetchImpl: fetchMock,
+      message: testMessage,
+      wait,
+    });
+
+    expect(wait).toHaveBeenCalledTimes(1);
+    expect(wait).toHaveBeenCalledWith(30_000);
+  });
+
+  it("stops retrying after the max attempt count and throws", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(telegramRateLimitResponse(1))
+      .mockResolvedValueOnce(telegramRateLimitResponse(1))
+      .mockResolvedValueOnce(telegramRateLimitResponse(1));
+    const wait = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      sendTelegramMessage({
+        env,
+        fetchImpl: fetchMock,
+        message: testMessage,
+        wait,
+      }),
+    ).rejects.toThrow("telegram sendMessage failed with status 429");
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(wait).toHaveBeenCalledTimes(2);
+  });
+
+  it("still throws immediately on non-429 failures without waiting", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: false }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const wait = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      sendTelegramMessage({
+        env,
+        fetchImpl: fetchMock,
+        message: testMessage,
+        wait,
+      }),
+    ).rejects.toThrow("telegram sendMessage failed with status 500");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(wait).not.toHaveBeenCalled();
   });
 });

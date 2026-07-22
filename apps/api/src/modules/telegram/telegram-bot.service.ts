@@ -43,6 +43,23 @@ export type TelegramSendMessageInput = {
 
 type SendMessage = (input: TelegramSendMessageInput) => Promise<void>;
 
+const TELEGRAM_SEND_MESSAGE_MAX_ATTEMPTS = 3;
+const TELEGRAM_SEND_MESSAGE_MAX_RETRY_AFTER_SECONDS = 30;
+
+async function readTelegramRetryAfterSeconds(response: Response) {
+  try {
+    const body = (await response.json()) as {
+      parameters?: { retry_after?: number };
+    };
+    const retryAfter = body.parameters?.retry_after;
+    return Number.isFinite(retryAfter) && (retryAfter as number) > 0
+      ? (retryAfter as number)
+      : 1;
+  } catch {
+    return 1;
+  }
+}
+
 function isInteractiveGroupChat(chat: TelegramChat | undefined) {
   return (
     chat?.type === "group" ||
@@ -163,24 +180,54 @@ export async function sendTelegramMessage(input: {
   env: AppEnv;
   fetchImpl?: typeof fetch;
   message: TelegramSendMessageInput;
+  wait?: (ms: number) => Promise<void>;
 }) {
   const fetchImpl = input.fetchImpl ?? fetch;
-  const response = await fetchImpl(
-    `https://api.telegram.org/bot${input.env.telegramBotToken}/sendMessage`,
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        chat_id: input.message.chatId,
-        text: input.message.text,
-        reply_markup: input.message.replyMarkup,
-      }),
-    },
-  );
+  const wait =
+    input.wait ??
+    ((ms: number) =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, ms);
+      }));
 
-  if (!response.ok) {
+  for (
+    let attempt = 1;
+    attempt <= TELEGRAM_SEND_MESSAGE_MAX_ATTEMPTS;
+    attempt += 1
+  ) {
+    const response = await fetchImpl(
+      `https://api.telegram.org/bot${input.env.telegramBotToken}/sendMessage`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          chat_id: input.message.chatId,
+          text: input.message.text,
+          reply_markup: input.message.replyMarkup,
+        }),
+      },
+    );
+
+    if (response.ok) {
+      return;
+    }
+
+    if (
+      response.status === 429 &&
+      attempt < TELEGRAM_SEND_MESSAGE_MAX_ATTEMPTS
+    ) {
+      const retryAfterSeconds = await readTelegramRetryAfterSeconds(response);
+      const boundedDelayMs =
+        Math.min(
+          retryAfterSeconds,
+          TELEGRAM_SEND_MESSAGE_MAX_RETRY_AFTER_SECONDS,
+        ) * 1000;
+      await wait(boundedDelayMs);
+      continue;
+    }
+
     throw new Error(`telegram sendMessage failed with status ${response.status}`);
   }
 }

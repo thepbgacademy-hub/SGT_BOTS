@@ -33,7 +33,8 @@ export async function registerProfileRoutes(app: FastifyInstance) {
       return reply
         .code(
           message === "invalid telegram init data" ||
-            message === "stale telegram init data"
+            message === "stale telegram init data" ||
+            message === "future-dated telegram init data"
             ? 401
             : 500,
         )

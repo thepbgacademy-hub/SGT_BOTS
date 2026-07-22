@@ -1,0 +1,77 @@
+{
+  "update_id": "UPD-TASK-011-cycle1",
+  "build_id": "2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime",
+  "task_id": "TASK-011",
+  "agent_id": "engineer-task-011-cycle1",
+  "created_at": "2026-07-20T19:30:00Z",
+  "expected_revision": 8,
+  "write_scope": "tasks[id=TASK-011]",
+  "merge_status": "merged",
+  "evidence": [
+    {
+      "type": "summary",
+      "summary": "See proposed_changes.evidence for the full, mergeable evidence list (lint + test commands and results).",
+      "reference": "proposed_changes.evidence"
+    }
+  ],
+  "proposed_changes": {
+    "progress": "All six deferred engagement quick wins from the 2026-07-13 audit (line 72) implemented and verified. MODE DISCLOSURE: implemented solo rather than dispatching builder subprocesses, following the TASK-010 precedent the brief authorized. Reasoning: the ticket's own coupling warning (ChatPanel.tsx shared by items 1+2, DashboardShell.tsx shared by items 3+4) meant true parallel builders would need serialization anyway on the two highest-conflict-risk files; direct implementation let me verify each change immediately against the real test suite within the 45-minute budget instead of paying subprocess launch/report/reconcile overhead per item. Item 1: added apps/telegram-miniapp/src/features/rori/starter-prompts.ts (RORI_STARTER_PROMPTS, 4 question-shaped strings matching the bot's own documented scope doc at docs/superpowers/specs/2026-05-25-rori-academy-concierge-design.md lines 20-25), wired it into RoriWorkspace.tsx, and removed hideEmptyState from RoriWorkspace's ChatPanel call so the already-built empty-state/starter-prompt render path in ChatPanel.tsx is reachable. Item 2: ChatPanel.tsx now renders a 'Thinking...' bubble (animated dots, respects prefersReducedMotion) while submitting=true, placed after the visibleMessages render so it is visible under latestExchangeOnly (Rori's mode) too; empty-state gated with !submitting so the two never overlap. Item 3: extended lib/telegram.ts's declare global with BackButton, HapticFeedback, enableClosingConfirmation/disableClosingConfirmation, themeParams, all reached via the file's existing fully-optional-chaining style; added setTelegramBackButton, triggerTelegramHaptic, setTelegramClosingConfirmation, computeThemeCssVariables, applyTelegramThemeParams. Wired in DashboardShell.tsx: BackButton shows/binds to the existing handleBackToMenu whenever a workspace is selected (effect keyed on selectedMenuItem?.id) and hides on cleanup; enableClosingConfirmation is scoped to isSessionActive (see proposed_decisions); applyTelegramThemeParams() runs once on mount; a light haptic fires on menu selection (DashboardShell) and on chat send (ChatPanel). Item 4: added exported pure function getLowTimeNudgeThreshold(remainingSeconds, isSessionActive) using <=600/<=120 threshold-crossing (not equality) plus a per-session fired-once Set latch (firedLowTimeNudgesRef, reset on activeSessionId change) so a skipped or duplicated 1s tick cannot cause a missed or repeated nudge; renders a dismissible banner in the session banner. Did not touch the 1s polling interval itself (TASK-012 scope) and nudges are gated on isSessionActive so they cannot fire on an inactive/expired session. Item 5: ProviderConnectPanel.tsx auto-polls /api/providers/openai-codex/oauth/{id}/status every 4000ms once codexLogin is set (extracted the shared fetch+decision logic into fetchCodexOAuthStatus + exported pure resolveCodexOAuthPollAction, reused by both the manual 'Check login' button and the new effect, avoiding duplicated fetch/branch logic). Stop conditions verified in code: connected (interval cleared, onConnected fires), expired/failed (interval cleared, codexLogin set to null), component unmount (effect cleanup), provider switched away from openai_codex (handleProviderChange nulls codexLogin, which is an effect dependency so the guard clause exits and no new interval is scheduled). Item 6: MainMenu.tsx now renders a static, always-visible <ul class='menu-specialist-guide'> listing every bot's displayName + description directly under the hex artboard (not hover/focus-gated), plus each hex button's aria-label now includes the description too. Chose static-always-visible over a hover/focus-reveal affordance specifically because it trivially satisfies 'reachable by keyboard and screen reader, not hover-only' (there is no hover-only path to defeat) and needs no extra positioning CSS to work at the 760px mobile breakpoint, since it is a plain block list rather than something pinned to the hex hit-regions. TEST-HARNESS LIMITATION (disclosed, not fixed): this package has no jsdom/@testing-library/react dependency (devDependencies confirmed: only @types/react, @types/react-dom, @vitejs/plugin-react, vite; vitest runs in node environment). All existing component tests in this repo are therefore renderToStaticMarkup snapshots of a single render, not interactive DOM tests -- this is a pre-existing repo convention, not something introduced here. For items 2, 4, 5 and the BackButton/haptics/closing-confirmation wiring in item 3, the underlying stateful/effect behavior cannot be exercised by this harness without adding a new test dependency, which I judged out of this ticket's scope to add unilaterally. Mitigation taken: extracted the core decision logic of each into small, pure, exported functions (getLowTimeNudgeThreshold, resolveCodexOAuthPollAction, computeThemeCssVariables) and the Telegram API wrapper functions themselves (setTelegramBackButton, triggerTelegramHaptic, setTelegramClosingConfirmation, applyTelegramThemeParams) into lib/telegram.ts, all of which ARE fully unit-tested via the existing vi.stubGlobal('window', ...) pattern already used in telegram.spec.ts (no DOM needed). The React effect wiring that calls these functions at the right time was verified by direct code inspection only, not by an automated interaction test. Flagging this as a proposed_decision/finding rather than silently claiming full coverage.",
+    "findings": [
+      "ProviderConnectPanel.tsx's openProviderLogin function still declares its own local inline `Window & { Telegram?: { WebApp?: { openLink?: ... } } }` cast instead of using the Window.Telegram typings now centralized in lib/telegram.ts. Left untouched to stay inside this ticket's write_scope (not one of the six items); candidate cleanup for TASK-012's housekeeping pass.",
+      "This package (apps/telegram-miniapp) has zero jsdom/@testing-library/react-style interactive test tooling; every existing *.spec.tsx here is a single renderToStaticMarkup snapshot. This is pre-existing and constrains how deeply items 2/4/5's stateful behavior can be automated-tested going forward (see progress note). Not fixed here since adding a test dependency was judged out of this ticket's scope."
+    ],
+    "artifacts": [
+      "apps/telegram-miniapp/src/lib/telegram.ts",
+      "apps/telegram-miniapp/src/lib/telegram.spec.ts",
+      "apps/telegram-miniapp/src/features/rori/starter-prompts.ts",
+      "apps/telegram-miniapp/src/features/rori/RoriWorkspace.tsx",
+      "apps/telegram-miniapp/src/features/rori/RoriWorkspace.spec.tsx",
+      "apps/telegram-miniapp/src/features/chat/ChatPanel.tsx",
+      "apps/telegram-miniapp/src/features/chat/ChatPanel.spec.tsx",
+      "apps/telegram-miniapp/src/features/dashboard/DashboardShell.tsx",
+      "apps/telegram-miniapp/src/features/dashboard/DashboardShell.spec.tsx",
+      "apps/telegram-miniapp/src/features/dashboard/MainMenu.tsx",
+      "apps/telegram-miniapp/src/features/dashboard/MainMenu.spec.tsx",
+      "apps/telegram-miniapp/src/features/onboarding/ProviderConnectPanel.tsx",
+      "apps/telegram-miniapp/src/features/onboarding/ProviderConnectPanel.spec.tsx",
+      "apps/telegram-miniapp/src/app/app.css"
+    ],
+    "evidence": [
+      {
+        "type": "test",
+        "summary": "Mini app suite green: 9 files / 65 tests (baseline was 8 files / 42 tests; added MainMenu.spec.tsx new, expanded ChatPanel/RoriWorkspace/DashboardShell/ProviderConnectPanel/telegram specs).",
+        "reference": "cd apps/telegram-miniapp && corepack pnpm exec vitest run  =>  Test Files 9 passed (9); Tests 65 passed (65)"
+      },
+      {
+        "type": "lint",
+        "summary": "telegram-miniapp lint (tsc --noEmit) exit 0.",
+        "reference": "corepack pnpm --filter @sgt-bots/telegram-miniapp lint  =>  exit 0, no output"
+      },
+      {
+        "type": "lint",
+        "summary": "api lint (tsc --noEmit) exit 0 -- run even though no apps/api file was touched, per the verification bar's 'both linters exit 0' requirement.",
+        "reference": "corepack pnpm --filter @sgt-bots/api lint  =>  exit 0, no output"
+      },
+      {
+        "type": "test",
+        "summary": "Full apps/api vitest suite: NOT RUN. No file under apps/api was touched by this ticket (starter prompts were deliberately kept mini-app-local per proposed_decisions, so the brief's condition 'if your item-1 design call puts starter prompts in packages/shared, this suite is in your bar' does not apply). Reporting 'not run' rather than fabricating a result.",
+        "reference": "not run"
+      },
+      {
+        "type": "fail-without-change",
+        "summary": "Not run as a separate stash-based check this cycle (time budget). Each new/changed assertion was instead verified positively against the new behavior it targets (e.g. RoriWorkspace.spec.tsx was flipped from not.toContain to toContain for the four starter prompts and message-card--empty, and was confirmed failing against the pre-change component before the RoriWorkspace.tsx edit, then passing after).",
+        "reference": "manual before/after confirmation on RoriWorkspace.spec.tsx only; not systematically repeated for every new assertion"
+      }
+    ],
+    "proposed_decisions": [
+      "Item 1 data source: starter prompts live in a new mini-app-local module (apps/telegram-miniapp/src/features/rori/starter-prompts.ts) rather than packages/shared/src/bots/manifests.ts. Reasoning: manifests.ts is consumed by apps/api too, so adding a field there would pull the API test suite into this ticket's verification bar for a UI-only concern; a local module keeps the change frontend-only. The four prompt strings were not invented -- they match exactly the four negative assertions already present in the pre-existing RoriWorkspace.spec.tsx baseline and the topic list in docs/superpowers/specs/2026-05-25-rori-academy-concierge-design.md lines 20-25, so this reuses content the design already anticipated rather than authoring new factual claims.",
+      "Item 3 themeParams -> CSS mapping: only 4 of Telegram's ~7 theme_params keys are mapped (bg_color->--bg, text_color->--text, hint_color->--muted, button_color->--gold), chosen because those are the CSS custom properties in app.css's :root block that most directly control the app's dark theme. Unmapped keys (link_color, button_text_color, secondary_bg_color) are left alone rather than guessed at. Graceful degradation: computeThemeCssVariables only emits a key when Telegram actually supplied a value, so outside Telegram (themeParams undefined) applyTelegramThemeParams sets zero properties and the existing :root defaults in app.css are untouched -- verified by a unit test asserting root.style.setProperty is never called when window.Telegram is absent.",
+      "Item 3 closing confirmation scope: enableClosingConfirmation is tied to isSessionActive (on while a provider session is live, off otherwise), not unconditional. Reasoning: the risk being guarded against is losing an in-progress provider session/workflow state by an accidental close; there is nothing to protect before a session starts or after it has ended/expired.",
+      "Item 3 haptics placement: a light impact haptic fires on two high-signal user actions -- selecting a bot from the main menu (DashboardShell handleMenuSelection) and sending a chat message (ChatPanel handleSubmit) -- rather than instrumenting every button. Kept minimal since the audit line only asked to 'adopt' haptics, not wire them everywhere.",
+      "Item 4 nudge source of truth and once-only mechanism: getLowTimeNudgeThreshold(remainingSeconds, isSessionActive) is a pure threshold-crossing function (<=600 => ten_minute, <=120 => two_minute, checked in that order so the more urgent threshold wins if a tick skips past both) combined with a useRef<Set<LowTimeNudgeThreshold>> latch that is reset only when activeSessionId changes. This is robust to a skipped or duplicated 1s tick (an equality check on ===600 would not be). Documented tradeoff: if remainingSeconds ever jumps in one step from above 600 to at/below 120 (e.g. a server resync), only the two_minute nudge fires and the ten_minute nudge is silently skipped for that session -- judged acceptable since the more urgent nudge is the one that matters, but flagging it as a deliberate, not accidental, gap.",
+      "Item 5 OAuth poll interval and stop conditions: 4000ms interval, chosen because Codex OAuth approval is a human action in a separate tab/app (order of tens of seconds), unlike the 1s session-refresh poll (which is itself flagged elsewhere as too aggressive and explicitly out of this ticket's scope to fix). Full stop-condition list, all verified by code inspection: connected (clears interval, calls onConnected, which unmounts this panel), expired/failed (clears interval, nulls codexLogin so the effect's guard prevents rescheduling), component unmount (effect cleanup clears the interval unconditionally), provider switched away from openai_codex (handleProviderChange nulls codexLogin, an effect dependency, so cleanup runs and no new interval starts). Pending status is intentionally silent in the background poll (no error shown) to avoid flashing 'still waiting' at the user every 4 seconds; the manual 'Check login' button still surfaces that message on demand.",
+      "Item 6 description affordance: a static, always-rendered <ul> legend beneath the hex artboard (every bot's name + description, all six always visible) plus a richer aria-label on each hex button, instead of a hover/focus-revealed caption. Reasoning: a hover/focus affordance would need per-hex-button positioning CSS to survive the existing responsive hex coordinate overrides at the 760px breakpoint, and would still need to be independently verified reachable by keyboard focus and by screen readers as two separate concerns. A static list sidesteps both: it cannot be hover-only because there is no hover gate, it is trivially in the accessibility tree, and it reflows naturally under the artboard at any width. Tradeoff accepted: this adds visible page length/content below the hex artboard rather than keeping the interaction purely spatial."
+    ],
+    "blockers": []
+  }
+}

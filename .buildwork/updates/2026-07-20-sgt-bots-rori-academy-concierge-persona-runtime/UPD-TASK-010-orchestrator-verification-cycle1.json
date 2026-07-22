@@ -1,0 +1,100 @@
+{
+  "update_id": "UPD-TASK-010-orchestrator-verification-cycle1",
+  "build_id": "2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime",
+  "task_id": "TASK-010",
+  "agent_id": "build-crew-orchestrator-task-010-cycle1",
+  "created_at": "2026-07-20T15:21:42Z",
+  "expected_revision": 5,
+  "write_scope": "tasks[id=TASK-010]",
+  "proposed_changes": {
+    "evidence": [
+      {
+        "type": "test-run",
+        "summary": "Orchestrator re-derivation (not the engineer's claim): full apps/api vitest suite 47 files / 390 tests pass, 0 fail, after clearing the gitignored apps/api/.runtime-artifacts scratch directory. Baseline before this ticket re-measured at 373/373, so net +17 tests.",
+        "reference": "cd apps/api && rm -rf .runtime-artifacts && corepack pnpm exec vitest run"
+      },
+      {
+        "type": "test-run",
+        "summary": "Pre-existing flake isolated and proven NOT introduced by this ticket: with a populated apps/api/.runtime-artifacts directory, hydrateArtifactsFromDisk (report.service.ts:226) intermittently fails with ENOENT as concurrent test files race on that shared on-disk store (observed 1 then 4 failures on successive runs). Reproduced at BASELINE with all TASK-010 changes stashed: run 1 373/373, run 2 372/373 (1 failed), run 3 373/373. The affected code path is untouched by this ticket. Tracked as a pre-existing test-isolation defect, not a regression.",
+        "reference": "git stash push -u -- apps; repeated 'corepack pnpm exec vitest run' from apps/api"
+      },
+      {
+        "type": "test-run",
+        "summary": "Fail-without-the-change verified by mutation check for all four items: source reverted via 'git stash push -- apps/api/src apps/telegram-miniapp/src/lib/telegram.ts' while retaining the new tests. Observed failures: item 1 'rejects pdf uploads larger than the configured byte cap'; item 2 'honors retry_after on 429 and succeeds on the next attempt'; item 3 launch+prefill header auth and 'ignores an initData query parameter' (3 tests); item 4 'rejects data dated too far in the future as future-dated, not stale', the multi-token preservation test, and the onboarding route future-dated test. Working tree restored afterward and verified byte-identical to a pre-stash patch backup.",
+        "reference": "apps/api/tests/telegram/{init-data,launch-prefill}.spec.ts, tests/e2e/{telegram-bot,uploads-and-reports,onboarding}.spec.ts"
+      },
+      {
+        "type": "lint",
+        "summary": "Orchestrator re-run: both typecheck gates exit 0 with no diagnostics.",
+        "reference": "corepack pnpm --filter @sgt-bots/api lint && corepack pnpm --filter @sgt-bots/telegram-miniapp lint"
+      },
+      {
+        "type": "test-run",
+        "summary": "Orchestrator re-run: mini app suite 8 files / 42 tests pass, 0 fail, including lib/telegram.spec.ts asserting the x-telegram-init-data header is sent on both launch and prefill.",
+        "reference": "cd apps/telegram-miniapp && corepack pnpm exec vitest run"
+      },
+      {
+        "type": "code-inspection",
+        "summary": "Security-critical ordering confirmed for the item 4 multi-token decision: in init-data.ts the HMAC comparison (hash !== expectedHash, line 48) precedes the auth_date age checks (lines 58-66). A wrong candidate token therefore fails on signature before reaching the age check, so preserving the age-error message across the token loop cannot mask an invalid signature. The engineer's stated rationale holds.",
+        "reference": "apps/api/src/modules/telegram/init-data.ts:48,58-66"
+      },
+      {
+        "type": "review",
+        "summary": "Blank-context QC review returned 2 findings, both self-labeled UNVERIFIED; both dismissed by orchestrator inspection of code outside the diff. telegram.route.ts:19-23 and app.ts:266-270 each catch init-data errors with an unconditional reply.code(401) and no message matching, so the new 'future-dated telegram init data' message cannot surface as a 500 at either endpoint. The same risk class WAS real at the 4 sites that do match on message strings (profile.route.ts x1, provider.route.ts x3) and the diff handles all 4.",
+        "reference": ".buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/reports/TASK-010-qc-review-cycle1.md"
+      },
+      {
+        "type": "code-inspection",
+        "summary": "REQ-004 secrets discipline verified: new tests use only the pre-existing synthetic fixture TEST_TELEGRAM_BOT_TOKEN ('123456:phase-1-test-bot-token') from packages/shared/src/testing/telegram-fixtures.ts (unmodified by this ticket) with HMACs computed locally at test time, plus a synthetic literal '999999:some-other-bot-token'. No real token, initData string, or hash appears in code, tests, or artifacts. REQ-003 also verified untouched: no migrations, no rori schema or PostgREST changes in the 15-file diff.",
+        "reference": "packages/shared/src/testing/telegram-fixtures.ts, apps/api/tests/telegram/init-data.spec.ts"
+      }
+    ],
+    "findings": [
+      "Orchestrator verification note: the engineer's envelope reported its evidence at the envelope's schema-required top level, but the merge engine only merges keys under proposed_changes (MERGEABLE_FIELDS in build_work.py). The first merge therefore landed progress/findings/artifacts/risks/proposed_decisions but left task.evidence empty. This envelope carries the evidence in the correct location. Worth fixing in the engineer brief template so future tickets do not need a second envelope.",
+      "Pre-existing defect surfaced during verification, OUT OF SCOPE for TASK-010 and reported rather than fixed: apps/api tests share the gitignored apps/api/.runtime-artifacts directory as mutable on-disk state. Concurrent test files race in hydrateArtifactsFromDisk (report.service.ts:226), producing intermittent ENOENT failures whose frequency grows as that directory accumulates. Proven pre-existing at baseline. It makes 'full suite green' non-deterministic unless the directory is cleared first, which affects the TASK-008 gate run's evidence quality. Suggest a dedicated ticket (natural fit alongside TASK-012 housekeeping)."
+    ]
+  },
+  "evidence": [
+    {
+      "type": "test-run",
+      "summary": "Orchestrator re-derivation (not the engineer's claim): full apps/api vitest suite 47 files / 390 tests pass, 0 fail, after clearing the gitignored apps/api/.runtime-artifacts scratch directory. Baseline before this ticket re-measured at 373/373, so net +17 tests.",
+      "reference": "cd apps/api && rm -rf .runtime-artifacts && corepack pnpm exec vitest run"
+    },
+    {
+      "type": "test-run",
+      "summary": "Pre-existing flake isolated and proven NOT introduced by this ticket: with a populated apps/api/.runtime-artifacts directory, hydrateArtifactsFromDisk (report.service.ts:226) intermittently fails with ENOENT as concurrent test files race on that shared on-disk store (observed 1 then 4 failures on successive runs). Reproduced at BASELINE with all TASK-010 changes stashed: run 1 373/373, run 2 372/373 (1 failed), run 3 373/373. The affected code path is untouched by this ticket. Tracked as a pre-existing test-isolation defect, not a regression.",
+      "reference": "git stash push -u -- apps; repeated 'corepack pnpm exec vitest run' from apps/api"
+    },
+    {
+      "type": "test-run",
+      "summary": "Fail-without-the-change verified by mutation check for all four items: source reverted via 'git stash push -- apps/api/src apps/telegram-miniapp/src/lib/telegram.ts' while retaining the new tests. Observed failures: item 1 'rejects pdf uploads larger than the configured byte cap'; item 2 'honors retry_after on 429 and succeeds on the next attempt'; item 3 launch+prefill header auth and 'ignores an initData query parameter' (3 tests); item 4 'rejects data dated too far in the future as future-dated, not stale', the multi-token preservation test, and the onboarding route future-dated test. Working tree restored afterward and verified byte-identical to a pre-stash patch backup.",
+      "reference": "apps/api/tests/telegram/{init-data,launch-prefill}.spec.ts, tests/e2e/{telegram-bot,uploads-and-reports,onboarding}.spec.ts"
+    },
+    {
+      "type": "lint",
+      "summary": "Orchestrator re-run: both typecheck gates exit 0 with no diagnostics.",
+      "reference": "corepack pnpm --filter @sgt-bots/api lint && corepack pnpm --filter @sgt-bots/telegram-miniapp lint"
+    },
+    {
+      "type": "test-run",
+      "summary": "Orchestrator re-run: mini app suite 8 files / 42 tests pass, 0 fail, including lib/telegram.spec.ts asserting the x-telegram-init-data header is sent on both launch and prefill.",
+      "reference": "cd apps/telegram-miniapp && corepack pnpm exec vitest run"
+    },
+    {
+      "type": "code-inspection",
+      "summary": "Security-critical ordering confirmed for the item 4 multi-token decision: in init-data.ts the HMAC comparison (hash !== expectedHash, line 48) precedes the auth_date age checks (lines 58-66). A wrong candidate token therefore fails on signature before reaching the age check, so preserving the age-error message across the token loop cannot mask an invalid signature. The engineer's stated rationale holds.",
+      "reference": "apps/api/src/modules/telegram/init-data.ts:48,58-66"
+    },
+    {
+      "type": "review",
+      "summary": "Blank-context QC review returned 2 findings, both self-labeled UNVERIFIED; both dismissed by orchestrator inspection of code outside the diff. telegram.route.ts:19-23 and app.ts:266-270 each catch init-data errors with an unconditional reply.code(401) and no message matching, so the new 'future-dated telegram init data' message cannot surface as a 500 at either endpoint. The same risk class WAS real at the 4 sites that do match on message strings (profile.route.ts x1, provider.route.ts x3) and the diff handles all 4.",
+      "reference": ".buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/reports/TASK-010-qc-review-cycle1.md"
+    },
+    {
+      "type": "code-inspection",
+      "summary": "REQ-004 secrets discipline verified: new tests use only the pre-existing synthetic fixture TEST_TELEGRAM_BOT_TOKEN ('123456:phase-1-test-bot-token') from packages/shared/src/testing/telegram-fixtures.ts (unmodified by this ticket) with HMACs computed locally at test time, plus a synthetic literal '999999:some-other-bot-token'. No real token, initData string, or hash appears in code, tests, or artifacts. REQ-003 also verified untouched: no migrations, no rori schema or PostgREST changes in the 15-file diff.",
+      "reference": "packages/shared/src/testing/telegram-fixtures.ts, apps/api/tests/telegram/init-data.spec.ts"
+    }
+  ],
+  "merge_status": "merged"
+}

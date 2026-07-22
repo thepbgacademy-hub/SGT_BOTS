@@ -1,0 +1,156 @@
+# TASK-011 — STAGED FOR AUDIT
+
+- **build_id**: `2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime`
+- **task_id**: `TASK-011` — Deferred engagement quick wins
+- **record revision at staging**: **11** (TASK-011 status remains `pending` — only auditor sign-off permits `completed`)
+- **audit cycle**: 1
+- **orchestrator**: `build-crew-orchestrator-task-011-cycle1`
+- **mode**: full crew (classification reasoning in the brief)
+- **engineer cycles run**: 2 (cycle 2 was an orchestrator-initiated gap closure, not an auditor finding)
+
+Everything below marked "orchestrator re-derived" was run by me directly, not accepted
+from the engineer or the reviewer.
+
+---
+
+## What was done
+
+All six quick wins from `docs/superpowers/plans/2026-07-13-playground-build-inspection-audit.md`
+line 72, implemented mini-app-only (no `apps/api`, no `packages/shared`, no migrations).
+
+1. **starterPrompts per bot + Rori empty state.** `ChatPanel`'s render path already
+   existed; what was missing was data and callers. `features/rori/starter-prompts.ts`
+   now holds a per-bot lookup (`getStarterPromptsForBot`) covering Rori,
+   `document_wizard`, `tutor`, `verifier`, `tax_legal_research`; wired at **both**
+   `ChatPanel` call sites (`RoriWorkspace.tsx`, `DashboardShell.tsx`). `hideEmptyState`
+   removed from Rori's call site only. `form_wizard` intentionally unmapped (routes to
+   `FormWizardPanel`, never reaches `ChatPanel`); unknown ids fall back to `[]`.
+2. **Thinking bubble.** Rendered in `ChatPanel` while `submitting`, positioned after
+   `visibleMessages` so it is visible under `latestExchangeOnly` (Rori's mode); empty
+   state gated with `!submitting` so the two cannot overlap; respects `prefersReducedMotion`.
+3. **Telegram BackButton / haptics / closing confirmation / themeParams.** New helpers
+   in `lib/telegram.ts` (`setTelegramBackButton`, `triggerTelegramHaptic`,
+   `setTelegramClosingConfirmation`, `computeThemeCssVariables`, `applyTelegramThemeParams`),
+   all fully optional-chained; wired in `DashboardShell` (BackButton bound to the
+   existing `handleBackToMenu`, closing confirmation scoped to `isSessionActive`,
+   themeParams applied once on mount) and `ChatPanel` (haptic on send).
+4. **Low-time nudges.** Pure `getLowTimeNudgeThreshold(remainingSeconds, isSessionActive)`
+   using `<=600`/`<=120` threshold-crossing (not equality) plus a per-session
+   fired-once `Set` latch reset on `activeSessionId` change. 1s polling interval
+   untouched (TASK-012).
+5. **Codex OAuth auto-poll.** 4000ms interval in `ProviderConnectPanel`, sharing a
+   pure `resolveCodexOAuthPollAction` with the existing manual button. Stops on
+   connected / expired / failed / unmount / provider-switch.
+6. **Bot descriptions before selection.** Static always-visible `<ul class="menu-specialist-guide">`
+   under the hex artboard plus description in each hex button's `aria-label` — not
+   hover-gated.
+
+---
+
+## Evidence locations
+
+- Envelopes: `.buildwork/updates/<build_id>/UPD-TASK-011-cycle1.json` (merged, rev 9),
+  `UPD-TASK-011-cycle2.json` (merged, rev 10)
+- Briefs: `assignments/TASK-011-brief.md`, `assignments/TASK-011-brief-cycle2.md`
+- QC review + adjudications: `reports/TASK-011-qc-review-cycle1.md`
+- Role run results: `reports/TASK-011-engineer-cycle1-result.json`,
+  `TASK-011-engineer-cycle2-result.json`, `TASK-011-reviewer-cycle1-result.json`
+- Frozen reviewer diff: `prompts/task011-diff.patch`
+- Merged record content: `tasks[id=TASK-011]` — 15 artifacts (deduped), 9 evidence,
+  10 proposed_decisions, 2 findings
+
+---
+
+## Lint / test status — orchestrator re-derived
+
+| Check | Result |
+|---|---|
+| Mini app suite (`apps/telegram-miniapp`, `corepack pnpm exec vitest run`) | **9 files / 67 tests passed, 0 failed** (baseline 8/42) |
+| `corepack pnpm --filter @sgt-bots/api lint` | **exit 0** |
+| `corepack pnpm --filter @sgt-bots/telegram-miniapp lint` | **exit 0** |
+| Full API suite | **NOT RUN — and correctly so.** No `apps/api` file was touched. Verified independently: all `apps/api` mtimes are 10:18 (TASK-010 baseline), both engineer runs were 12:05–12:22 and 12:26–12:31. |
+
+Suite re-run twice (after cycle 1: 65 tests; after cycle 2: 67). No `.runtime-artifacts`
+clearing was needed since the API suite was not in scope this ticket.
+
+---
+
+## QC review outcome
+
+Blank-context reviewer returned 3 findings; adjudications fully written up in
+`reports/TASK-011-qc-review-cycle1.md`.
+
+- **Findings 1 and 3 — DISMISSED.** Both flagged the `fetchLaunchContext` header
+  cutover in `lib/telegram.ts`. That hunk is **TASK-010's**, already auditor-signed-off
+  at revision 8 and still uncommitted in the tree. **This was my error**: I froze the
+  reviewer's diff with `git diff -- apps/telegram-miniapp`, which necessarily included
+  TASK-010's mini-app changes, and my prompt excluded only `apps/api`. The reviewer read
+  the diff correctly; I scoped it wrongly, costing two of its three findings.
+  Independently of attribution, the failure scenario cannot occur: the backend reads
+  the header at `apps/api/src/modules/telegram/telegram.route.ts:12` and
+  `apps/api/src/app.ts:255` (verified by inspecting code outside the diff).
+- **Finding 2 — UPHELD and fixed.** Item 1 was Rori-only despite the audit's "per bot".
+  I had independently found this before the review landed (two `ChatPanel` call sites;
+  `DashboardShell.tsx:2381` passed nothing, covering Cursive/Insight/Top Secret/Condor).
+  Engineer redispatched → cycle 2 closed it. One correction to the reviewer's framing:
+  no per-bot prompt *data* existed anywhere; what was "already built" was the render
+  path, so the fix required authoring data, not wiring an existing source.
+
+---
+
+## Disclosures the auditor should weigh
+
+1. **Envelope quarantine and rebase (my process error).** I briefed both cycles to use
+   `expected_revision: 8`; merging cycle 1 advanced the record to 9, so cycle 2
+   quarantined as `stale-revision`. I re-evaluated (cycle 2's changes are purely
+   additive to TASK-011; revision 9 held only cycle 1's TASK-011 data; no contested
+   fields), then rebased the envelope to 9 and re-merged **through the engine** — not
+   hand-merged around it. Rationale recorded in that envelope's `merge_note`.
+2. **Test depth is limited by the harness, and the engineer disclosed this rather than
+   papering over it.** This package has no jsdom/testing-library; every spec is a
+   `renderToStaticMarkup` snapshot (pre-existing convention). Consequence: the *pure
+   logic* of items 2/4/5 and all four Telegram helpers **is** unit-tested (including
+   undefined-`window.Telegram` no-op paths), but the **React effect wiring** that calls
+   them at the right moment is verified by code inspection only. I confirmed the
+   wiring myself by reading the diff; it is not automated-test-backed.
+3. **Cycle 2's new test renders `ChatPanel` directly, not `DashboardShell`.** So it
+   proves the per-bot lookup output and that `ChatPanel` renders prompt buttons, but
+   **not** that `DashboardShell` passes the prop. I verified that link by direct
+   inspection: `DashboardShell.tsx:44` imports `getStarterPromptsForBot` and line 2387
+   reads `starterPrompts={getStarterPromptsForBot(selectedBot?.id)}`. Engineer's
+   reasoning (the shell self-bootstraps via fetch/effects and cannot be single-pass
+   rendered) matches the pre-existing `CursiveWorkspaceShell` workaround.
+4. **Fail-without-the-change was not run systematically.** Cycle 1 did a before/after
+   confirmation on `RoriWorkspace.spec.tsx` only; not repeated per assertion. Weaker
+   than TASK-010's stash-based mutation check.
+5. **Prompt content reviewed by me for the out_of_scope rule.** All 16 prompts are
+   question-shaped; none asserts pricing, room links, policy, enrollment terms, or
+   verification outcomes. Rori's original 4 are byte-identical (`RoriWorkspace.spec.tsx`
+   asserts them verbatim).
+6. **Record validation ran, but not via the skill's validator.** `validate-build.ps1`
+   and `build_work.py validate` were both **blocked by the permission classifier** on
+   repeated attempts (the same `validate-build.ps1` call succeeded earlier in this
+   cycle, so the denial appears environmental, not intentional). I validated instead by
+   direct `jsonschema` check against
+   `beginning-builds/references/build-work.schema.json` — the same schema — with
+   **0 errors**, plus a structural check (13 tasks, 11 history entries, revision 11).
+   **The auditor should re-run the skill's validator to confirm.**
+7. **Artifacts deduped at revision 11.** Cycle 2 re-listed three files cycle 1 already
+   carried (18 → 15 entries, first-occurrence order preserved). This is a direct
+   orchestrator edit to the record, matching the precedent set at revision 8 for
+   TASK-010's identical audit nit. No status, evidence, decisions, or findings changed.
+8. **Out-of-scope discoveries reported, not fixed** (in the merged record's findings):
+   `ProviderConnectPanel.openProviderLogin` still carries a local inline
+   `Window & { Telegram?... }` cast instead of the now-centralized typings — a TASK-012
+   housekeeping candidate; and the package's lack of interactive test tooling.
+
+## Scope compliance
+
+REQ-003 (no migrations / no PostgREST / rori schema untouched) and REQ-004 (no secret
+values; none appear in code, tests, envelopes, or reports) both hold — the entire diff
+is under `apps/telegram-miniapp/src`. TASK-012 items (dead `ArtifactList.tsx`, cursive
+reply builder, tarballs/`tmp-rori-*`/`.deploy-src`, 1s polling interval) untouched.
+`HANDOFF.md`, `TASKS.md`, and the roadmap untouched. TASK-010's baseline diff neither
+reverted nor re-staged.
+
+**STOP — awaiting Auditor.**

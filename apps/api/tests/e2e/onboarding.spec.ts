@@ -269,4 +269,34 @@ describe("POST /api/profiles", () => {
       message: "stale telegram init data",
     });
   });
+
+  it("rejects future-dated Telegram launch data beyond the clock-skew tolerance", async () => {
+    const app = await buildApp({
+      env: readEnv({
+        APP_PORT: "3001",
+        TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
+        TELEGRAM_BOT_APP_SHORT_NAME: "playground",
+        TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
+        PROFILE_REPO_MODE: "memory",
+      }),
+    });
+    const futureInitData = createSignedTelegramInitData({
+      authDate: String(Math.floor(Date.now() / 1000) + 120),
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/profiles",
+      payload: {
+        initData: futureInitData,
+        firstName: "Ada",
+        lastName: "Lovelace",
+        preferredName: "Ada",
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      message: "future-dated telegram init data",
+    });
+  });
 });

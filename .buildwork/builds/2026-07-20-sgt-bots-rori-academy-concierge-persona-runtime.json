@@ -1,0 +1,1003 @@
+{
+  "$schema": "beginning-builds/build-work.schema.json",
+  "schema_version": "1.0.0",
+  "revision": 17,
+  "build": {
+    "id": "2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime",
+    "title": "SGT Bots Rori Academy Concierge Persona Runtime",
+    "type": "software",
+    "status": "active",
+    "workspace": ".",
+    "parent_build_id": null,
+    "created_at": "2026-07-20T13:20:25Z",
+    "updated_at": "2026-07-20T18:33:30Z"
+  },
+  "objective": {
+    "summary": "Complete the SGT Bots Telegram Playground persona/runtime build on branch codex/rori-academy-concierge: grounded persona bots (Rori, Top Secret, Insight) that answer only from approved sources, deterministic utility lanes (Cursive, ShAzZaM!, Condor), redacted runtime observability, and an evidence-based rollout gate. This record adopts an in-progress build previously tracked in HANDOFF.md, TASKS.md, and docs/superpowers.",
+    "deliverables": [
+      "Persona/runtime roadmap (2026-07-10) Phases 0-7 implemented and test-backed",
+      "Acceptance runbook and production readiness gate documents",
+      "Reviewed Rori Academy wiki data loaded into the dedicated rori schema and runtime-verified on VPS2",
+      "Executed production readiness gate run with recorded go/no-go and sign-off",
+      "Remaining bot workflow layer polish (scope to be defined via OQ-002)"
+    ],
+    "out_of_scope": [
+      "Production deployment without recorded gate evidence",
+      "Changing Academy wiki content, pricing, room links, or policy facts",
+      "Replacing the in-memory queue/secret store while the deploy is a single backend container (2026-07-13 audit non-recommendation)",
+      "Adding persona layers to ShAzZaM! or Condor (2026-07-13 audit non-recommendation)"
+    ],
+    "acceptance_criteria": [
+      "Full API test suite green",
+      "Persona bots answer only from approved sources with citations and never fake verification, escalation, or research",
+      "Utility bots reject persona chat deterministically (409 workflow-only gates)",
+      "Redacted diagnostics prove config source, retrieval outcome, decision outcome, fallback state, and source binding without exposing user text, persona prompts, provider payloads, or secrets",
+      "Production readiness gate run recorded with evidence, traceability, and sign-off before any rollout step"
+    ]
+  },
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "text": "Use docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md as the execution map for persona/runtime work; ticket content remains authoritative for what each phase meant."
+    },
+    {
+      "id": "REQ-002",
+      "text": "Rollout decisions must be evidence-based via the 2026-07-15 production readiness gate checklist; a blank or partially filled gate is a No-Go."
+    },
+    {
+      "id": "REQ-003",
+      "text": "Rori data access stays inside the dedicated rori schema boundary (migrations 008/009, PostgREST accept-profile rori)."
+    },
+    {
+      "id": "REQ-004",
+      "text": "No secret values in any coordination artifact; reference env-var names or secret locations only."
+    }
+  ],
+  "constraints": [
+    {
+      "id": "CON-001",
+      "text": "No destructive database or VPS actions; remote changes are upsert-only and verified before reapply."
+    },
+    {
+      "id": "CON-002",
+      "text": "Rori's live-model composer stays unwired in the playground (deterministic fallback composer only) until its dedicated ticket is opened."
+    },
+    {
+      "id": "CON-003",
+      "text": "After 2026-07-20 adoption, task status changes happen only in this record; HANDOFF.md, TASKS.md, and the roadmap checkboxes are historical."
+    }
+  ],
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "text": "Adopted the in-progress build into .buildwork/ on 2026-07-20; HANDOFF.md, TASKS.md, and the roadmap are superseded as task state and bannered; the acceptance runbook, production gate checklist, wiki-load preflight, audit doc, and docs/operations/qa-and-release.md remain live operational references.",
+      "rationale": "Global policy requires a .buildwork work record; the legacy docs contained the plan and history but no enforced lifecycle."
+    },
+    {
+      "id": "DEC-002",
+      "text": "The 2026-07-13 build-inspection deferrals stand and are carried as pending backlog tasks TASK-010 through TASK-013 rather than being re-litigated.",
+      "rationale": "The audit recorded explicit reasoning for deferral; re-scoping them now would be scope creep ahead of the rollout gate."
+    },
+    {
+      "id": "DEC-003",
+      "text": "Top Secret currentness discipline is treated as repaired as of commit 25a50f2 (2026-07-15): sources whose text could not be fetched are no longer labeled current.",
+      "rationale": "Re-verified 2026-07-20 by re-running tests/e2e/report-isolation.spec.ts and tests/top-secret/top-secret-researcher.spec.ts: 17/17 pass."
+    },
+    {
+      "id": "DEC-004",
+      "text": "The roadmap Phase 7 checkbox stays unchecked until a real gate run (TASK-008) records a decision, even though Tickets 7.1-7.3 deliverables all exist.",
+      "rationale": "The 2026-07-15 gate document is a blank checklist template with no sign-off; Phase 7 exit criteria require observable, evidence-backed confidence, not just the existence of the checklist."
+    },
+    {
+      "id": "DEC-005",
+      "text": "TASK-012's scope was extended beyond the 2026-07-13 audit's literal housekeeping list to also fix the apps/api/.runtime-artifacts test-isolation flake. The chosen fix is real per-test-file isolation, not defensiveness: createReportService gained an optional deps.artifactRoot, resolving deps.artifactRoot -> process.env.RUNTIME_ARTIFACTS_ROOT -> path.join(process.cwd(), '.runtime-artifacts'), with a new apps/api/vitest.config.ts setupFiles hook (apps/api/tests/setup/runtime-artifacts.ts) that mkdtemps one OS temp directory per test file and removes it afterward. hydrateArtifactsFromDisk's walk was deliberately NOT made tolerant of files vanishing mid-walk, and parallelism was NOT disabled; the in-memory artifact Map, queue, and retention/purge logic are untouched, consistent with the standing 2026-07-13 non-recommendation against replacing the in-memory store while the deploy is a single container. The production path is unchanged (app.ts supplies neither override). Consequence for future gates: the API-suite baseline is now 386 tests (390 minus the 4 removed buildCreditBureauDisputeHelperReply tests), and the suite is deterministic from a dirty .runtime-artifacts directory with no manual clearing.",
+      "rationale": "Provenance: recorded as nit 2 in the TASK-010 audit (.buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/findings/TASK-010-audit-1.md), approved by the user at the TASK-012 dispatch boundary, and promoted to a build-level decision at TASK-012 sign-off under the explicit auditor authorization in .buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/findings/TASK-012-audit-1.md (the only top-level write that audit authorizes). The flake made 'full API suite green' non-deterministic unless the directory was cleared first, which would have degraded the evidence quality of the TASK-008 production readiness gate run; fixing it inside the housekeeping ticket was cheaper than carrying a known-nondeterministic gate input. Verified by five consecutive full-suite greens (47 files / 386 tests, 0 failed) from the dirty directory across orchestrator and auditor runs, with the directory bit-stable before and after."
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "OQ-001",
+      "text": "A completed build record for the wiki runtime load exists at .codex/builds/2026-07-17-sgt-bots-rori-wiki-runtime-load.json, but .codex/active-builds.json is stale (index says draft revision 1; the file says completed revision 9). Confirm .buildwork/ is the canonical record store going forward, and decide whether .codex/ is left as-is as historical or has its index repaired."
+    },
+    {
+      "id": "OQ-002",
+      "text": "TASK-009 'remaining bot workflow layers' has no defined scope. Which bots and which layers (e.g. Condor live research workflow, ShAzZaM! submission lanes, Insight lesson expansion), and what are the acceptance criteria?"
+    },
+    {
+      "id": "OQ-003",
+      "text": "TASKS.md carried a 'Task dashboard support' waiting-on item ('revisit dashboard setup if the expected task-management asset becomes available'). What asset was expected, and should this stay tracked or be dropped?"
+    },
+    {
+      "id": "OQ-004",
+      "text": "Gate run logistics for TASK-008: the .codex record warns the deployed VPS2 image may predate this branch, and the gate requires commit-to-image traceability. When should a current-branch candidate image be built and deployed, which environment counts as staging, and who owns the gate run?"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Foundation build: playground app, six bot lanes, Cursive v2, report isolation, provider credential handling (May 2026)",
+      "status": "completed",
+      "owner": "adopted-history",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Playground API and Telegram mini app exist with six bot lanes",
+        "PDF artifacts are session- and user-bound with cross-user access denied",
+        "Provider secrets are memory-only and session-scoped"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-001]"
+      ],
+      "artifacts": [
+        "apps/api",
+        "apps/telegram-miniapp",
+        "docs/superpowers/specs/2026-05-25-rori-academy-concierge-design.md",
+        "docs/superpowers/plans/2026-05-25-rori-academy-concierge-implementation.md"
+      ],
+      "evidence": [
+        {
+          "type": "git-history",
+          "summary": "Commits from 2026-05-05 through 2026-05-28 implement phases 0-5, Cursive v2, and Codex OAuth handling on this branch.",
+          "reference": "git log codex/rori-academy-concierge"
+        },
+        {
+          "type": "audit",
+          "summary": "2026-07-13 build inspection 'Verified Strengths' section confirms bot separation, PDF user-binding, and credential handling by direct inspection.",
+          "reference": "docs/superpowers/plans/2026-07-13-playground-build-inspection-audit.md"
+        },
+        {
+          "type": "test-run",
+          "summary": "Full API suite re-run 2026-07-20 by the adopting orchestrator: 373/373 pass, including report-isolation and provider-session suites.",
+          "reference": "corepack pnpm exec vitest run (apps/api)"
+        }
+      ],
+      "handoffs": [],
+      "blockers": []
+    },
+    {
+      "id": "TASK-002",
+      "title": "Persona/runtime roadmap Phases 0-5: config repo with source diagnostics, Rori retrieval/decision/composer contract, Top Secret chat separation, Insight tutoring",
+      "status": "completed",
+      "owner": "adopted-history",
+      "dependencies": [
+        "TASK-001"
+      ],
+      "acceptance_criteria": [
+        "Bot prompt configs load from Supabase with observable source (exact/global/code_fallback/error)",
+        "Rori replies are grounded in wiki retrieval with a decision layer and validated composer contract",
+        "Top Secret chat never claims verification; Insight tutors only from approved lessons"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-002]"
+      ],
+      "artifacts": [
+        "apps/api/src/modules/bots/bot-prompt-config.repo.ts",
+        "apps/api/src/modules/chat/rori-decision.ts",
+        "apps/api/src/modules/chat/rori-composer.ts",
+        "apps/api/src/modules/chat/insight-tutor.ts",
+        "supabase/migrations/013_academy_bot_prompt_configs.sql"
+      ],
+      "evidence": [
+        {
+          "type": "git-history",
+          "summary": "Commits 3bf7c8e through 2019e7e (2026-07-10) implement roadmap phases 0-5; roadmap checkboxes 0-5 are checked.",
+          "reference": "git log 3bf7c8e..2019e7e"
+        },
+        {
+          "type": "test-run",
+          "summary": "Chat, bot-config, and bot-runtime suites green in the 2026-07-20 full-suite re-run (373/373).",
+          "reference": "corepack pnpm exec vitest run (apps/api)"
+        }
+      ],
+      "handoffs": [],
+      "blockers": []
+    },
+    {
+      "id": "TASK-003",
+      "title": "Phase 6 utility-bot separation: ShAzZaM! workflow-only gate and guided intake, Condor display-only fix, mini app copy/confirm fixes, build-inspection audit",
+      "status": "completed",
+      "owner": "adopted-history",
+      "dependencies": [
+        "TASK-002"
+      ],
+      "acceptance_criteria": [
+        "ShAzZaM! chat rejects with 409 before persona config load; guided-intake workflow endpoints exist",
+        "Condor chat states no research ran and never echoes user input as research",
+        "Audit documents corrections, deferrals, and pre-existing failures"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-003]"
+      ],
+      "artifacts": [
+        "apps/api/src/modules/form-wizard/form-wizard.service.ts",
+        "apps/telegram-miniapp/src/features/form-wizard/FormWizardPanel.tsx",
+        "docs/superpowers/plans/2026-07-13-playground-build-inspection-audit.md"
+      ],
+      "evidence": [
+        {
+          "type": "git-commit",
+          "summary": "Commits 04c09ad (feature) and 2224847 (audit) close Phase 6.",
+          "reference": "git show 04c09ad 2224847"
+        },
+        {
+          "type": "code-inspection",
+          "summary": "Adopting orchestrator read chat.service.ts on 2026-07-14 and confirmed the cursive/shazzam 409 gates and Condor display-only copy exist; form-wizard service and FormWizardPanel.tsx confirmed present on disk 2026-07-20.",
+          "reference": "apps/api/src/modules/chat/chat.service.ts"
+        }
+      ],
+      "handoffs": [],
+      "blockers": []
+    },
+    {
+      "id": "TASK-004",
+      "title": "Phase 7 Ticket 7.1: redacted chat runtime diagnostics",
+      "status": "completed",
+      "owner": "claude-fable-5",
+      "dependencies": [
+        "TASK-003"
+      ],
+      "acceptance_criteria": [
+        "Every chat reply emits config source, retrieval outcome, decision outcome, provider fallback state, and source IDs",
+        "Diagnostics contain no user text, reply text, persona prompts, provider payloads, or secrets",
+        "Reporter failures never break chat delivery"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-004]"
+      ],
+      "artifacts": [
+        "apps/api/src/modules/chat/runtime-diagnostics.ts",
+        "apps/api/tests/chat/chat-runtime-diagnostics.spec.ts"
+      ],
+      "evidence": [
+        {
+          "type": "git-commit",
+          "summary": "Commit 6c23141 (2026-07-14) adds the diagnostics module, threading, app-logger wiring, and 9 safe-logging tests.",
+          "reference": "git show 6c23141"
+        },
+        {
+          "type": "test-run",
+          "summary": "chat-runtime-diagnostics.spec.ts green at authoring (2026-07-14) and again inside the 2026-07-20 full-suite re-run; leak checks use planted markers in user text and persona config.",
+          "reference": "apps/api/tests/chat/chat-runtime-diagnostics.spec.ts"
+        }
+      ],
+      "handoffs": [],
+      "blockers": []
+    },
+    {
+      "id": "TASK-005",
+      "title": "Phase 7 Tickets 7.2 and 7.3: acceptance runbook, production readiness gate checklist, and test-contract repairs (currentness, report isolation)",
+      "status": "completed",
+      "owner": "adopted-history",
+      "dependencies": [
+        "TASK-004"
+      ],
+      "acceptance_criteria": [
+        "Repeatable acceptance runbook exists covering the frozen prompt suite and human tone review",
+        "Go/no-go gate checklist exists with stop conditions and sign-off fields",
+        "Previously failing currentness and report-isolation tests pass under the corrected contracts"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-005]"
+      ],
+      "artifacts": [
+        "docs/superpowers/plans/2026-07-15-telegram-bot-persona-acceptance-runbook.md",
+        "docs/superpowers/plans/2026-07-15-telegram-bot-persona-production-readiness-gate.md",
+        "apps/api/src/modules/top-secret/top-secret-researcher.service.ts"
+      ],
+      "evidence": [
+        {
+          "type": "git-commit",
+          "summary": "Commit 25a50f2 (2026-07-15) adds both documents, repairs the currentness contract, and extends report-isolation coverage.",
+          "reference": "git show 25a50f2"
+        },
+        {
+          "type": "test-run",
+          "summary": "Re-derived 2026-07-20 by the adopting orchestrator: report-isolation.spec.ts and top-secret-researcher.spec.ts pass 17/17; both documents read in full. Note: the gate document is a checklist template - no gate run has been executed (see TASK-008).",
+          "reference": "corepack pnpm exec vitest run tests/e2e/report-isolation.spec.ts tests/top-secret/top-secret-researcher.spec.ts"
+        }
+      ],
+      "handoffs": [],
+      "blockers": []
+    },
+    {
+      "id": "TASK-006",
+      "title": "Rori wiki data: local load preflight and VPS2 remote runtime gate through the dedicated rori schema",
+      "status": "completed",
+      "owner": "codex",
+      "dependencies": [
+        "TASK-002"
+      ],
+      "acceptance_criteria": [
+        "Reviewed bundle verified: seven published visible wiki pages, two visible rooms, zero events",
+        "Deployed backend reads all seven published pages via PostgREST accept-profile rori with HTTP 200"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-006]"
+      ],
+      "artifacts": [
+        "docs/superpowers/plans/2026-07-15-rori-wiki-load-preflight.md",
+        "vps-supabase-manual/rori-academy-data.pbg-wiki.json",
+        ".codex/builds/2026-07-17-sgt-bots-rori-wiki-runtime-load.json"
+      ],
+      "evidence": [
+        {
+          "type": "external-record",
+          "summary": "Completed .codex build record (final_status passed, revision 9) documents remote psql counts and the deployed-backend PostgREST probe. Caveat: the VPS2 evidence is as recorded by that record's orchestrator; it was not re-derived locally during adoption because it requires VPS access.",
+          "reference": ".codex/builds/2026-07-17-sgt-bots-rori-wiki-runtime-load.json"
+        },
+        {
+          "type": "git-commit",
+          "summary": "Commits 7d61113 and f24ca51 record the preflight and runtime-gate documentation trail.",
+          "reference": "git show 7d61113 f24ca51"
+        }
+      ],
+      "handoffs": [],
+      "blockers": []
+    },
+    {
+      "id": "TASK-007",
+      "title": "Human Rori Telegram conversation smoke in the Playground using the frozen acceptance-runbook prompts",
+      "status": "pending",
+      "owner": "human-owner",
+      "dependencies": [
+        "TASK-006"
+      ],
+      "acceptance_criteria": [
+        "Frozen Rori prompt suite from the acceptance runbook executed in a live Playground session",
+        "Warm, grounded answers confirmed from the loaded Academy wiki with correct citations",
+        "Transcript or notes captured as gate-run evidence"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-007]"
+      ],
+      "artifacts": [
+        "docs/superpowers/plans/2026-07-15-telegram-bot-persona-acceptance-runbook.md"
+      ],
+      "evidence": [],
+      "handoffs": [],
+      "blockers": [
+        "Interactive check requiring a human-driven Telegram session"
+      ]
+    },
+    {
+      "id": "TASK-008",
+      "title": "Execute the production readiness gate run (staging/canary) with evidence and sign-off",
+      "status": "pending",
+      "owner": "unassigned",
+      "dependencies": [
+        "TASK-007"
+      ],
+      "acceptance_criteria": [
+        "All gate inputs recorded: environment, commit SHA, image identifier, traceability, prompt suite, dataset, diagnostics, named owner",
+        "Every checklist section completed with attached evidence; stop conditions honored",
+        "Decision (Go / No-Go) and sign-off table fully recorded"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-008]"
+      ],
+      "artifacts": [
+        "docs/superpowers/plans/2026-07-15-telegram-bot-persona-production-readiness-gate.md"
+      ],
+      "evidence": [],
+      "handoffs": [],
+      "blockers": [
+        "Commit-to-image traceability: deployed VPS2 image may predate this branch (OQ-004)"
+      ]
+    },
+    {
+      "id": "TASK-009",
+      "title": "Remaining bot workflow layers (non-Cursive polish) - scope to be defined",
+      "status": "pending",
+      "owner": "unassigned",
+      "dependencies": [
+        "TASK-006"
+      ],
+      "acceptance_criteria": [
+        "Scope, bots, and acceptance criteria defined by the owner before work starts (OQ-002)"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-009]"
+      ],
+      "artifacts": [],
+      "evidence": [],
+      "handoffs": [],
+      "blockers": [
+        "Scope undefined - awaiting OQ-002 answer"
+      ]
+    },
+    {
+      "id": "TASK-010",
+      "title": "Deferred safety hardening: PDF upload byte cap and %PDF- sniff, Telegram 429 retry_after, initData via header, auth_date future-skew rejection",
+      "status": "completed",
+      "owner": "unassigned",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Each hardening item implemented as scoped in the 2026-07-13 audit deferral list with tests"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-010]"
+      ],
+      "artifacts": [
+        "apps/api/src/modules/uploads/upload.service.ts",
+        "apps/api/src/modules/telegram/telegram-bot.service.ts",
+        "apps/api/src/modules/reports/report.route.ts",
+        "apps/api/tests/e2e/uploads-and-reports.spec.ts",
+        "apps/api/tests/e2e/telegram-bot.spec.ts",
+        "apps/api/src/modules/telegram/telegram.route.ts",
+        "apps/api/src/app.ts",
+        "apps/telegram-miniapp/src/lib/telegram.ts",
+        "apps/telegram-miniapp/src/lib/telegram.spec.ts",
+        "apps/api/tests/telegram/launch-prefill.spec.ts",
+        "apps/api/src/modules/telegram/init-data.ts",
+        "apps/api/src/modules/profiles/profile.route.ts",
+        "apps/api/src/modules/providers/provider.route.ts",
+        "apps/api/tests/e2e/onboarding.spec.ts",
+        "apps/api/tests/telegram/init-data.spec.ts"
+      ],
+      "evidence": [
+        {
+          "type": "test-run",
+          "summary": "Orchestrator re-derivation (not the engineer's claim): full apps/api vitest suite 47 files / 390 tests pass, 0 fail, after clearing the gitignored apps/api/.runtime-artifacts scratch directory. Baseline before this ticket re-measured at 373/373, so net +17 tests.",
+          "reference": "cd apps/api && rm -rf .runtime-artifacts && corepack pnpm exec vitest run"
+        },
+        {
+          "type": "test-run",
+          "summary": "Pre-existing flake isolated and proven NOT introduced by this ticket: with a populated apps/api/.runtime-artifacts directory, hydrateArtifactsFromDisk (report.service.ts:226) intermittently fails with ENOENT as concurrent test files race on that shared on-disk store (observed 1 then 4 failures on successive runs). Reproduced at BASELINE with all TASK-010 changes stashed: run 1 373/373, run 2 372/373 (1 failed), run 3 373/373. The affected code path is untouched by this ticket. Tracked as a pre-existing test-isolation defect, not a regression.",
+          "reference": "git stash push -u -- apps; repeated 'corepack pnpm exec vitest run' from apps/api"
+        },
+        {
+          "type": "test-run",
+          "summary": "Fail-without-the-change verified by mutation check for all four items: source reverted via 'git stash push -- apps/api/src apps/telegram-miniapp/src/lib/telegram.ts' while retaining the new tests. Observed failures: item 1 'rejects pdf uploads larger than the configured byte cap'; item 2 'honors retry_after on 429 and succeeds on the next attempt'; item 3 launch+prefill header auth and 'ignores an initData query parameter' (3 tests); item 4 'rejects data dated too far in the future as future-dated, not stale', the multi-token preservation test, and the onboarding route future-dated test. Working tree restored afterward and verified byte-identical to a pre-stash patch backup.",
+          "reference": "apps/api/tests/telegram/{init-data,launch-prefill}.spec.ts, tests/e2e/{telegram-bot,uploads-and-reports,onboarding}.spec.ts"
+        },
+        {
+          "type": "lint",
+          "summary": "Orchestrator re-run: both typecheck gates exit 0 with no diagnostics.",
+          "reference": "corepack pnpm --filter @sgt-bots/api lint && corepack pnpm --filter @sgt-bots/telegram-miniapp lint"
+        },
+        {
+          "type": "test-run",
+          "summary": "Orchestrator re-run: mini app suite 8 files / 42 tests pass, 0 fail, including lib/telegram.spec.ts asserting the x-telegram-init-data header is sent on both launch and prefill.",
+          "reference": "cd apps/telegram-miniapp && corepack pnpm exec vitest run"
+        },
+        {
+          "type": "code-inspection",
+          "summary": "Security-critical ordering confirmed for the item 4 multi-token decision: in init-data.ts the HMAC comparison (hash !== expectedHash, line 48) precedes the auth_date age checks (lines 58-66). A wrong candidate token therefore fails on signature before reaching the age check, so preserving the age-error message across the token loop cannot mask an invalid signature. The engineer's stated rationale holds.",
+          "reference": "apps/api/src/modules/telegram/init-data.ts:48,58-66"
+        },
+        {
+          "type": "review",
+          "summary": "Blank-context QC review returned 2 findings, both self-labeled UNVERIFIED; both dismissed by orchestrator inspection of code outside the diff. telegram.route.ts:19-23 and app.ts:266-270 each catch init-data errors with an unconditional reply.code(401) and no message matching, so the new 'future-dated telegram init data' message cannot surface as a 500 at either endpoint. The same risk class WAS real at the 4 sites that do match on message strings (profile.route.ts x1, provider.route.ts x3) and the diff handles all 4.",
+          "reference": ".buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/reports/TASK-010-qc-review-cycle1.md"
+        },
+        {
+          "type": "code-inspection",
+          "summary": "REQ-004 secrets discipline verified: new tests use only the pre-existing synthetic fixture TEST_TELEGRAM_BOT_TOKEN ('123456:phase-1-test-bot-token') from packages/shared/src/testing/telegram-fixtures.ts (unmodified by this ticket) with HMACs computed locally at test time, plus a synthetic literal '999999:some-other-bot-token'. No real token, initData string, or hash appears in code, tests, or artifacts. REQ-003 also verified untouched: no migrations, no rori schema or PostgREST changes in the 15-file diff.",
+          "reference": "packages/shared/src/testing/telegram-fixtures.ts, apps/api/tests/telegram/init-data.spec.ts"
+        },
+        {
+          "type": "auditor-signoff",
+          "summary": "AUDIT: PASS (cycle 1, auditor = main session). Independently re-derived, not accepted from the engineer or orchestrator: record validation ok at revision 6 with TASK-010 still pending; full apps/api suite 47 files / 390 tests passed, 0 failed, after clearing the gitignored apps/api/.runtime-artifacts scratch directory (matches the staged claim including its qualifier); both typecheck gates exit 0 (@sgt-bots/api and @sgt-bots/telegram-miniapp); mini app suite 8 files / 42 tests passed, 0 failed; the full diff read end to end (13 modified files + 2 new test files, +300/-38) with every changed file explained by one of the four ticket items or its caller-contract wiring; both QC dismissals independently verified by inspecting code outside the diff (telegram.route.ts:18-22 and app.ts:266-270 catch with an unconditional reply.code(401) and no message matching, so the reviewer's 500-risk findings cannot occur at those sites, while the four message-matching sites in profile.route.ts x1 and provider.route.ts x3 are all handled by the diff); new tests read in full with negative cases present for all four items, synthetic-only fixtures (REQ-004 clean), and a query-parameter-inert regression test for the item 3 cutover. Scope adjudications accepted: the profile.route.ts / provider.route.ts 401 status mapping is in-scope caller-contract wiring (the brief's exclusion covered the untouched POST-body initData contract), and the engineer implementing directly instead of spawning builders is accepted as disclosed, budget-justified, and verifiably complete. Two non-blocking nits recorded, neither gating: duplicate entries in this ticket's artifacts list (addressed in this same revision), and the pre-existing .runtime-artifacts test-isolation flake needing its own ticket when TASK-012 is scoped.",
+          "reference": ".buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/findings/TASK-010-audit-1.md"
+        }
+      ],
+      "handoffs": [],
+      "blockers": [],
+      "progress": "All four deferred safety-hardening items from the 2026-07-13 audit (docs/superpowers/plans/2026-07-13-playground-build-inspection-audit.md, line 71) are implemented directly (no builder dispatch needed — each item's scope was already fully pinned down by the ticket's file/line references, so implementing solo was faster than the coordination overhead of work orders). Item 1: upload.service.ts caps createPdfUpload at 5 MiB and reduces looksLikePdf to a %PDF- header-only sniff, dropping the whole-buffer stringify; report.route.ts maps the new 'pdf upload too large' message to 413. Item 2: telegram-bot.service.ts sendTelegramMessage now honors 429 retry_after via the existing fetchImpl seam plus a new injectable wait() seam, bounded to 3 attempts and a 30s max delay; non-429 failures still throw immediately. Item 3: /api/telegram/launch (telegram.route.ts) and /api/telegram/prefill (app.ts) now read x-telegram-init-data from the header, matching provider.route.ts's existing pattern exactly (clean cutover, no query fallback); apps/telegram-miniapp/src/lib/telegram.ts fetchLaunchContext sends the header instead of a query string. Item 4: init-data.ts splits the auth_date age check into a 300s past-age budget (unchanged) and a new 60s future-skew tolerance, throwing a distinct 'future-dated telegram init data' message; validateTelegramInitDataWithTokens now preserves either age-error message across multi-token retry instead of only 'stale'. All changes stayed within apps/api and apps/telegram-miniapp; no rori schema, migration, persona, or content changes.",
+      "findings": [
+        "Item 1 scope decision: the pre-existing test 'rejects spoofed pdf uploads when bytes contain only a fake pdf header' (apps/api/tests/e2e/uploads-and-reports.spec.ts) encoded exactly the old whole-buffer-stringify behavior the audit wants removed — content starting with the literal %PDF- header would now pass the header-only sniff by design. Rewrote it to 'rejects uploads whose bytes do not start with the %PDF- header' using content with no %PDF- prefix at all, which still fails under the new sniff and preserves the required 'non-%PDF- bytes rejected' negative case from the acceptance criteria. This is a deliberate behavior narrowing called for by the audit, not a dropped test.",
+        "Item 4 required a caller-contract fix beyond init-data.ts itself: apps/api/src/modules/profiles/profile.route.ts (line ~36) and apps/api/src/modules/providers/provider.route.ts (3 call sites, lines ~86/150/205) each pattern-match on the literal string 'stale telegram init data' to return 401. Without adding 'future-dated telegram init data' to those same checks, a future-dated token would have silently fallen through to a 500 at every one of those routes. Added the new message alongside 'stale' at all 4 sites — same category of caller-contract wiring the brief called out explicitly for item 1's upload error, just not itself named in the item 4 file list.",
+        "telegram.route.ts and app.ts's prefill handler catch all init-data errors unconditionally and return 401 regardless of message, so no caller-contract change was needed there for item 4.",
+        "No existing apps/api/tests hit /api/telegram/launch or /api/telegram/prefill directly (grepped for the routes across apps/api/tests before changing the contract), so the header cutover in item 3 could not silently break a query-string-based test that already existed; new tests were added instead (apps/api/tests/telegram/launch-prefill.spec.ts) including one asserting a stale initData query parameter is now ignored (401) now that the header is authoritative.",
+        "Orchestrator verification note: the engineer's envelope reported its evidence at the envelope's schema-required top level, but the merge engine only merges keys under proposed_changes (MERGEABLE_FIELDS in build_work.py). The first merge therefore landed progress/findings/artifacts/risks/proposed_decisions but left task.evidence empty. This envelope carries the evidence in the correct location. Worth fixing in the engineer brief template so future tickets do not need a second envelope.",
+        "Pre-existing defect surfaced during verification, OUT OF SCOPE for TASK-010 and reported rather than fixed: apps/api tests share the gitignored apps/api/.runtime-artifacts directory as mutable on-disk state. Concurrent test files race in hydrateArtifactsFromDisk (report.service.ts:226), producing intermittent ENOENT failures whose frequency grows as that directory accumulates. Proven pre-existing at baseline. It makes 'full suite green' non-deterministic unless the directory is cleared first, which affects the TASK-008 gate run's evidence quality. Suggest a dedicated ticket (natural fit alongside TASK-012 housekeeping)."
+      ],
+      "risks": [
+        "None identified for this cycle's scope. Out-of-scope items confirmed untouched: apps/api/src/modules/profiles/profile.route.ts's POST body-based initData contract (audit names launch/prefill only), rori wiki/persona content, TASK-011/TASK-012 adjacent deferral items."
+      ],
+      "proposed_decisions": [
+        "Item 1 upload cap: chose MAX_PDF_UPLOAD_BYTES = 5 MiB (5 * 1024 * 1024) in upload.service.ts. Relationship to the 8 MiB Fastify bodyLimit (app.ts line 125, JSON body): 5 MiB of raw bytes base64-encodes to ~6.7 MB, leaving ~1.3 MB of headroom under the 8 MiB bodyLimit for the surrounding JSON envelope (filename, form fields, etc.), so an oversize upload reliably surfaces our deliberate 413 'pdf upload too large' rather than Fastify's blunt request-too-large rejection at the transport layer. Verified the existing 'accepts base64 pdf uploads above Fastify's default body limit' test (900 KB decoded) still passes well under the new cap.",
+        "Item 3 query fallback: chose a clean cutover (header only, no query-string fallback) over a temporary dual-read. Reasoning: the brief explicitly says to match provider.route.ts's existing pattern and 'not invent a second convention' — provider.route.ts has no fallback for its analogous header-only read, and adding a query+header dual-read here would itself be a second convention. The mini app and API ship from the same monorepo/deploy path with no evidence in this repo of independently cached or independently deployed mini-app bundles (no CDN-fronted static hosting found for the mini app), so the deployment-ordering risk the brief flagged (an old cached bundle hitting a new backend) appears low here. Added a regression test confirming the old query parameter is now inert (returns 401) so this is verifiably a hard cutover, not an accidental partial fallback.",
+        "Item 4 skew tolerance: chose 60 seconds for TELEGRAM_INIT_DATA_MAX_FUTURE_SKEW_SECONDS in init-data.ts, well below the existing 300s past-age budget. Reasoning: 60s comfortably covers ordinary unsynced-client clock drift (NTP-desynced consumer devices are typically within tens of seconds) while staying far short of anything that would meaningfully widen the replay window, and is consistent with common clock-skew allowances in adjacent auth ecosystems (e.g. 30-60s in JWT validators).",
+        "Item 4 multi-token loop: extended validateTelegramInitDataWithTokens to preserve either 'stale telegram init data' or 'future-dated telegram init data' across candidate bot tokens (previously only 'stale' was preserved), rather than letting a future-dated token degrade into the generic 'invalid telegram init data'. This is safe because the age check only runs after the HMAC signature already validated for that specific candidate token — a wrong token fails on signature mismatch before it ever reaches the age check, so preserving the age-error message cannot mask a genuinely bad signature from a different token. Covered by apps/api/tests/telegram/init-data.spec.ts."
+      ]
+    },
+    {
+      "id": "TASK-011",
+      "title": "Deferred engagement quick wins: starterPrompts wiring, thinking bubble, Telegram BackButton/haptics/closing-confirmation/themeParams, low-time nudges, OAuth auto-poll, bot descriptions",
+      "status": "completed",
+      "owner": "unassigned",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Each quick win implemented as scoped in the 2026-07-13 audit deferral list"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-011]"
+      ],
+      "artifacts": [
+        "apps/telegram-miniapp",
+        "apps/telegram-miniapp/src/lib/telegram.ts",
+        "apps/telegram-miniapp/src/lib/telegram.spec.ts",
+        "apps/telegram-miniapp/src/features/rori/starter-prompts.ts",
+        "apps/telegram-miniapp/src/features/rori/RoriWorkspace.tsx",
+        "apps/telegram-miniapp/src/features/rori/RoriWorkspace.spec.tsx",
+        "apps/telegram-miniapp/src/features/chat/ChatPanel.tsx",
+        "apps/telegram-miniapp/src/features/chat/ChatPanel.spec.tsx",
+        "apps/telegram-miniapp/src/features/dashboard/DashboardShell.tsx",
+        "apps/telegram-miniapp/src/features/dashboard/DashboardShell.spec.tsx",
+        "apps/telegram-miniapp/src/features/dashboard/MainMenu.tsx",
+        "apps/telegram-miniapp/src/features/dashboard/MainMenu.spec.tsx",
+        "apps/telegram-miniapp/src/features/onboarding/ProviderConnectPanel.tsx",
+        "apps/telegram-miniapp/src/features/onboarding/ProviderConnectPanel.spec.tsx",
+        "apps/telegram-miniapp/src/app/app.css"
+      ],
+      "evidence": [
+        {
+          "type": "test",
+          "summary": "Mini app suite green: 9 files / 65 tests (baseline was 8 files / 42 tests; added MainMenu.spec.tsx new, expanded ChatPanel/RoriWorkspace/DashboardShell/ProviderConnectPanel/telegram specs).",
+          "reference": "cd apps/telegram-miniapp && corepack pnpm exec vitest run  =>  Test Files 9 passed (9); Tests 65 passed (65)"
+        },
+        {
+          "type": "lint",
+          "summary": "telegram-miniapp lint (tsc --noEmit) exit 0.",
+          "reference": "corepack pnpm --filter @sgt-bots/telegram-miniapp lint  =>  exit 0, no output"
+        },
+        {
+          "type": "lint",
+          "summary": "api lint (tsc --noEmit) exit 0 -- run even though no apps/api file was touched, per the verification bar's 'both linters exit 0' requirement.",
+          "reference": "corepack pnpm --filter @sgt-bots/api lint  =>  exit 0, no output"
+        },
+        {
+          "type": "test",
+          "summary": "Full apps/api vitest suite: NOT RUN. No file under apps/api was touched by this ticket (starter prompts were deliberately kept mini-app-local per proposed_decisions, so the brief's condition 'if your item-1 design call puts starter prompts in packages/shared, this suite is in your bar' does not apply). Reporting 'not run' rather than fabricating a result.",
+          "reference": "not run"
+        },
+        {
+          "type": "fail-without-change",
+          "summary": "Not run as a separate stash-based check this cycle (time budget). Each new/changed assertion was instead verified positively against the new behavior it targets (e.g. RoriWorkspace.spec.tsx was flipped from not.toContain to toContain for the four starter prompts and message-card--empty, and was confirmed failing against the pre-change component before the RoriWorkspace.tsx edit, then passing after).",
+          "reference": "manual before/after confirmation on RoriWorkspace.spec.tsx only; not systematically repeated for every new assertion"
+        },
+        {
+          "type": "test",
+          "summary": "Mini app suite green: 9 files / 67 tests (cycle-1 baseline was 9 files / 65 tests; added 2 new tests in DashboardShell.spec.tsx -- one asserting getStarterPromptsForBot + ChatPanel render starter-prompt buttons for a non-Rori bot (tutor/Insight), one asserting the unknown/missing-id fallback returns []). No regressions, no other file's test count changed.",
+          "reference": "cd apps/telegram-miniapp && corepack pnpm exec vitest run  =>  Test Files 9 passed (9); Tests 67 passed (67)"
+        },
+        {
+          "type": "lint",
+          "summary": "telegram-miniapp lint (tsc --noEmit) exit 0.",
+          "reference": "corepack pnpm --filter @sgt-bots/telegram-miniapp lint  =>  exit 0, no output"
+        },
+        {
+          "type": "lint",
+          "summary": "api lint (tsc --noEmit) exit 0 -- run even though no apps/api file was touched this cycle either.",
+          "reference": "corepack pnpm --filter @sgt-bots/api lint  =>  exit 0, no output"
+        },
+        {
+          "type": "test",
+          "summary": "Full apps/api vitest suite: NOT RUN. No file under apps/api was touched this cycle (starter prompts stayed mini-app-local per the cycle-1 decision, reaffirmed below), so it stays out of this cycle's bar per the brief. Reporting 'not run' rather than fabricating a result.",
+          "reference": "not run"
+        },
+        {
+          "type": "auditor-signoff",
+          "summary": "AUDIT: PASS (cycle 1, auditor = main session). Independently re-derived, not accepted from the engineer or orchestrator: the skill's validate-build.ps1 re-run against the record returned ok: true at revision 11, confirming the orchestrator's jsonschema substitute (used when the permission classifier blocked the validator) was correct; mini app suite from apps/telegram-miniapp 9 files / 67 tests passed, 0 failed, matching the staged claim; both typecheck gates exit 0 (@sgt-bots/api and @sgt-bots/telegram-miniapp); the API-suite-not-run adjudication accepted because the diff touches only apps/telegram-miniapp and git status confirms no apps/api change beyond TASK-010's signed-off baseline. The full diff was read end to end (12 modified + 2 new files, +741/-48) and all six audit-line items were verified present and correctly wired: (1) starter-prompts.ts per-bot lookup wired at BOTH ChatPanel call sites (RoriWorkspace.tsx and DashboardShell.tsx:2387) with hideEmptyState removed for Rori; (2) thinking bubble gated on submitting, mutually exclusive with the empty state, aria-live=polite, reduced-motion variant; (3) Telegram helpers fully optional-chained so they are safe outside Telegram, BackButton bound with cleanup on selectedMenuItem?.id change, closing confirmation scoped to isSessionActive with unmount cleanup, themeParams applied on mount via the pure and tested computeThemeCssVariables; (4) low-time nudges using threshold-crossing (<=600 / <=120) with a per-session fired-once latch reset on activeSessionId, dismissible, role=status; (5) OAuth auto-poll at 4s sharing resolveCodexOAuthPollAction with the manual button, stopping on connected/expired/failed/unmount/provider-switch, with fetch failures keeping the loop alive; (6) bot descriptions in a static always-visible list plus aria-label enrichment. QC adjudications verified: findings 1 and 3 flagged TASK-010's fetchLaunchContext hunk, genuinely out of this ticket (auditor-signed-off at revision 8) and correct in substance, while finding 2 (Rori-only partial wiring) was real, was independently caught by the orchestrator first, and cycle 2 verifiably closed it. Prompt content re-checked against out_of_scope: all 16 starter prompts are question-shaped and none asserts pricing, room links, policy, or enrollment facts. Disclosed process errors accepted as handled: the cycle-2 stale-revision quarantine and engine-rebased re-merge (orchestrator briefing error, disclosed, resolved through the engine with a recorded merge_note) and the reviewer-diff scoping error that included TASK-010 hunks (disclosed, correctly attributed, costless to the outcome). Test-depth limits accepted for this ticket's acceptance criterion (no jsdom harness; effect wiring inspection-verified; ChatPanel rendered directly rather than through DashboardShell; fail-without-change not systematic) as honest, disclosed, and consistent with the package's pre-existing renderToStaticMarkup convention, with the auditor verifying the wiring directly in the diff. Two non-blocking nits recorded, neither gating: the mini app package's lack of a DOM test harness is now a recurring verification gap worth a future ticket if UI work continues beyond TASK-012, and TASK-007/TASK-008 remain the gating human work unchanged by this ticket.",
+          "reference": ".buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/findings/TASK-011-audit-1.md"
+        }
+      ],
+      "handoffs": [],
+      "blockers": [],
+      "progress": "Closed the cycle-1 gap: item 1's starter prompts were Rori-only even though audit line 72 says 'per bot'. Generalized apps/telegram-miniapp/src/features/rori/starter-prompts.ts in place from a single RORI_STARTER_PROMPTS export into a per-bot lookup: kept RORI_STARTER_PROMPTS byte-identical (RoriWorkspace.spec.tsx still asserts on it verbatim, still imported by RoriWorkspace.tsx unchanged), added a module-private STARTER_PROMPTS_BY_BOT_ID: Partial<Record<BotId, string[]>> keyed by manifest BotId, and exported a new pure function getStarterPromptsForBot(botId?: string | null): string[] that returns [] for any id not in the map (covers unknown ids and the no-bot-selected case; never throws). Wired it into the generic chat call site at DashboardShell.tsx (ChatPanel invocation formerly at line 2381, now a few lines lower after the added import) via starterPrompts={getStarterPromptsForBot(selectedBot?.id)}. Did not touch hideEmptyState at this call site -- confirmed by re-reading the JSX before editing that it was not passed there before this change and is still not passed after; the audit's un-hide instruction was scoped to Rori only and that was cycle 1's job. Full per-bot coverage after this cycle: concierge_general_academy_KB (Rori) -> RORI_STARTER_PROMPTS (unchanged, 4 strings, via RoriWorkspace's own dedicated call site, not this one); document_wizard (Cursive) -> 3 new prompts; tutor (Insight) -> 3 new prompts; verifier (Top Secret) -> 3 new prompts; tax_legal_research (Condor) -> 3 new prompts; form_wizard (ShAzZaM!) -> intentionally no map entry. Confirmed form_wizard needs no entry by reading DashboardShell.tsx: the generic ChatPanel call site is inside an `isFormWizardWorkspace ? <FormWizardPanel .../> : <ChatPanel ... />` branch, so ShAzZaM! never reaches the ChatPanel/starterPrompts prop at all; getStarterPromptsForBot('form_wizard') falls through to the same-as-unmapped [] fallback regardless, so there is no dead or unreachable entry to maintain.",
+      "findings": [
+        "ProviderConnectPanel.tsx's openProviderLogin function still declares its own local inline `Window & { Telegram?: { WebApp?: { openLink?: ... } } }` cast instead of using the Window.Telegram typings now centralized in lib/telegram.ts. Left untouched to stay inside this ticket's write_scope (not one of the six items); candidate cleanup for TASK-012's housekeeping pass.",
+        "This package (apps/telegram-miniapp) has zero jsdom/@testing-library/react-style interactive test tooling; every existing *.spec.tsx here is a single renderToStaticMarkup snapshot. This is pre-existing and constrains how deeply items 2/4/5's stateful behavior can be automated-tested going forward (see progress note). Not fixed here since adding a test dependency was judged out of this ticket's scope."
+      ],
+      "proposed_decisions": [
+        "Item 1 data source: starter prompts live in a new mini-app-local module (apps/telegram-miniapp/src/features/rori/starter-prompts.ts) rather than packages/shared/src/bots/manifests.ts. Reasoning: manifests.ts is consumed by apps/api too, so adding a field there would pull the API test suite into this ticket's verification bar for a UI-only concern; a local module keeps the change frontend-only. The four prompt strings were not invented -- they match exactly the four negative assertions already present in the pre-existing RoriWorkspace.spec.tsx baseline and the topic list in docs/superpowers/specs/2026-05-25-rori-academy-concierge-design.md lines 20-25, so this reuses content the design already anticipated rather than authoring new factual claims.",
+        "Item 3 themeParams -> CSS mapping: only 4 of Telegram's ~7 theme_params keys are mapped (bg_color->--bg, text_color->--text, hint_color->--muted, button_color->--gold), chosen because those are the CSS custom properties in app.css's :root block that most directly control the app's dark theme. Unmapped keys (link_color, button_text_color, secondary_bg_color) are left alone rather than guessed at. Graceful degradation: computeThemeCssVariables only emits a key when Telegram actually supplied a value, so outside Telegram (themeParams undefined) applyTelegramThemeParams sets zero properties and the existing :root defaults in app.css are untouched -- verified by a unit test asserting root.style.setProperty is never called when window.Telegram is absent.",
+        "Item 3 closing confirmation scope: enableClosingConfirmation is tied to isSessionActive (on while a provider session is live, off otherwise), not unconditional. Reasoning: the risk being guarded against is losing an in-progress provider session/workflow state by an accidental close; there is nothing to protect before a session starts or after it has ended/expired.",
+        "Item 3 haptics placement: a light impact haptic fires on two high-signal user actions -- selecting a bot from the main menu (DashboardShell handleMenuSelection) and sending a chat message (ChatPanel handleSubmit) -- rather than instrumenting every button. Kept minimal since the audit line only asked to 'adopt' haptics, not wire them everywhere.",
+        "Item 4 nudge source of truth and once-only mechanism: getLowTimeNudgeThreshold(remainingSeconds, isSessionActive) is a pure threshold-crossing function (<=600 => ten_minute, <=120 => two_minute, checked in that order so the more urgent threshold wins if a tick skips past both) combined with a useRef<Set<LowTimeNudgeThreshold>> latch that is reset only when activeSessionId changes. This is robust to a skipped or duplicated 1s tick (an equality check on ===600 would not be). Documented tradeoff: if remainingSeconds ever jumps in one step from above 600 to at/below 120 (e.g. a server resync), only the two_minute nudge fires and the ten_minute nudge is silently skipped for that session -- judged acceptable since the more urgent nudge is the one that matters, but flagging it as a deliberate, not accidental, gap.",
+        "Item 5 OAuth poll interval and stop conditions: 4000ms interval, chosen because Codex OAuth approval is a human action in a separate tab/app (order of tens of seconds), unlike the 1s session-refresh poll (which is itself flagged elsewhere as too aggressive and explicitly out of this ticket's scope to fix). Full stop-condition list, all verified by code inspection: connected (clears interval, calls onConnected, which unmounts this panel), expired/failed (clears interval, nulls codexLogin so the effect's guard prevents rescheduling), component unmount (effect cleanup clears the interval unconditionally), provider switched away from openai_codex (handleProviderChange nulls codexLogin, an effect dependency, so cleanup runs and no new interval starts). Pending status is intentionally silent in the background poll (no error shown) to avoid flashing 'still waiting' at the user every 4 seconds; the manual 'Check login' button still surfaces that message on demand.",
+        "Item 6 description affordance: a static, always-rendered <ul> legend beneath the hex artboard (every bot's name + description, all six always visible) plus a richer aria-label on each hex button, instead of a hover/focus-revealed caption. Reasoning: a hover/focus affordance would need per-hex-button positioning CSS to survive the existing responsive hex coordinate overrides at the 760px breakpoint, and would still need to be independently verified reachable by keyboard focus and by screen readers as two separate concerns. A static list sidesteps both: it cannot be hover-only because there is no hover gate, it is trivially in the accessibility tree, and it reflows naturally under the artboard at any width. Tradeoff accepted: this adds visible page length/content below the hex artboard rather than keeping the interaction purely spatial.",
+        "Per-bot prompt authoring approach: each non-Rori bot's 3 prompts were derived only from that bot's own packages/shared/src/bots/manifests.ts `description` and its matching entry in apps/telegram-miniapp/src/features/dashboard/bot-workspace-panels.ts (mission/workflowSteps copy), not from any pricing, policy, enrollment, or verification-outcome claim. Kept every prompt strictly question-shaped ('What can you help me draft?', 'Can I upload a source PDF to start?', 'What does a finished report look like?' for document_wizard; 'Can you explain this step by step?', 'How should I practice this topic?', 'What should I try first?' for tutor; 'Can you check a claim I saw online?', 'How many statements can I paste at once?', 'What will the report include?' for verifier; 'What tax topic can you help me research?', 'Can you help me find a legal research starting point?', 'What should I consider before escalating this?' for tax_legal_research) -- none assert a fact, a number, a price, a policy term, or a verification result, so none can go stale or misrepresent the bot's grounded behavior the way a fact-shaped prompt could.",
+        "Data location: reaffirmed the cycle-1 call to keep this mini-app-local (generalized the existing apps/telegram-miniapp/src/features/rori/starter-prompts.ts file in place rather than moving/duplicating into a new module or into packages/shared/src/bots/manifests.ts). Reasoning unchanged from cycle 1: manifests.ts is consumed by apps/api, so adding fields there would pull the API suite into this UI-only ticket's verification bar. DashboardShell.tsx (features/dashboard) importing from features/rori/starter-prompts.ts is a same-app, cross-feature import (not a cross-package one); judged acceptable since RoriWorkspace's import of the same file already established that module as the shared per-bot prompt source, and moving it to a new sibling module would only add a file rename with no behavior change.",
+        "Test placement: extended DashboardShell.spec.tsx (per the brief) by rendering ChatPanel directly with the resolved getStarterPromptsForBot(...) output, rather than rendering the top-level <DashboardShell> component. DashboardShell itself bootstraps session state via useState/useEffect/fetch (bot catalog fetch, session polling, countdown timers) with no prop to pre-seed a selected bot, so it cannot produce the generic chat surface's markup through a single-pass renderToStaticMarkup call -- this is the same constraint the pre-existing suite already works around by testing CursiveWorkspaceShell (an extracted subcomponent) instead of the full shell for Cursive's step flow. The added test instead renders exactly what the real call site renders (ChatPanel with the same starterPrompts value DashboardShell.tsx now computes), which verifies both the per-bot lookup's output and that ChatPanel turns a non-empty list into starter-prompt-button markup -- the same two facts a full-shell render would need to prove, without requiring jsdom/testing-library (kept out per the brief)."
+      ]
+    },
+    {
+      "id": "TASK-012",
+      "title": "Deferred housekeeping: remove dead ArtifactList.tsx and unreachable cursive reply builder, gitignore/delete stray deploy tarballs and tmp-rori-* files and .deploy-src mirror, relax 1s session polling",
+      "status": "completed",
+      "owner": "unassigned",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Dead code removed, stray artifacts ignored or deleted, polling interval relaxed"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-012]"
+      ],
+      "artifacts": [
+        "apps/telegram-miniapp/src/features/artifacts/ArtifactList.tsx",
+        "apps/api/src/modules/cursive/cursive.service.ts",
+        "apps/api/tests/cursive/cursive-prompt.spec.ts",
+        ".gitignore",
+        "apps/telegram-miniapp/src/features/dashboard/DashboardShell.tsx",
+        "apps/api/src/modules/reports/report.service.ts",
+        "apps/api/vitest.config.ts",
+        "apps/api/tests/setup/runtime-artifacts.ts",
+        "apps/api/tests/reports/report.service.spec.ts"
+      ],
+      "evidence": [
+        {
+          "type": "deletion-inventory",
+          "summary": "Re-verified every byte size immediately before deletion (all matched the brief's table exactly), then deleted: codex-oauth-fix-20260531.tar (547571200), rori-memory-followup-20260531.tar (547585024), rori-voice-fix-20260531.tar (542601728), rori-voice-full-20260531.tar (547569664), top-secret-quality-fix-20260531.tar (542607360), codex-oauth-fix-20260531.tar.gz (544224917), sgt-bots-rori-fix.tar.gz (9356246), sgt-bots-rori-fix.zip (9458502), tmp-rori-fetch.mjs (498), tmp-rori-kb-latest.ts (23445), tmp-rori-runtime-check.mjs (946), tmp-rori-runtime-matrix.mjs (1159), and .deploy-src/ (10792194 bytes, 255 files). .deploy-images/ (4945659904 bytes) was left on disk, gitignored only, per the brief.",
+          "reference": "stat -c '%s %n' <each path> run twice (once at briefing-verification time, once immediately pre-delete) -- both runs matched the brief's table exactly"
+        },
+        {
+          "type": "diff",
+          "summary": ".gitignore: added 6 new entries under a new '# Deploy scratch bundles / snapshots' section -- /*.tar, /*.tar.gz, /*.zip, /tmp-rori-*, /.deploy-src/, /.deploy-images/ -- all anchored to repo root with a leading slash, no .buildwork/ entry added.",
+          "reference": "git diff -- .gitignore"
+        },
+        {
+          "type": "manual-check",
+          "summary": "git check-ignore -v confirmed recreated copies of codex-oauth-fix-20260531.tar, tmp-rori-fetch.mjs, sgt-bots-rori-fix.zip, .deploy-src/ (with a file inside it), and .deploy-images all now match the new .gitignore rules; test files were removed again immediately after.",
+          "reference": "touch/mkdir the paths, git check-ignore -v <paths>, then rm -f/rm -rf the test artifacts"
+        },
+        {
+          "type": "test",
+          "summary": "Full API suite, run 1 of 3, from the pre-existing dirty .runtime-artifacts state (23 files, never cleared before, during, or between runs): 47 files / 386 tests passed. Baseline was 47 files / 390 tests; expected delta was -4 (the item-1b test removals); 390-4=386, confirmed exactly.",
+          "reference": "cd apps/api && corepack pnpm exec vitest run  =>  Test Files 47 passed (47); Tests 386 passed (386)"
+        },
+        {
+          "type": "test",
+          "summary": "Full API suite, run 2 of 3, same dirty state, no manual clearing between runs: 47 files / 386 tests passed.",
+          "reference": "corepack pnpm exec vitest run  =>  Test Files 47 passed (47); Tests 386 passed (386)"
+        },
+        {
+          "type": "test",
+          "summary": "Full API suite, run 3 of 3, same dirty state, no manual clearing between runs: 47 files / 386 tests passed. Confirmed .runtime-artifacts still held its original 23 files / ~530K afterward -- never manually cleared at any point across all 3 runs.",
+          "reference": "corepack pnpm exec vitest run  =>  Test Files 47 passed (47); Tests 386 passed (386); find .runtime-artifacts -type f | wc -l => 23"
+        },
+        {
+          "type": "test",
+          "summary": "Mini app suite green, no regressions: 9 files / 67 tests, matching the stated baseline exactly (items 1a and 3 touch this app).",
+          "reference": "cd apps/telegram-miniapp && corepack pnpm exec vitest run  =>  Test Files 9 passed (9); Tests 67 passed (67)"
+        },
+        {
+          "type": "lint",
+          "summary": "API lint (tsc --noEmit) exit 0, no output.",
+          "reference": "corepack pnpm --filter @sgt-bots/api lint  =>  exit 0"
+        },
+        {
+          "type": "lint",
+          "summary": "telegram-miniapp lint (tsc --noEmit) exit 0, no output.",
+          "reference": "corepack pnpm --filter @sgt-bots/telegram-miniapp lint  =>  exit 0"
+        },
+        {
+          "type": "grep",
+          "summary": "Zero remaining references to the ArtifactList component (pattern matched only its own removed definition/JSX call sites, none found) and to buildCreditBureauDisputeHelperReply (zero matches anywhere under apps/) after removal.",
+          "reference": "rg '<ArtifactList[\\s(]|function ArtifactList\\(' apps/  =>  no matches; rg 'buildCreditBureauDisputeHelperReply' apps/  =>  no matches"
+        },
+        {
+          "type": "manual-check",
+          "summary": "git status after cleanup shows no stray tarballs/zips/tmp-rori-*/.deploy-src; .deploy-images no longer appears (now ignored); only TASK-012's own edits plus the pre-existing TASK-010/011 baseline files are modified/untracked.",
+          "reference": "git status --short (full output retained in this cycle's session transcript)"
+        },
+        {
+          "type": "test-run",
+          "summary": "Orchestrator re-derivation (not the engineer's claim): full apps/api vitest suite run 3 consecutive times WITHOUT clearing the gitignored apps/api/.runtime-artifacts directory, which held 23 files from earlier runs. All three runs: 47 files / 386 tests passed, 0 failed. The 386 count is exactly the TASK-010 baseline of 390 minus the 4 buildCreditBureauDisputeHelperReply tests removed by item 1b, as predicted.",
+          "reference": "cd apps/api && for i in 1 2 3; do corepack pnpm exec vitest run; done  (no rm -rf)"
+        },
+        {
+          "type": "test-run",
+          "summary": "Decisive proof that item 4's isolation is real rather than incidental: apps/api/.runtime-artifacts held 23 files with a newest mtime of 10:25:19 (predating the engineer's 12:55 start) BEFORE the three runs, and still held exactly 23 files with the identical newest mtime AFTER them. Test runs previously wrote into that shared directory, which is how it became dirty in the first place. Zero writes across three full suite runs is only possible if the new vitest setup file executed and redirected every test file to its own temp directory. This also closes the QC reviewer's third UNVERIFIED item (whether apps/api/vitest.config.ts is actually picked up).",
+          "reference": "find apps/api/.runtime-artifacts -type f | wc -l; find apps/api/.runtime-artifacts -type f -printf '%T+ %p\\n' | sort -r | head -3"
+        },
+        {
+          "type": "test-run",
+          "summary": "Mini app suite re-derived: 9 files / 67 tests passed, 0 failed, matching the stated baseline exactly. Items 1a and 3 both touch this app.",
+          "reference": "cd apps/telegram-miniapp && corepack pnpm exec vitest run"
+        },
+        {
+          "type": "lint",
+          "summary": "Both linters re-derived from repo root, each exit 0 with no diagnostics. These are tsc --noEmit and serve as the dangling-import detector for the item 1 removals.",
+          "reference": "corepack pnpm --filter @sgt-bots/api lint; corepack pnpm --filter @sgt-bots/telegram-miniapp lint"
+        },
+        {
+          "type": "manual-check",
+          "summary": "Setup-hook timing risk investigated and cleared. vitest setupFiles beforeAll hooks run AFTER test-file module evaluation, so any test constructing the report service at module scope would miss RUNTIME_ARTIFACTS_ROOT and continue racing on the shared directory. Grepped all 16 test files referencing buildApp/createReportService: zero module-scope construction, every call sits inside a hook or helper function. The env var is therefore always set before any service is built.",
+          "reference": "grep -rn '^const .*buildApp|^const .*createReportService|^const app = ' apps/api/tests/"
+        },
+        {
+          "type": "manual-check",
+          "summary": "Production path confirmed byte-identical. With neither deps.artifactRoot nor RUNTIME_ARTIFACTS_ROOT set, path.resolve(path.join(process.cwd(), '.runtime-artifacts')) is equivalent to the original path.resolve(process.cwd(), '.runtime-artifacts'). app.ts passes neither, so runtime behavior is unchanged.",
+          "reference": "apps/api/src/modules/reports/report.service.ts:106-112; apps/api/src/app.ts"
+        },
+        {
+          "type": "manual-check",
+          "summary": "Deletion inventory re-verified post-hoc, closing the QC reviewer's first UNVERIFIED item. All 13 inventoried targets confirmed absent: 5 *-20260531.tar, codex-oauth-fix-20260531.tar.gz, sgt-bots-rori-fix.tar.gz, sgt-bots-rori-fix.zip, 4 tmp-rori-* files, and .deploy-src/. Approximately 3.3 GB reclaimed. git status shows no stray entries remaining.",
+          "reference": "per-path existence check over the brief's inventory table; git status --porcelain"
+        },
+        {
+          "type": "manual-check",
+          "summary": "Protected paths confirmed intact, closing the QC reviewer's second UNVERIFIED item: .deploy-images (4.7 G, preserved and now ignored), BLUEPRINT-2026-07-20.md, CLAUDE.md, .buildwork/, Dockerfile.backend.hotfix. git check-ignore -v confirms .deploy-images/ is ignored via .gitignore:66 while .buildwork/ is correctly NOT ignored.",
+          "reference": "git check-ignore -v .deploy-images .buildwork; per-path existence check"
+        },
+        {
+          "type": "grep",
+          "summary": "Dead-code removal re-verified independently: zero remaining references to buildCreditBureauDisputeHelperReply and to the 5 removed private helpers (formatFieldLabelList, formatCreditBureauAddressSummary, looksLikeCreditBureauDisputeIntent, looksLikeGreeting, looksLikeGeneralQuestion) across apps/ and packages/. formatCityStatePostal correctly retained with 2 live references (still used by formatBureauAddressLines). The ArtifactListItem type retains all 4 importers; only the component and its props type were removed.",
+          "reference": "grep -rn over apps/ packages/ for each removed symbol"
+        },
+        {
+          "type": "manual-check",
+          "summary": "CON-003 compliance verified by mtime rather than by assertion: HANDOFF.md, TASKS.md, and docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md all still carry their 08:24 session-baseline modification times, while the engineer ran 12:55-13:11 and the files it did touch carry 13:00-13:03 mtimes. No historical doc was edited.",
+          "reference": "stat -c '%y %n' on the three historical docs vs .gitignore, vitest.config.ts, report.service.ts"
+        },
+        {
+          "type": "review",
+          "summary": "QC review PASS from a fresh blank-context reviewer (23.7s) against a frozen diff that excluded the signed-off TASK-010/TASK-011 changes; DashboardShell.tsx was reduced to only the single 1000->8000 hunk, since the file's other two hunks were verified to belong to signed-off TASK-011 cycle-2 work. No blocking or non-blocking findings against the diff. The reviewer's three UNVERIFIED items were all filesystem facts a diff structurally cannot show, and all three were closed by the orchestrator above.",
+          "reference": ".buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/reports/TASK-012-qc-review-cycle1.md"
+        },
+        {
+          "type": "auditor-signoff",
+          "summary": "AUDIT: PASS (cycle 1, auditor = main session), with one completion condition fulfilled at this sign-off (promote the scope-extension decision to DEC-005; the auditor explicitly authorized that single top-level write). Independently re-derived by the auditor, not accepted from the engineer or orchestrator: validate-build.ps1 returned ok: true at revision 15; the full apps/api vitest suite was run TWICE by the auditor from the pre-existing dirty .runtime-artifacts state with no manual clearing, 47 files / 386 tests passed and 0 failed on both runs, with the directory's entry count identical before and after (isolation verifiably engaged) -- combined with the orchestrator's three runs that is five consecutive deterministic greens; the test delta was adjudicated exact (390 baseline minus the 4 removed buildCreditBureauDisputeHelperReply tests = 386, which becomes the new API-suite gate baseline); the mini app suite passed 9 files / 67 tests; both typecheck gates exit 0. The full diff was read end to end. Dead-code removal verified independently: the ArtifactList component and ArtifactListProps are gone while the ArtifactListItem type is retained with its four live importers, buildCreditBureauDisputeHelperReply and its five orphaned private helpers are gone, and the auditor re-ran the greps itself finding zero remaining references (the single hit is the live type usage). Deletions verified: zero *.tar / *.zip / tmp-rori-* files at repo root and .deploy-src/ absent, while every protected path is present -- .deploy-images/ (gitignored, not deleted), BLUEPRINT-2026-07-20.md, CLAUDE.md, Dockerfile.backend.hotfix, and .buildwork/ (correctly NOT gitignored). The polling change was verified surgical: only the network session-refresh interval moved 1000 -> 8000 ms, the local countdown ticker feeding the TASK-011 low-time nudges is untouched, and the nudges' threshold-crossing logic tolerates 8s ticks by design. The flake-fix mechanism was read and approved (injectable artifactRoot resolving deps -> RUNTIME_ARTIFACTS_ROOT -> cwd fallback, per-test-file mkdtemp via a vitest setupFiles hook with cleanup) with the standing non-recommendation against redesigning the runtime store respected. Four adjudications accepted: the orchestrator's pre-dispatch correction of the audit line's inaccurate 'remove ArtifactList.tsx' wording (which would have broken four importers), the removal of the five orphaned helpers beyond the briefed literal scope (verified zero-reference; same concern, not creep), the root-anchored .gitignore patterns (broader than the literal filenames but correctly anchored to root only), and the ~3.3 GB irreversible deletion (the ticket's explicit user-dispatched content, with a full path+size inventory in the engineer envelope as the audit trail). Two non-blocking notes recorded, neither gating: the 8000 ms interval was not exercised against a live backend (structural verification accepted here; TASK-007's human smoke will exercise it for real -- watch session-timer freshness there), and all future gates including TASK-008 must use 386 as the API-suite baseline.",
+          "reference": ".buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/findings/TASK-012-audit-1.md"
+        }
+      ],
+      "handoffs": [],
+      "blockers": [],
+      "progress": "Implemented directly rather than dispatching python-based crew builders: no launch_role.py/crew_state.py exist in this workspace (confirmed by search before starting), so the four items were executed myself, verifying each brief claim against the code first. Item 1a: verified ArtifactList component has zero render sites (only match for '<ArtifactList'/'ArtifactList(' is its own definition) and ArtifactListItem has exactly the four importers the brief named; removed the ArtifactList() function and ArtifactListProps type from apps/telegram-miniapp/src/features/artifacts/ArtifactList.tsx, kept the file (no rename) and the ArtifactListItem export unchanged. Item 1b: confirmed no dynamic/string-keyed dispatch reaches cursiveService by name (chat.service.ts throws 'cursive workflow only' before any Cursive-specific method call; report.route.ts and cursive.route.ts only ever call getWorkflowEntry/generateCreditBureauDisputeDraft/reviewCreditBureauDisputeDraft as static property access) -- removed buildCreditBureauDisputeHelperReply from cursive.service.ts and its 4 call sites in cursive-prompt.spec.ts (kept the rest of that file, including all buildCursivePromptPackage/composeCreditBureauDisputeDraftContent and createChatService coverage, intact). Also removed the now-unused import of createCursiveService from that spec file (would otherwise fail tsc as an unused import) and removed 5 private helper functions in cursive.service.ts (formatFieldLabelList, formatCreditBureauAddressSummary, looksLikeCreditBureauDisputeIntent, looksLikeGreeting, looksLikeGeneralQuestion) that existed solely to serve the removed method and had zero remaining callers after its removal -- this is a scope extension beyond the brief's literal 'remove the method and the four tests' wording, flagged in proposed_decisions. Confirmed formatCityStatePostal and the CursiveRepoAddress type import are still used elsewhere in the file and were left untouched. Item 2: re-verified every byte size in the brief's inventory table immediately before deleting (all matched exactly), deleted the 8 tarball/zip files, the 4 tmp-rori-* files, and the .deploy-src/ mirror (all untracked, none of them git-tracked, so deletion carried no history risk); left .deploy-images/ on disk and added it to .gitignore per the brief's explicit 'gitignore it; do not delete it' instruction; added 6 new .gitignore entries (/*.tar, /*.tar.gz, /*.zip, /tmp-rori-*, /.deploy-src/, /.deploy-images/) anchored to repo root with a leading slash, matching the file's existing style for generated/local-only paths; verified with git check-ignore -v that recreated copies of each deleted category (and .deploy-images) are now caught. Item 3: read DashboardShell.tsx end to end around all four intervals named in the brief; confirmed the :1203-1222 interval is the only one that performs a network fetch (GET /api/sessions/:id) and relaxed it from 1000ms to 8000ms; left the :1346-1350 local countdown ticker (setRemainingCountdownSeconds) at 1000ms untouched since it feeds remainingSeconds with no network involvement; traced the low-time nudge effect (:1240-1249) and confirmed it dedupes by threshold via a Set ref (firedLowTimeNudgesRef), so it fires 'ten_minute' and 'two_minute' exactly once each regardless of how coarse the network poll is, since its input (remainingSeconds) is driven by the untouched local ticker, not the relaxed poll; the getLowTimeNudgeThreshold function at :70-85 already uses <= comparisons and is unaffected by this change. Inspected the third interval at :1515 (artifact-status refresh poll, already 2000ms, unrelated to session state) and left it alone. No mini app test depended on the old 1000ms session-poll cadence via fake timers (grepped DashboardShell.spec.tsx for setInterval/advanceTimersByTime/useFakeTimers -- no matches), so no test changes were needed for this item. Item 4 (scope-extended flake fix): root-caused per the brief -- process.cwd() is shared process-wide across all test files/workers, so every createReportService() call that didn't explicitly override its artifact root pointed at the same physical apps/api/.runtime-artifacts directory, racing hydrateArtifactsFromDisk's readdirSync/readFileSync walk against concurrent purgeArtifactsForSessionBot/purgeExpiredArtifacts deletions in other files. Fixed at the source: added an optional artifactRoot to createReportService's deps (report.service.ts:100-113), with resolution order deps.artifactRoot ?? process.env.RUNTIME_ARTIFACTS_ROOT ?? path.join(process.cwd(), '.runtime-artifacts') -- byte-identical to the old behavior when neither override is supplied (confirmed: app.ts's createReportService call passes neither, so production/dev behavior is unchanged). Added apps/api/vitest.config.ts wiring a new setupFiles entry, apps/api/tests/setup/runtime-artifacts.ts, which mkdtempSyncs one fresh OS temp directory per test FILE in beforeAll and points RUNTIME_ARTIFACTS_ROOT at it, then rm -rf's it in afterAll -- this gives every test file (including e2e files that build the whole app via buildApp and never touch report.service.ts directly, e.g. report-isolation.spec.ts, uploads-and-reports.spec.ts) its own isolated directory tree with zero call-site changes needed in those files. One file needed a direct edit: tests/reports/report.service.spec.ts previously called process.chdir(tempRoot) before each of its 5 it() blocks to get a fresh empty artifact directory per test -- since the new env-var default now outranks the cwd-based fallback, that chdir would have silently stopped doing anything (all 5 blocks would have collapsed onto the same per-file env-var directory, breaking the per-test isolation those tests rely on for correctness, e.g. the six-hour-retention and Top-Secret-replacement assertions). Rewrote that file to pass artifactRoot: tempRoot explicitly to every createReportService() call instead of chdir, and removed the now-dead originalCwd/afterEach(chdir-restore) boilerplate. Did not touch hydrateArtifactsFromDisk's walk/read logic (no defensive try/catch added) since real per-run isolation removes the race at its source; noted this choice explicitly in proposed_decisions per the brief's requirement to say which of the two acceptable approaches was taken. Did not touch the in-memory artifact Map/queue design, matching the standing non-recommendation against replacing it while the deploy is single-container.",
+      "findings": [
+        "The audit's item-1a wording ('remove dead ArtifactList.tsx') was inaccurate as briefed and as independently reverified: only the component was dead, the type export is live with 4 importers -- resolved per the brief's directive to keep the file and the type.",
+        "Removing buildCreditBureauDisputeHelperReply orphaned 5 private helper functions in cursive.service.ts with no other callers; removed them too as in-scope dead-code cleanup rather than leaving new dead code behind (see proposed_decisions).",
+        ".deploy-images/ (~4.9 GB, untracked, not previously gitignored) is not named by audit line 73 and was not deleted; it is now gitignored per the brief's explicit instruction so it stops appearing as an untracked blob in git status.",
+        "Root cause of the .runtime-artifacts flake was process.cwd() being process-wide, not per-worker/per-thread: every test file that didn't manage its own directory shared one real on-disk path, so one file's purge could race another file's hydrate walk regardless of vitest's pool type.",
+        "AUDITOR ACTION REQUIRED: the ticket required a build-level `decision` recording TASK-012's scope extension to cover the .runtime-artifacts flake. Because the engineer's write_scope is tasks[id=TASK-012], that decision could only be staged as tasks[TASK-012].proposed_decisions[3], not written into the top-level decisions array. Promoting it to DEC-005 at sign-off requires auditor authority and is not something this orchestrator may do.",
+        ".gitignore uses root-anchored /*.tar, /*.tar.gz and /*.zip rather than the specific inventoried filenames. Broader than the literal audit wording but root-anchored and judged defensible: no legitimate root-level archive exists in this monorepo and the entry's purpose is to stop the category silently reappearing untracked. Surfaced for auditor visibility rather than as a defect."
+      ],
+      "risks": [
+        "The 8s session-refresh interval means a server-side session state change (expiry, reauth_required, retirement) can take up to ~8s to reach the UI instead of ~1s; judged acceptable given the local countdown ticker and nudge-dedup logic are unaffected -- see proposed_decisions for the explicit tradeoff."
+      ],
+      "proposed_decisions": [
+        "Item 1a -- kept ArtifactList.tsx as a type-only file, did not rename it to .ts. Adjudication: independently reverified the brief's finding (ArtifactList component: zero render sites; ArtifactListItem: exactly the 4 named importers) before acting, then removed only the component/props and kept the type export, per the brief's directive. Skipped the optional .tsx->.ts rename: the file is genuinely type-only now and the rename is purely cosmetic (imports are extensionless so no importer would need edits), and both linters already exit 0 with the .tsx extension retained, so the rename would add file-history churn (blame/rename tracking across 4 importers' git history) for zero functional or type-safety benefit. If the auditor prefers the rename for repo hygiene, it is a pure follow-up with no behavior risk.",
+        "Item 1b -- extended the directive from 'remove the method and the four tests' to also remove 5 now-orphaned private helper functions (formatFieldLabelList, formatCreditBureauAddressSummary, looksLikeCreditBureauDisputeIntent, looksLikeGreeting, looksLikeGeneralQuestion) in cursive.service.ts. These existed solely to implement buildCreditBureauDisputeHelperReply and had zero other callers immediately after its removal (verified by grep across apps/api). Leaving them would have introduced new dead code as a direct side effect of this same cleanup ticket, which seemed to contradict item 1b's own purpose; tsc would not have flagged them (noUnusedLocals is not set in tsconfig.base.json) so this was a judgment call, not a lint-forced one. Did not touch formatCityStatePostal (still used by formatBureauAddressLines) or the credit_bureau_dispute category slug/templates/repo entries/cursive-review/cursive-draft logic, all confirmed still live and untouched.",
+        "Item 3 -- picked 8000ms for the network session-refresh poll (from the brief's 5-15s band). Tradeoff: an 8x reduction in request volume and mobile radio/battery wake-ups versus up to ~8s of staleness in `session.state`/`session.remainingSeconds` after a server-side change (expiry, reauth_required, retirement) before the next poll picks it up. Verified and state explicitly: this does NOT coarsen the low-time nudge granularity, because remainingSeconds (consumed by getLowTimeNudgeThreshold at DashboardShell.tsx:72-89 and the firing effect at :1240-1249) is driven by the separate local countdown ticker at :1346-1350 (setInterval, still 1000ms, no network call), not by the relaxed network poll -- confirmed by reading the full effect chain, not just asserting it. Also confirmed the nudge-firing effect dedupes via firedLowTimeNudgesRef (a Set), so each of 'two_minute' (<=120s) and 'ten_minute' (<=600s) fires exactly once per session regardless of poll cadence. The third interval at DashboardShell.tsx:1515 is a 2000ms artifact-status refresh poll, unrelated to session state -- left unchanged.",
+        "Item 4 -- scope of TASK-012 was extended to cover the apps/api/.runtime-artifacts test-isolation flake, per the user's approval at the ticket boundary, traceable to nit 2 recorded in findings/TASK-010-audit-1.md during the TASK-010 audit. Chosen fix: real per-test-file isolation via an injectable artifactRoot on createReportService's deps (highest priority), a RUNTIME_ARTIFACTS_ROOT env var set per-file by a new vitest setupFiles hook (middle priority, used automatically by every test file that doesn't manage its own directory, including e2e files that never call createReportService directly), falling back to the original path.resolve(process.cwd(), '.runtime-artifacts') when neither is set (production-identical, confirmed app.ts passes neither). This is real isolation, not defensiveness: did not make hydrateArtifactsFromDisk tolerate a file vanishing mid-walk, and did not disable parallelism (no singleThread/fileParallelism:false) -- both were explicitly available per the brief but were judged unnecessary once each test file gets its own physical directory, and disabling parallelism repo-wide would have traded the flake for a slower suite while leaving the underlying directory-sharing design uncorrected. Did not touch the in-memory artifact Map, the queue, or the retention/purge logic itself -- this is test-infrastructure-scoped only, consistent with the 2026-07-13 audit's standing non-recommendation against replacing the in-memory store."
+      ]
+    },
+    {
+      "id": "TASK-013",
+      "title": "Broader production runbooks: VPS and Supabase release notes for future non-Cursive rollout work",
+      "status": "pending",
+      "owner": "unassigned",
+      "dependencies": [
+        "TASK-008"
+      ],
+      "acceptance_criteria": [
+        "Release runbooks documented under docs/operations for the non-Cursive lanes"
+      ],
+      "write_scope": [
+        "tasks[id=TASK-013]"
+      ],
+      "artifacts": [
+        "docs/operations/qa-and-release.md"
+      ],
+      "evidence": [],
+      "handoffs": [],
+      "blockers": []
+    }
+  ],
+  "risks": [
+    {
+      "id": "RISK-001",
+      "text": "The deployed VPS2 backend image may predate the current branch, so runtime behavior in production-like checks may not reflect Phase 6/7 code.",
+      "severity": "high",
+      "mitigation": "Build and deploy a current-branch candidate image before the TASK-008 gate run; record commit-to-image traceability."
+    },
+    {
+      "id": "RISK-002",
+      "text": "Rori's live-model composer is not wired (every reply uses the deterministic fallback composer), which limits reply variety.",
+      "severity": "medium",
+      "mitigation": "Accepted for the playground per audit non-recommendation; open a dedicated ticket before any broader rollout expectation of live composition."
+    },
+    {
+      "id": "RISK-003",
+      "text": "Legacy planning docs (HANDOFF.md, TASKS.md, roadmap) could drift back into use as task state despite supersession.",
+      "severity": "low",
+      "mitigation": "CLAUDE.md authority statement plus supersession banners on the legacy docs."
+    }
+  ],
+  "artifacts": [
+    "BLUEPRINT-2026-07-20.md",
+    "HANDOFF.md",
+    "TASKS.md",
+    "docs/superpowers/plans/2026-07-10-telegram-bot-persona-runtime-roadmap.md",
+    "docs/superpowers/plans/2026-07-15-telegram-bot-persona-acceptance-runbook.md",
+    "docs/superpowers/plans/2026-07-15-telegram-bot-persona-production-readiness-gate.md",
+    "docs/superpowers/plans/2026-07-15-rori-wiki-load-preflight.md",
+    "docs/superpowers/plans/2026-07-13-playground-build-inspection-audit.md",
+    "docs/operations/qa-and-release.md",
+    ".codex/builds/2026-07-17-sgt-bots-rori-wiki-runtime-load.json"
+  ],
+  "verification": {
+    "required_checks": [
+      "Full API vitest suite green",
+      "API and miniapp TypeScript lint clean",
+      "Acceptance runbook prompt suite executed for release candidates",
+      "Production readiness gate checklist completed with sign-off before rollout"
+    ],
+    "results": [
+      {
+        "type": "test-run",
+        "summary": "2026-07-20 adoption re-derivation: full API suite 373/373 pass (45 files).",
+        "reference": "corepack pnpm exec vitest run (apps/api)"
+      },
+      {
+        "type": "test-run",
+        "summary": "2026-07-20 adoption re-derivation: previously failing report-isolation and top-secret-researcher suites pass 17/17.",
+        "reference": "corepack pnpm exec vitest run tests/e2e/report-isolation.spec.ts tests/top-secret/top-secret-researcher.spec.ts"
+      }
+    ],
+    "final_status": "pending"
+  },
+  "extensions": {
+    "enabled": [
+      "software"
+    ],
+    "data": {
+      "software": {
+        "languages": [
+          "TypeScript",
+          "SQL",
+          "JavaScript"
+        ],
+        "frameworks": [
+          "Fastify",
+          "Supabase PostgREST",
+          "Vitest",
+          "React"
+        ],
+        "entry_points": [
+          "apps/api/src/app.ts",
+          "apps/telegram-miniapp/src"
+        ],
+        "test_commands": [
+          "corepack pnpm exec vitest run (from apps/api)",
+          "corepack pnpm --filter @sgt-bots/api lint",
+          "corepack pnpm --filter @sgt-bots/telegram-miniapp lint"
+        ],
+        "deployment_targets": [
+          "VPS2 sgt-bots-app-sgt-bots-backend-1"
+        ]
+      }
+    }
+  },
+  "history": [
+    {
+      "revision": 1,
+      "timestamp": "2026-07-20T13:20:25Z",
+      "actor": "initializer",
+      "action": "initialize",
+      "details": "Created draft build 2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime"
+    },
+    {
+      "revision": 2,
+      "timestamp": "2026-07-20T13:30:00Z",
+      "actor": "claude-fable-5",
+      "action": "adopt-backfill",
+      "details": "Adopted the in-progress build from HANDOFF.md/TASKS.md/docs/superpowers. Backfilled TASK-001..TASK-006 as completed with evidence re-derived where locally possible (full suite 373/373 on 2026-07-20; previously failing suites 17/17; docs and artifacts read directly). Recorded pending TASK-007..TASK-013, decisions DEC-001..DEC-004, and open questions OQ-001..OQ-004."
+    },
+    {
+      "revision": 3,
+      "timestamp": "2026-07-20T13:30:00Z",
+      "actor": "claude-fable-5",
+      "action": "status-transition",
+      "details": "draft -> ready: objective, requirements, acceptance criteria, and tasks populated from the verified adoption review."
+    },
+    {
+      "revision": 4,
+      "timestamp": "2026-07-20T13:30:00Z",
+      "actor": "claude-fable-5",
+      "action": "status-transition",
+      "details": "ready -> active: build has in-flight pending work (TASK-007 human smoke, TASK-008 gate run)."
+    },
+    {
+      "revision": 5,
+      "timestamp": "2026-07-20T15:19:50Z",
+      "actor": "build-crew-orchestrator-task-010-cycle1",
+      "action": "merge-update",
+      "update_id": "UPD-TASK-010-cycle1",
+      "details": "Merged UPD-TASK-010-cycle1 into TASK-010"
+    },
+    {
+      "revision": 6,
+      "timestamp": "2026-07-20T15:22:04Z",
+      "actor": "build-crew-orchestrator-task-010-cycle1",
+      "action": "merge-update",
+      "update_id": "UPD-TASK-010-orchestrator-verification-cycle1",
+      "details": "Merged UPD-TASK-010-orchestrator-verification-cycle1 into TASK-010"
+    },
+    {
+      "revision": 7,
+      "timestamp": "2026-07-20T15:28:43Z",
+      "actor": "build-crew-orchestrator-task-010-cycle1",
+      "action": "merge-update",
+      "update_id": "UPD-TASK-010-auditor-signoff-cycle1",
+      "details": "Merged UPD-TASK-010-auditor-signoff-cycle1 into TASK-010"
+    },
+    {
+      "revision": 8,
+      "timestamp": "2026-07-20T15:29:40Z",
+      "actor": "build-crew-orchestrator-task-010-cycle1",
+      "action": "task-status-transition",
+      "details": "TASK-010 pending -> completed on auditor sign-off (AUDIT: PASS, cycle 1, recorded as auditor-signoff evidence at revision 7). Also deduplicated tasks[TASK-010].artifacts per audit nit 1 (17 -> 15 entries, first-occurrence order preserved). No other record state changed."
+    },
+    {
+      "revision": 9,
+      "timestamp": "2026-07-20T17:32:05Z",
+      "actor": "build-crew-orchestrator-task-011-cycle1",
+      "action": "merge-update",
+      "update_id": "UPD-TASK-011-cycle1",
+      "details": "Merged UPD-TASK-011-cycle1 into TASK-011"
+    },
+    {
+      "revision": 10,
+      "timestamp": "2026-07-20T17:32:58Z",
+      "actor": "build-crew-orchestrator-task-011-cycle2",
+      "action": "merge-update",
+      "update_id": "UPD-TASK-011-cycle2",
+      "details": "Merged UPD-TASK-011-cycle2 into TASK-011"
+    },
+    {
+      "revision": 11,
+      "timestamp": "2026-07-20T20:40:00Z",
+      "actor": "build-crew-orchestrator-task-011-cycle1",
+      "action": "record-hygiene",
+      "details": "Deduplicated tasks[TASK-011].artifacts (18 -> 15 entries, first-occurrence order preserved). Cycle 2 re-listed three files cycle 1 already carried (starter-prompts.ts, DashboardShell.tsx, DashboardShell.spec.tsx). Same nit the auditor raised on TASK-010 at revision 8; fixed here by the same orchestrator-side dedup. No task status, evidence, decisions, or findings changed."
+    },
+    {
+      "revision": 12,
+      "timestamp": "2026-07-20T17:43:41Z",
+      "actor": "build-crew-orchestrator-task-011-signoff",
+      "action": "merge-update",
+      "update_id": "UPD-TASK-011-auditor-signoff-cycle1",
+      "details": "Merged UPD-TASK-011-auditor-signoff-cycle1 into TASK-011"
+    },
+    {
+      "revision": 13,
+      "timestamp": "2026-07-20T20:46:00Z",
+      "actor": "build-crew-orchestrator-task-011-signoff",
+      "action": "task-status-transition",
+      "details": "TASK-011 pending -> completed on auditor sign-off (AUDIT: PASS, cycle 1, recorded as auditor-signoff evidence at revision 12). No other record state changed."
+    },
+    {
+      "revision": 14,
+      "timestamp": "2026-07-20T18:21:43Z",
+      "actor": "build-crew-orchestrator",
+      "action": "merge-update",
+      "update_id": "UPD-TASK-012-cycle1",
+      "details": "Merged UPD-TASK-012-cycle1 into TASK-012"
+    },
+    {
+      "revision": 15,
+      "timestamp": "2026-07-20T18:23:44Z",
+      "actor": "build-crew-orchestrator",
+      "action": "merge-update",
+      "update_id": "UPD-TASK-012-orchestrator-verification-cycle1",
+      "details": "Merged UPD-TASK-012-orchestrator-verification-cycle1 into TASK-012"
+    },
+    {
+      "revision": 16,
+      "timestamp": "2026-07-20T18:32:02Z",
+      "actor": "build-crew-orchestrator-task-012-signoff",
+      "action": "merge-update",
+      "update_id": "UPD-TASK-012-auditor-signoff-cycle1",
+      "details": "Merged UPD-TASK-012-auditor-signoff-cycle1 into TASK-012"
+    },
+    {
+      "revision": 17,
+      "timestamp": "2026-07-20T18:33:30Z",
+      "actor": "build-crew-orchestrator-task-012-signoff",
+      "action": "task-status-transition",
+      "details": "TASK-012 pending -> completed on auditor sign-off (AUDIT: PASS, cycle 1, recorded as auditor-signoff evidence at revision 16). Also promoted the scope-extension decision from tasks[TASK-012].proposed_decisions[3] to the top-level decisions array as DEC-005, fulfilling the audit's single completion condition. This is a direct orchestrator write outside the engine's MERGEABLE_FIELDS (decisions is not mergeable via update envelopes), performed only under the explicit auditor authorization in findings/TASK-012-audit-1.md, which states no other record changes are authorized. Same rev-8/rev-13 precedent for orchestrator-side edits recorded with a history entry. No other record state changed: DEC-001..DEC-004, all other tasks, risks, open questions, and verification are untouched."
+    }
+  ]
+}

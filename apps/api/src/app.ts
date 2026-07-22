@@ -252,7 +252,7 @@ export async function buildApp(options?: {
   });
 
   app.get("/api/telegram/prefill", async (request, reply) => {
-    const initData = String((request.query as { initData?: string }).initData ?? "");
+    const initData = String(request.headers["x-telegram-init-data"] ?? "");
 
     try {
       return {

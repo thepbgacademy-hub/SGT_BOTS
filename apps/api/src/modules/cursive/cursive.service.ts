@@ -157,69 +157,6 @@ export function getMissingCreditBureauDisputeIntakeFieldLabels(
   );
 }
 
-function formatFieldLabelList(labels: string[]) {
-  if (labels.length === 0) {
-    return "";
-  }
-
-  if (labels.length === 1) {
-    return labels[0];
-  }
-
-  if (labels.length === 2) {
-    return `${labels[0]} and ${labels[1]}`;
-  }
-
-  return `${labels.slice(0, -1).join(", ")}, and ${labels.at(-1)}`;
-}
-
-function formatCreditBureauAddressSummary(address: CursiveRepoAddress) {
-  return `${address.organizationName} (${formatCityStatePostal(address)})`;
-}
-
-function looksLikeCreditBureauDisputeIntent(userGoal: string) {
-  const normalizedGoal = userGoal.trim().toLowerCase();
-
-  const disputeSignals = [
-    "credit bureau",
-    "bureau dispute",
-    "dispute letter",
-    "credit dispute",
-    "late payment",
-    "charge off",
-    "charge-off",
-    "inaccurate",
-    "incorrect",
-    "wrong balance",
-    "not mine",
-    "not my account",
-    "remove this",
-    "delete this",
-    "reinvestigate",
-  ];
-  const bureauSignals = ["experian", "equifax", "transunion"];
-
-  return (
-    disputeSignals.some((keyword) => normalizedGoal.includes(keyword)) ||
-    bureauSignals.some((keyword) => normalizedGoal.includes(keyword))
-  );
-}
-
-function looksLikeGreeting(userGoal: string) {
-  return /^(hi|hello|hey|good morning|good afternoon|good evening)\b/iu.test(
-    userGoal.trim(),
-  );
-}
-
-function looksLikeGeneralQuestion(userGoal: string) {
-  const normalizedGoal = userGoal.trim().toLowerCase();
-
-  return (
-    normalizedGoal.includes("?") ||
-    /^(what|how|can|could|should|why|when|where|who)\b/iu.test(normalizedGoal)
-  );
-}
-
 export function createCursiveService(deps?: {
   cursiveRepo?: ReturnType<typeof createCursiveRepo>;
   cursiveDraftService?: ReturnType<typeof createCursiveDraftService>;
@@ -248,31 +185,6 @@ export function createCursiveService(deps?: {
       };
     },
     isHelperOnlyBot,
-    buildCreditBureauDisputeHelperReply(userGoal: string) {
-      const config = getDefaultConfig();
-      const citationList = formatFieldLabelList(
-        config.citations.map((citation) => citation.citationText),
-      );
-      const bureauList = formatFieldLabelList(
-        config.addresses.map((address) => address.organizationName),
-      );
-      const addressList = formatFieldLabelList(
-        config.addresses.map(formatCreditBureauAddressSummary),
-      );
-      if (looksLikeGreeting(userGoal)) {
-        return `Hi. I'm Cursive, and I can help you think through a ${config.category.displayName} before you start the official letter. Ask me what to gather, how to describe the inaccuracy, or which bureau should receive the dispute. When you're ready to build the real letter, tap Start official letter.`;
-      }
-
-      if (looksLikeGeneralQuestion(userGoal) && !looksLikeCreditBureauDisputeIntent(userGoal)) {
-        return `I can help answer questions about ${config.category.displayName} letters, including what details matter, how bureau disputes usually work, and what kind of wording makes the issue clear and factual. I'll keep the guidance grounded in ${citationList}. When you want to move from questions into the real document flow, tap Start official letter.`;
-      }
-
-      if (!looksLikeCreditBureauDisputeIntent(userGoal)) {
-        return `Cursive currently supports ${config.category.displayName} letters. "${userGoal}" does not look like a credit-bureau dispute request yet, but I can still help you think it through. A good place to start is understanding which bureau (${bureauList}) is involved, what reporting item seems wrong, and what outcome you want. When you're ready to build the actual letter, tap Start official letter.`;
-      }
-
-      return `That sounds like a possible ${config.category.displayName}. I can help you clarify the situation before we start the official letter, explain what details usually matter, and help you word the issue clearly without overstating it. I'll keep the guidance grounded in ${citationList} and the seeded mailing addresses for ${addressList}. When you're ready to move into the official document flow, tap Start official letter.`;
-    },
     buildCreditBureauDisputeTemplateInput(
       intake: CreditBureauDisputeOfficialIntake,
       options?: {

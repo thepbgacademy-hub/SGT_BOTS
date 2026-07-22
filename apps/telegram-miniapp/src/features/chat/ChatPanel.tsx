@@ -6,6 +6,7 @@ import {
   type DocumentWizardReportFormData,
 } from "../forms/DocumentWizardForm";
 import { UploadPanel } from "../uploads/UploadPanel";
+import { triggerTelegramHaptic } from "../../lib/telegram";
 import { VanishInput } from "./VanishInput";
 
 const VANISH_DURATION_MS = 600;
@@ -153,6 +154,7 @@ export function ChatPanel({
       return;
     }
 
+    triggerTelegramHaptic("light");
     setChatError(null);
     setSubmitting(true);
     setVanishingText(submittedMessage);
@@ -380,7 +382,28 @@ export function ChatPanel({
             </article>
           );
         })}
-        {!visibleMessages.length && !hideEmptyState ? (
+        {submitting ? (
+          <article className="message-card is-assistant message-card--thinking" aria-live="polite">
+            <p className="message-role">{bot.name}</p>
+            <p className="message-copy">
+              <span
+                className={[
+                  "thinking-dots",
+                  prefersReducedMotion ? "thinking-dots--static" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                aria-hidden="true"
+              >
+                <span />
+                <span />
+                <span />
+              </span>
+              <span>Thinking…</span>
+            </p>
+          </article>
+        ) : null}
+        {!visibleMessages.length && !hideEmptyState && !submitting ? (
           <article className="message-card message-card--empty">
             <p className="message-role">Ready</p>
             <p className="message-copy">{emptyCopy}</p>

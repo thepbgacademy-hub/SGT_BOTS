@@ -1,10 +1,14 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import type { BotCatalogEntry } from "../../../../../packages/shared/src/bots/manifests";
+import { ChatPanel } from "../chat/ChatPanel";
+import { getStarterPromptsForBot } from "../rori/starter-prompts";
 import {
   CursiveWorkspaceShell,
   buildBureauRemovalDemandInput,
   getCursiveDetailErrors,
+  getLowTimeNudgeThreshold,
   getNextCursiveStepState,
   getSteppedCursiveState,
   isArtifactForMenuSelection,
@@ -370,5 +374,75 @@ describe("DashboardShell Cursive workspace", () => {
         violationType: "different_balances_across_bureaus",
       }),
     ).toContain("consumer name");
+  });
+});
+
+describe("getLowTimeNudgeThreshold", () => {
+  it("returns null while the session is inactive, regardless of remaining time", () => {
+    expect(getLowTimeNudgeThreshold(500, false)).toBeNull();
+    expect(getLowTimeNudgeThreshold(0, false)).toBeNull();
+  });
+
+  it("returns null above the 10-minute threshold", () => {
+    expect(getLowTimeNudgeThreshold(601, true)).toBeNull();
+  });
+
+  it("crosses into the 10-minute threshold at and below 600 seconds", () => {
+    expect(getLowTimeNudgeThreshold(600, true)).toBe("ten_minute");
+    expect(getLowTimeNudgeThreshold(300, true)).toBe("ten_minute");
+  });
+
+  it("crosses into the 2-minute threshold at and below 120 seconds", () => {
+    expect(getLowTimeNudgeThreshold(120, true)).toBe("two_minute");
+    expect(getLowTimeNudgeThreshold(0, true)).toBe("two_minute");
+  });
+
+  it("resolves the more urgent threshold even if a tick skips past 10 minutes", () => {
+    expect(getLowTimeNudgeThreshold(90, true)).toBe("two_minute");
+  });
+});
+
+describe("generic chat workspace starter prompts", () => {
+  const TUTOR_BOT = {
+    id: "tutor",
+    name: "Insight",
+    description: "Guides the user step by step like a coach and explainer.",
+    capabilities: {
+      chat: true,
+      citations: true,
+      html_report: false,
+      pdf_upload: false,
+      rag_query: true,
+      structured_form: false,
+    },
+  } as unknown as BotCatalogEntry;
+
+  it("wires per-bot starter prompts into the generic DashboardShell chat surface for a non-Rori bot", () => {
+    const starterPrompts = getStarterPromptsForBot(TUTOR_BOT.id);
+
+    expect(starterPrompts).not.toHaveLength(0);
+
+    const markup = renderToStaticMarkup(
+      createElement(ChatPanel, {
+        bot: TUTOR_BOT,
+        conversationId: undefined,
+        messages: [],
+        onArtifactQueued: () => undefined,
+        onConversationUpdate: () => undefined,
+        sessionId: "session-1",
+        sessionToken: "token-1",
+        starterPrompts,
+      }),
+    );
+
+    expect(markup).toContain("starter-prompt-grid");
+    starterPrompts.forEach((prompt) => {
+      expect(markup).toContain(prompt);
+    });
+  });
+
+  it("falls back to no starter prompts for unknown or missing bot ids", () => {
+    expect(getStarterPromptsForBot("unknown_bot_id")).toEqual([]);
+    expect(getStarterPromptsForBot(undefined)).toEqual([]);
   });
 });

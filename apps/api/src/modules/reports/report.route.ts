@@ -51,6 +51,10 @@ function replyForReportRuntimeError(message: string) {
     return 400;
   }
 
+  if (message === "pdf upload too large") {
+    return 413;
+  }
+
   if (message === "invalid credit bureau") {
     return 400;
   }

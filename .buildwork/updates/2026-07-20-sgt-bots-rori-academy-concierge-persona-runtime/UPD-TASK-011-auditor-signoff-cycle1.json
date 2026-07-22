@@ -1,0 +1,20 @@
+{
+  "update_id": "UPD-TASK-011-auditor-signoff-cycle1",
+  "build_id": "2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime",
+  "task_id": "TASK-011",
+  "agent_id": "build-crew-auditor-task-011-cycle1",
+  "created_at": "2026-07-20T20:45:00Z",
+  "expected_revision": 11,
+  "write_scope": "tasks[id=TASK-011]",
+  "proposed_changes": {
+    "evidence": [
+      {
+        "type": "auditor-signoff",
+        "summary": "AUDIT: PASS (cycle 1, auditor = main session). Independently re-derived, not accepted from the engineer or orchestrator: the skill's validate-build.ps1 re-run against the record returned ok: true at revision 11, confirming the orchestrator's jsonschema substitute (used when the permission classifier blocked the validator) was correct; mini app suite from apps/telegram-miniapp 9 files / 67 tests passed, 0 failed, matching the staged claim; both typecheck gates exit 0 (@sgt-bots/api and @sgt-bots/telegram-miniapp); the API-suite-not-run adjudication accepted because the diff touches only apps/telegram-miniapp and git status confirms no apps/api change beyond TASK-010's signed-off baseline. The full diff was read end to end (12 modified + 2 new files, +741/-48) and all six audit-line items were verified present and correctly wired: (1) starter-prompts.ts per-bot lookup wired at BOTH ChatPanel call sites (RoriWorkspace.tsx and DashboardShell.tsx:2387) with hideEmptyState removed for Rori; (2) thinking bubble gated on submitting, mutually exclusive with the empty state, aria-live=polite, reduced-motion variant; (3) Telegram helpers fully optional-chained so they are safe outside Telegram, BackButton bound with cleanup on selectedMenuItem?.id change, closing confirmation scoped to isSessionActive with unmount cleanup, themeParams applied on mount via the pure and tested computeThemeCssVariables; (4) low-time nudges using threshold-crossing (<=600 / <=120) with a per-session fired-once latch reset on activeSessionId, dismissible, role=status; (5) OAuth auto-poll at 4s sharing resolveCodexOAuthPollAction with the manual button, stopping on connected/expired/failed/unmount/provider-switch, with fetch failures keeping the loop alive; (6) bot descriptions in a static always-visible list plus aria-label enrichment. QC adjudications verified: findings 1 and 3 flagged TASK-010's fetchLaunchContext hunk, genuinely out of this ticket (auditor-signed-off at revision 8) and correct in substance, while finding 2 (Rori-only partial wiring) was real, was independently caught by the orchestrator first, and cycle 2 verifiably closed it. Prompt content re-checked against out_of_scope: all 16 starter prompts are question-shaped and none asserts pricing, room links, policy, or enrollment facts. Disclosed process errors accepted as handled: the cycle-2 stale-revision quarantine and engine-rebased re-merge (orchestrator briefing error, disclosed, resolved through the engine with a recorded merge_note) and the reviewer-diff scoping error that included TASK-010 hunks (disclosed, correctly attributed, costless to the outcome). Test-depth limits accepted for this ticket's acceptance criterion (no jsdom harness; effect wiring inspection-verified; ChatPanel rendered directly rather than through DashboardShell; fail-without-change not systematic) as honest, disclosed, and consistent with the package's pre-existing renderToStaticMarkup convention, with the auditor verifying the wiring directly in the diff. Two non-blocking nits recorded, neither gating: the mini app package's lack of a DOM test harness is now a recurring verification gap worth a future ticket if UI work continues beyond TASK-012, and TASK-007/TASK-008 remain the gating human work unchanged by this ticket.",
+        "reference": ".buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/findings/TASK-011-audit-1.md"
+      }
+    ]
+  },
+  "evidence": [],
+  "merge_status": "merged"
+}

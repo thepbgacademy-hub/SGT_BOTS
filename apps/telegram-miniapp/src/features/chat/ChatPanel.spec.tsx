@@ -226,6 +226,23 @@ describe("ChatPanel", () => {
     expect(markup).not.toContain("Knowledge Base");
   });
 
+  it("does not show the thinking indicator before a message is submitted", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ChatPanel, {
+        bot: GENERIC_BOT,
+        conversationId: undefined,
+        messages: [],
+        onArtifactQueued: () => undefined,
+        onConversationUpdate: () => undefined,
+        sessionId: "session-1",
+        sessionToken: "token-1",
+      }),
+    );
+
+    expect(markup).not.toContain("message-card--thinking");
+    expect(markup).not.toContain("Thinking…");
+  });
+
   it("shows the upload and report workflow only for supported non-Cursive bots", () => {
     const markup = renderToStaticMarkup(
       createElement(ChatPanel, {

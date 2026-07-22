@@ -9,7 +9,7 @@ export async function registerTelegramRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/telegram/launch", async (request, reply) => {
-    const initData = String((request.query as { initData?: string }).initData ?? "");
+    const initData = String(request.headers["x-telegram-init-data"] ?? "");
 
     try {
       return buildLaunchContext({

@@ -1,0 +1,824 @@
+# Role: QC Reviewer
+
+You are the build-crew QC REVIEWER: a fresh, independent set of eyes with deliberately blank context. You know NOTHING about this build except what follows this prompt: a diff, the ticket's acceptance criteria, and the project's standards. That blindness is your value — do not ask for more context; review what is in front of you.
+
+You report ONLY to the Orchestrator. One review, then you are done.
+
+## Review the diff for
+
+1. **Correctness** — bugs, broken edge cases, wrong logic, race conditions. For each: the concrete failure scenario (inputs → wrong outcome), not a vibe.
+2. **Acceptance fit** — does the diff actually satisfy each acceptance criterion? Check them one by one; name any criterion the diff does not visibly meet.
+3. **Scope** — changes outside what the acceptance criteria require. Name every file touched that the criteria don't explain.
+4. **Bloat** — dead code, needless abstraction, duplicated logic, dependencies added for trivial gains.
+5. **Hallucination** — calls to functions/APIs/config that the diff neither defines nor imports from something real. Flag anything you cannot see defined.
+6. **Safety** — secrets in code, injection risks, silently swallowed errors.
+
+## Report format (your final output)
+
+- `VERDICT: pass` or `VERDICT: findings`
+- Numbered findings, most severe first. Each: file, location, the defect in one sentence, the concrete failure scenario, suggested severity (blocker / should-fix / nit).
+- Unverifiable-from-the-diff concerns go in a separate `UNVERIFIED:` list — claims you could not check are labeled as such, never presented as findings.
+
+Do not soften findings to be agreeable, and do not invent findings to seem thorough. An honest `VERDICT: pass` is a valid review.
+
+
+---
+
+# Ticket acceptance criteria
+
+This diff implements four deferred safety-hardening items. It passes QC only if all four are correctly implemented, each with tests:
+
+1. **PDF upload byte cap and `%PDF-` magic-byte sniff.** Cap the accepted upload size and reject oversize input with a distinct, stable error message wired to a deliberate HTTP status. Reduce the PDF content check to the `%PDF-` header sniff only (the previous implementation additionally stringified the entire buffer to search for `%%EOF` or an object marker; removing that whole-buffer stringify is the point of the change).
+2. **Telegram 429 handling honoring `retry_after`.** `retry_after` arrives in the Telegram error body as `parameters.retry_after`, in seconds. The retry must be bounded so a hostile or buggy `retry_after` cannot stall the caller indefinitely. Non-429 failures must keep their previous throw-immediately behavior. Waiting must be injectable so tests do not really sleep.
+3. **Telegram Mini App `initData` moved from URL query string to the `x-telegram-init-data` request header** on the `/api/telegram/launch` and `/api/telegram/prefill` endpoints, with the browser caller updated to match. Rationale: query strings land in server access logs, proxy logs, and `Referer` headers. The codebase already reads this same header in `apps/api/src/modules/providers/provider.route.ts`; the new code is required to match that existing convention rather than invent a second one.
+4. **`auth_date` future-skew rejection.** The previous check used `Math.abs()` on the age, so a future-dated `auth_date` was tolerated for the full past-age budget (300 seconds) and, when it finally tripped, was misreported as "stale". Past age must keep the 300-second budget; future-dating must get a separate, small skew tolerance sized only for legitimate client clock drift.
+
+Additional acceptance requirements:
+- Each item has at least one test that fails without the change, including the negative cases (oversize upload rejected, non-`%PDF-` bytes rejected, 429 `retry_after` honored and bounded, launch/prefill authenticating from the header, future-dated `auth_date` beyond tolerance rejected).
+- No regressions in the existing suite.
+
+# Project standards
+
+- TypeScript throughout. Both packages typecheck with `tsc --noEmit`; that is the lint gate.
+- Tests are Vitest. API tests live under `apps/api/tests/`, mini app tests alongside source as `*.spec.ts`.
+- **Secrets discipline (binding):** no secret values may appear anywhere in code, tests, or comments — reference env-var names only. Test fixtures must use synthetic bot tokens with locally computed HMACs, never a real token, real initData string, or real hash.
+- Errors are signalled by `throw new Error("<lowercase stable message>")`, and HTTP routes pattern-match on those exact message strings to choose a status code. A new error message that is not added to the relevant route's mapping will fall through to a 500 — check every such mapping the diff introduces or should have updated.
+- Prefer matching an existing pattern in the codebase over introducing a parallel convention.
+
+# Scope boundary for this ticket
+
+In scope: the four items above. Explicitly OUT of scope, and a finding if changed: Academy wiki content, pricing, room links, persona facts, persona/prompt configuration, the `rori` database schema, migrations, and PostgREST configuration. Also out of scope: the POST-body-based initData contract in `apps/api/src/modules/profiles/profile.route.ts` (the ticket names the launch and prefill endpoints only), and unrelated cleanup or engagement work.
+
+# The diff under review
+
+```diff
+diff --git a/apps/api/src/app.ts b/apps/api/src/app.ts
+index 272fbd7..061d46c 100644
+--- a/apps/api/src/app.ts
++++ b/apps/api/src/app.ts
+@@ -252,7 +252,7 @@ export async function buildApp(options?: {
+   });
+ 
+   app.get("/api/telegram/prefill", async (request, reply) => {
+-    const initData = String((request.query as { initData?: string }).initData ?? "");
++    const initData = String(request.headers["x-telegram-init-data"] ?? "");
+ 
+     try {
+       return {
+diff --git a/apps/api/src/modules/profiles/profile.route.ts b/apps/api/src/modules/profiles/profile.route.ts
+index 7df3c63..cc2c3f1 100644
+--- a/apps/api/src/modules/profiles/profile.route.ts
++++ b/apps/api/src/modules/profiles/profile.route.ts
+@@ -33,7 +33,8 @@ export async function registerProfileRoutes(app: FastifyInstance) {
+       return reply
+         .code(
+           message === "invalid telegram init data" ||
+-            message === "stale telegram init data"
++            message === "stale telegram init data" ||
++            message === "future-dated telegram init data"
+             ? 401
+             : 500,
+         )
+diff --git a/apps/api/src/modules/providers/provider.route.ts b/apps/api/src/modules/providers/provider.route.ts
+index 09e0f96..5ca6fc7 100644
+--- a/apps/api/src/modules/providers/provider.route.ts
++++ b/apps/api/src/modules/providers/provider.route.ts
+@@ -84,6 +84,7 @@ export async function registerProviderRoutes(app: FastifyInstance) {
+         message === "missing telegram init data" ||
+         message === "invalid telegram init data" ||
+         message === "stale telegram init data" ||
++        message === "future-dated telegram init data" ||
+         message === "profile not found"
+           ? 401
+           : message === "unsupported provider" ||
+@@ -147,6 +148,7 @@ export async function registerProviderRoutes(app: FastifyInstance) {
+         message === "missing telegram init data" ||
+         message === "invalid telegram init data" ||
+         message === "stale telegram init data" ||
++        message === "future-dated telegram init data" ||
+         message === "profile not found"
+           ? 401
+           : message === PLAYGROUND_ALREADY_PARTICIPATED_MESSAGE
+@@ -201,6 +203,7 @@ export async function registerProviderRoutes(app: FastifyInstance) {
+           message === "missing telegram init data" ||
+           message === "invalid telegram init data" ||
+           message === "stale telegram init data" ||
++          message === "future-dated telegram init data" ||
+           message === "profile not found"
+             ? 401
+             : 500;
+diff --git a/apps/api/src/modules/reports/report.route.ts b/apps/api/src/modules/reports/report.route.ts
+index a8ea5df..3e8e1a3 100644
+--- a/apps/api/src/modules/reports/report.route.ts
++++ b/apps/api/src/modules/reports/report.route.ts
+@@ -51,6 +51,10 @@ function replyForReportRuntimeError(message: string) {
+     return 400;
+   }
+ 
++  if (message === "pdf upload too large") {
++    return 413;
++  }
++
+   if (message === "invalid credit bureau") {
+     return 400;
+   }
+diff --git a/apps/api/src/modules/telegram/init-data.ts b/apps/api/src/modules/telegram/init-data.ts
+index 27a809a..8f7a152 100644
+--- a/apps/api/src/modules/telegram/init-data.ts
++++ b/apps/api/src/modules/telegram/init-data.ts
+@@ -1,6 +1,10 @@
+ import crypto from "node:crypto";
+ 
+ const TELEGRAM_INIT_DATA_MAX_AGE_SECONDS = 300;
++// Small tolerance for legitimate client clock drift only; well below the
++// past-age budget above and in line with typical clock-skew allowances
++// (e.g. 30-60s in JWT ecosystems).
++const TELEGRAM_INIT_DATA_MAX_FUTURE_SKEW_SECONDS = 60;
+ 
+ export type ValidatedTelegramInitData = {
+   telegramUserId: string;
+@@ -51,12 +55,16 @@ export function validateTelegramInitData(
+     throw new Error("invalid telegram init data");
+   }
+ 
+-  const ageSeconds = Math.abs(Math.floor(Date.now() / 1000) - authDate);
++  const ageSeconds = Math.floor(Date.now() / 1000) - authDate;
+ 
+   if (ageSeconds > TELEGRAM_INIT_DATA_MAX_AGE_SECONDS) {
+     throw new Error("stale telegram init data");
+   }
+ 
++  if (ageSeconds < -TELEGRAM_INIT_DATA_MAX_FUTURE_SKEW_SECONDS) {
++    throw new Error("future-dated telegram init data");
++  }
++
+   const user = JSON.parse(userValue) as {
+     first_name?: string;
+     id?: number;
+@@ -79,24 +87,31 @@ export function validateTelegramInitData(
+   };
+ }
+ 
++function isTelegramInitDataAgeError(message: string) {
++  return (
++    message === "stale telegram init data" ||
++    message === "future-dated telegram init data"
++  );
++}
++
+ export function validateTelegramInitDataWithTokens(
+   initData: string,
+   botTokens: string[],
+ ): ValidatedTelegramInitData {
+-  let staleError: Error | null = null;
++  let ageError: Error | null = null;
+ 
+   for (const botToken of botTokens) {
+     try {
+       return validateTelegramInitData(initData, botToken);
+     } catch (error) {
+-      if ((error as Error).message === "stale telegram init data") {
+-        staleError = error as Error;
++      if (isTelegramInitDataAgeError((error as Error).message)) {
++        ageError = error as Error;
+       }
+     }
+   }
+ 
+-  if (staleError) {
+-    throw staleError;
++  if (ageError) {
++    throw ageError;
+   }
+ 
+   throw new Error("invalid telegram init data");
+diff --git a/apps/api/src/modules/telegram/telegram-bot.service.ts b/apps/api/src/modules/telegram/telegram-bot.service.ts
+index c406ed3..0018b04 100644
+--- a/apps/api/src/modules/telegram/telegram-bot.service.ts
++++ b/apps/api/src/modules/telegram/telegram-bot.service.ts
+@@ -43,6 +43,23 @@ export type TelegramSendMessageInput = {
+ 
+ type SendMessage = (input: TelegramSendMessageInput) => Promise<void>;
+ 
++const TELEGRAM_SEND_MESSAGE_MAX_ATTEMPTS = 3;
++const TELEGRAM_SEND_MESSAGE_MAX_RETRY_AFTER_SECONDS = 30;
++
++async function readTelegramRetryAfterSeconds(response: Response) {
++  try {
++    const body = (await response.json()) as {
++      parameters?: { retry_after?: number };
++    };
++    const retryAfter = body.parameters?.retry_after;
++    return Number.isFinite(retryAfter) && (retryAfter as number) > 0
++      ? (retryAfter as number)
++      : 1;
++  } catch {
++    return 1;
++  }
++}
++
+ function isInteractiveGroupChat(chat: TelegramChat | undefined) {
+   return (
+     chat?.type === "group" ||
+@@ -163,24 +180,54 @@ export async function sendTelegramMessage(input: {
+   env: AppEnv;
+   fetchImpl?: typeof fetch;
+   message: TelegramSendMessageInput;
++  wait?: (ms: number) => Promise<void>;
+ }) {
+   const fetchImpl = input.fetchImpl ?? fetch;
+-  const response = await fetchImpl(
+-    `https://api.telegram.org/bot${input.env.telegramBotToken}/sendMessage`,
+-    {
+-      method: "POST",
+-      headers: {
+-        "content-type": "application/json",
++  const wait =
++    input.wait ??
++    ((ms: number) =>
++      new Promise<void>((resolve) => {
++        setTimeout(resolve, ms);
++      }));
++
++  for (
++    let attempt = 1;
++    attempt <= TELEGRAM_SEND_MESSAGE_MAX_ATTEMPTS;
++    attempt += 1
++  ) {
++    const response = await fetchImpl(
++      `https://api.telegram.org/bot${input.env.telegramBotToken}/sendMessage`,
++      {
++        method: "POST",
++        headers: {
++          "content-type": "application/json",
++        },
++        body: JSON.stringify({
++          chat_id: input.message.chatId,
++          text: input.message.text,
++          reply_markup: input.message.replyMarkup,
++        }),
+       },
+-      body: JSON.stringify({
+-        chat_id: input.message.chatId,
+-        text: input.message.text,
+-        reply_markup: input.message.replyMarkup,
+-      }),
+-    },
+-  );
++    );
++
++    if (response.ok) {
++      return;
++    }
++
++    if (
++      response.status === 429 &&
++      attempt < TELEGRAM_SEND_MESSAGE_MAX_ATTEMPTS
++    ) {
++      const retryAfterSeconds = await readTelegramRetryAfterSeconds(response);
++      const boundedDelayMs =
++        Math.min(
++          retryAfterSeconds,
++          TELEGRAM_SEND_MESSAGE_MAX_RETRY_AFTER_SECONDS,
++        ) * 1000;
++      await wait(boundedDelayMs);
++      continue;
++    }
+ 
+-  if (!response.ok) {
+     throw new Error(`telegram sendMessage failed with status ${response.status}`);
+   }
+ }
+diff --git a/apps/api/src/modules/telegram/telegram.route.ts b/apps/api/src/modules/telegram/telegram.route.ts
+index d42405d..94a311b 100644
+--- a/apps/api/src/modules/telegram/telegram.route.ts
++++ b/apps/api/src/modules/telegram/telegram.route.ts
+@@ -9,7 +9,7 @@ export async function registerTelegramRoutes(app: FastifyInstance) {
+   });
+ 
+   app.get("/api/telegram/launch", async (request, reply) => {
+-    const initData = String((request.query as { initData?: string }).initData ?? "");
++    const initData = String(request.headers["x-telegram-init-data"] ?? "");
+ 
+     try {
+       return buildLaunchContext({
+diff --git a/apps/api/src/modules/uploads/upload.service.ts b/apps/api/src/modules/uploads/upload.service.ts
+index fcdf778..8eef91a 100644
+--- a/apps/api/src/modules/uploads/upload.service.ts
++++ b/apps/api/src/modules/uploads/upload.service.ts
+@@ -14,14 +14,12 @@ export type StoredUpload = {
+   virusScanStatus: "pending";
+ };
+ 
+-function looksLikePdf(fileBytes: Buffer) {
+-  const header = fileBytes.subarray(0, 5).toString("utf8");
+-  const body = fileBytes.toString("utf8");
++// Kept comfortably under Fastify's 8 MiB bodyLimit (app.ts) once base64
++// overhead (~4/3) and JSON wrapper fields are accounted for.
++export const MAX_PDF_UPLOAD_BYTES = 5 * 1024 * 1024;
+ 
+-  return (
+-    header === "%PDF-" &&
+-    (body.includes("%%EOF") || /\b\d+\s+\d+\s+obj\b/u.test(body))
+-  );
++function looksLikePdf(fileBytes: Buffer) {
++  return fileBytes.subarray(0, 5).toString("utf8") === "%PDF-";
+ }
+ 
+ export function createUploadService(deps?: { now?: () => number }) {
+@@ -46,6 +44,10 @@ export function createUploadService(deps?: { now?: () => number }) {
+         throw new Error("pdf uploads only");
+       }
+ 
++      if (fileBytes.byteLength > MAX_PDF_UPLOAD_BYTES) {
++        throw new Error("pdf upload too large");
++      }
++
+       if (!fileBytes.byteLength || !looksLikePdf(fileBytes)) {
+         throw new Error("invalid pdf file");
+       }
+diff --git a/apps/api/tests/e2e/onboarding.spec.ts b/apps/api/tests/e2e/onboarding.spec.ts
+index a58eb00..af33f07 100644
+--- a/apps/api/tests/e2e/onboarding.spec.ts
++++ b/apps/api/tests/e2e/onboarding.spec.ts
+@@ -269,4 +269,34 @@ describe("POST /api/profiles", () => {
+       message: "stale telegram init data",
+     });
+   });
++
++  it("rejects future-dated Telegram launch data beyond the clock-skew tolerance", async () => {
++    const app = await buildApp({
++      env: readEnv({
++        APP_PORT: "3001",
++        TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
++        TELEGRAM_BOT_APP_SHORT_NAME: "playground",
++        TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
++        PROFILE_REPO_MODE: "memory",
++      }),
++    });
++    const futureInitData = createSignedTelegramInitData({
++      authDate: String(Math.floor(Date.now() / 1000) + 120),
++    });
++    const response = await app.inject({
++      method: "POST",
++      url: "/api/profiles",
++      payload: {
++        initData: futureInitData,
++        firstName: "Ada",
++        lastName: "Lovelace",
++        preferredName: "Ada",
++      },
++    });
++
++    expect(response.statusCode).toBe(401);
++    expect(response.json()).toEqual({
++      message: "future-dated telegram init data",
++    });
++  });
+ });
+diff --git a/apps/api/tests/e2e/telegram-bot.spec.ts b/apps/api/tests/e2e/telegram-bot.spec.ts
+index 25a7813..2069aef 100644
+--- a/apps/api/tests/e2e/telegram-bot.spec.ts
++++ b/apps/api/tests/e2e/telegram-bot.spec.ts
+@@ -4,8 +4,37 @@ import {
+   clearTelegramWebhook,
+   handleTelegramUpdate,
+   pollTelegramUpdatesOnce,
++  sendTelegramMessage,
+ } from "../../src/modules/telegram/telegram-bot.service";
+ 
++function telegramRateLimitResponse(retryAfterSeconds: number) {
++  return new Response(
++    JSON.stringify({
++      ok: false,
++      error_code: 429,
++      description: `Too Many Requests: retry after ${retryAfterSeconds}`,
++      parameters: { retry_after: retryAfterSeconds },
++    }),
++    {
++      status: 429,
++      headers: { "content-type": "application/json" },
++    },
++  );
++}
++
++function telegramOkResponse() {
++  return new Response(JSON.stringify({ ok: true }), {
++    status: 200,
++    headers: { "content-type": "application/json" },
++  });
++}
++
++const testMessage = {
++  chatId: -100123,
++  text: "hello",
++  replyMarkup: { inline_keyboard: [] },
++};
++
+ const env = readEnv({
+   APP_PORT: "3001",
+   TELEGRAM_BOT_USERNAME: "PBGbigkitty_bot",
+@@ -241,4 +270,84 @@ describe("Telegram bot runtime", () => {
+       }),
+     );
+   });
++
++  it("honors retry_after on 429 and succeeds on the next attempt", async () => {
++    const fetchMock = vi
++      .fn()
++      .mockResolvedValueOnce(telegramRateLimitResponse(5))
++      .mockResolvedValueOnce(telegramOkResponse());
++    const wait = vi.fn().mockResolvedValue(undefined);
++
++    await sendTelegramMessage({
++      env,
++      fetchImpl: fetchMock,
++      message: testMessage,
++      wait,
++    });
++
++    expect(fetchMock).toHaveBeenCalledTimes(2);
++    expect(wait).toHaveBeenCalledTimes(1);
++    expect(wait).toHaveBeenCalledWith(5000);
++  });
++
++  it("bounds a hostile retry_after to the configured cap", async () => {
++    const fetchMock = vi
++      .fn()
++      .mockResolvedValueOnce(telegramRateLimitResponse(1_000_000))
++      .mockResolvedValueOnce(telegramOkResponse());
++    const wait = vi.fn().mockResolvedValue(undefined);
++
++    await sendTelegramMessage({
++      env,
++      fetchImpl: fetchMock,
++      message: testMessage,
++      wait,
++    });
++
++    expect(wait).toHaveBeenCalledTimes(1);
++    expect(wait).toHaveBeenCalledWith(30_000);
++  });
++
++  it("stops retrying after the max attempt count and throws", async () => {
++    const fetchMock = vi
++      .fn()
++      .mockResolvedValueOnce(telegramRateLimitResponse(1))
++      .mockResolvedValueOnce(telegramRateLimitResponse(1))
++      .mockResolvedValueOnce(telegramRateLimitResponse(1));
++    const wait = vi.fn().mockResolvedValue(undefined);
++
++    await expect(
++      sendTelegramMessage({
++        env,
++        fetchImpl: fetchMock,
++        message: testMessage,
++        wait,
++      }),
++    ).rejects.toThrow("telegram sendMessage failed with status 429");
++
++    expect(fetchMock).toHaveBeenCalledTimes(3);
++    expect(wait).toHaveBeenCalledTimes(2);
++  });
++
++  it("still throws immediately on non-429 failures without waiting", async () => {
++    const fetchMock = vi.fn().mockResolvedValueOnce(
++      new Response(JSON.stringify({ ok: false }), {
++        status: 500,
++        headers: { "content-type": "application/json" },
++      }),
++    );
++    const wait = vi.fn().mockResolvedValue(undefined);
++
++    await expect(
++      sendTelegramMessage({
++        env,
++        fetchImpl: fetchMock,
++        message: testMessage,
++        wait,
++      }),
++    ).rejects.toThrow("telegram sendMessage failed with status 500");
++
++    expect(fetchMock).toHaveBeenCalledTimes(1);
++    expect(wait).not.toHaveBeenCalled();
++  });
+ });
+diff --git a/apps/api/tests/e2e/uploads-and-reports.spec.ts b/apps/api/tests/e2e/uploads-and-reports.spec.ts
+index a34318f..7474d08 100644
+--- a/apps/api/tests/e2e/uploads-and-reports.spec.ts
++++ b/apps/api/tests/e2e/uploads-and-reports.spec.ts
+@@ -229,7 +229,7 @@ describe("document wizard uploads and reports", () => {
+     });
+   });
+ 
+-  it("rejects spoofed pdf uploads when bytes contain only a fake pdf header", async () => {
++  it("rejects uploads whose bytes do not start with the %PDF- header", async () => {
+     const { app, sessionId, sessionToken } = await createAuthorizedSession();
+ 
+     const response = await app.inject({
+@@ -244,7 +244,7 @@ describe("document wizard uploads and reports", () => {
+         filename: "sample.pdf",
+         mimeType: "application/pdf",
+         fileBytesBase64: Buffer.from(
+-          "%PDF-this is not a real pdf at all",
++          "this is not a real pdf at all",
+         ).toString("base64"),
+         formData: {
+           clientName: "Acme Co",
+@@ -259,6 +259,38 @@ describe("document wizard uploads and reports", () => {
+     });
+   });
+ 
++  it(
++    "rejects pdf uploads larger than the configured byte cap",
++    async () => {
++      const { app, sessionId, sessionToken } = await createAuthorizedSession();
++
++      const response = await app.inject({
++        method: "POST",
++        url: "/api/reports/document-wizard",
++        headers: {
++          authorization: `Bearer ${sessionToken}`,
++        },
++        payload: {
++          sessionId,
++          botId: "document_wizard",
++          filename: "oversize.pdf",
++          mimeType: "application/pdf",
++          fileBytesBase64: createLargePdfBase64(5 * 1024 * 1024 + 1024),
++          formData: {
++            clientName: "Acme Co",
++            objective: "Summarize the uploaded agreement",
++          },
++        },
++      });
++
++      expect(response.statusCode).toBe(413);
++      expect(response.json()).toMatchObject({
++        message: "pdf upload too large",
++      });
++    },
++    40000,
++  );
++
+   it("surfaces render failures gracefully after the background job fails", async () => {
+     const { app, sessionId, sessionToken } = await createAuthorizedSession({
+       reportQueueJobRunner: async () => {
+diff --git a/apps/api/tests/telegram/init-data.spec.ts b/apps/api/tests/telegram/init-data.spec.ts
+new file mode 100644
+index 0000000..eb82a11
+--- /dev/null
++++ b/apps/api/tests/telegram/init-data.spec.ts
+@@ -0,0 +1,83 @@
++import { describe, expect, it } from "vitest";
++import {
++  validateTelegramInitData,
++  validateTelegramInitDataWithTokens,
++} from "../../src/modules/telegram/init-data";
++import {
++  createSignedTelegramInitData,
++  TEST_TELEGRAM_BOT_TOKEN,
++} from "../../../../packages/shared/src/testing/telegram-fixtures";
++
++const OTHER_BOT_TOKEN = "999999:some-other-bot-token";
++
++describe("validateTelegramInitData auth_date skew", () => {
++  it("accepts data slightly ahead of the server clock within tolerance", () => {
++    const initData = createSignedTelegramInitData({
++      authDate: String(Math.floor(Date.now() / 1000) + 30),
++    });
++
++    expect(() =>
++      validateTelegramInitData(initData, TEST_TELEGRAM_BOT_TOKEN),
++    ).not.toThrow();
++  });
++
++  it("rejects data dated too far in the future as future-dated, not stale", () => {
++    const initData = createSignedTelegramInitData({
++      authDate: String(Math.floor(Date.now() / 1000) + 120),
++    });
++
++    expect(() =>
++      validateTelegramInitData(initData, TEST_TELEGRAM_BOT_TOKEN),
++    ).toThrow("future-dated telegram init data");
++  });
++
++  it("still rejects old data as stale", () => {
++    const initData = createSignedTelegramInitData({
++      authDate: String(Math.floor(Date.now() / 1000) - 600),
++    });
++
++    expect(() =>
++      validateTelegramInitData(initData, TEST_TELEGRAM_BOT_TOKEN),
++    ).toThrow("stale telegram init data");
++  });
++});
++
++describe("validateTelegramInitDataWithTokens age-error preservation", () => {
++  it("surfaces future-dated telegram init data across multi-token retry instead of a generic invalid error", () => {
++    const initData = createSignedTelegramInitData({
++      authDate: String(Math.floor(Date.now() / 1000) + 120),
++      botToken: TEST_TELEGRAM_BOT_TOKEN,
++    });
++
++    expect(() =>
++      validateTelegramInitDataWithTokens(initData, [
++        OTHER_BOT_TOKEN,
++        TEST_TELEGRAM_BOT_TOKEN,
++      ]),
++    ).toThrow("future-dated telegram init data");
++  });
++
++  it("still surfaces stale telegram init data across multi-token retry", () => {
++    const initData = createSignedTelegramInitData({
++      authDate: String(Math.floor(Date.now() / 1000) - 600),
++      botToken: TEST_TELEGRAM_BOT_TOKEN,
++    });
++
++    expect(() =>
++      validateTelegramInitDataWithTokens(initData, [
++        OTHER_BOT_TOKEN,
++        TEST_TELEGRAM_BOT_TOKEN,
++      ]),
++    ).toThrow("stale telegram init data");
++  });
++
++  it("falls back to a generic invalid error when no candidate token's signature matches", () => {
++    const initData = createSignedTelegramInitData({
++      botToken: TEST_TELEGRAM_BOT_TOKEN,
++    });
++
++    expect(() =>
++      validateTelegramInitDataWithTokens(initData, [OTHER_BOT_TOKEN]),
++    ).toThrow("invalid telegram init data");
++  });
++});
+diff --git a/apps/api/tests/telegram/launch-prefill.spec.ts b/apps/api/tests/telegram/launch-prefill.spec.ts
+new file mode 100644
+index 0000000..a15f4c8
+--- /dev/null
++++ b/apps/api/tests/telegram/launch-prefill.spec.ts
+@@ -0,0 +1,104 @@
++import { afterEach, describe, expect, it, vi } from "vitest";
++import { buildApp } from "../../src/app";
++import { readEnv } from "../../src/config/env";
++import {
++  createSignedTelegramInitData,
++  TEST_TELEGRAM_BOT_TOKEN,
++} from "../../../../packages/shared/src/testing/telegram-fixtures";
++
++afterEach(() => {
++  vi.restoreAllMocks();
++  vi.unstubAllGlobals();
++});
++
++async function buildTestApp() {
++  return buildApp({
++    env: readEnv({
++      APP_PORT: "3001",
++      TELEGRAM_BOT_USERNAME: "sgt_playground_bot",
++      TELEGRAM_BOT_APP_SHORT_NAME: "playground",
++      TELEGRAM_BOT_TOKEN: TEST_TELEGRAM_BOT_TOKEN,
++      PROFILE_REPO_MODE: "memory",
++    }),
++  });
++}
++
++describe("GET /api/telegram/launch", () => {
++  it("authenticates from the x-telegram-init-data header", async () => {
++    const app = await buildTestApp();
++    const initData = createSignedTelegramInitData();
++
++    const response = await app.inject({
++      method: "GET",
++      url: "/api/telegram/launch",
++      headers: {
++        "x-telegram-init-data": initData,
++      },
++    });
++
++    expect(response.statusCode).toBe(200);
++    expect(response.json()).toMatchObject({
++      telegram: {
++        telegramUserId: "123456",
++        username: "ada_l",
++      },
++    });
++  });
++
++  it("rejects requests with no init data header", async () => {
++    const app = await buildTestApp();
++
++    const response = await app.inject({
++      method: "GET",
++      url: "/api/telegram/launch",
++    });
++
++    expect(response.statusCode).toBe(401);
++  });
++
++  it("ignores an initData query parameter now that the header is authoritative", async () => {
++    const app = await buildTestApp();
++    const initData = createSignedTelegramInitData();
++
++    const response = await app.inject({
++      method: "GET",
++      url: `/api/telegram/launch?initData=${encodeURIComponent(initData)}`,
++    });
++
++    expect(response.statusCode).toBe(401);
++  });
++});
++
++describe("GET /api/telegram/prefill", () => {
++  it("authenticates from the x-telegram-init-data header", async () => {
++    const app = await buildTestApp();
++    const initData = createSignedTelegramInitData();
++
++    const response = await app.inject({
++      method: "GET",
++      url: "/api/telegram/prefill",
++      headers: {
++        "x-telegram-init-data": initData,
++      },
++    });
++
++    expect(response.statusCode).toBe(200);
++    expect(response.json()).toMatchObject({
++      profile: {
++        firstName: "Ada",
++        telegramUsername: "ada_l",
++      },
++    });
++  });
++
++  it("rejects requests with no init data header", async () => {
++    const app = await buildTestApp();
++
++    const response = await app.inject({
++      method: "GET",
++      url: "/api/telegram/prefill",
++    });
++
++    expect(response.statusCode).toBe(401);
++  });
++});
+diff --git a/apps/telegram-miniapp/src/lib/telegram.spec.ts b/apps/telegram-miniapp/src/lib/telegram.spec.ts
+index 221cc44..2a5ef66 100644
+--- a/apps/telegram-miniapp/src/lib/telegram.spec.ts
++++ b/apps/telegram-miniapp/src/lib/telegram.spec.ts
+@@ -119,5 +119,20 @@ describe("telegram helpers", () => {
+         url: "https://t.me/sgt_playground_bot/playground?startapp=profile-onboarding",
+       },
+     });
++
++    expect(fetchMock).toHaveBeenNthCalledWith(
++      1,
++      "/api/telegram/launch",
++      expect.objectContaining({
++        headers: { "x-telegram-init-data": "signed-data" },
++      }),
++    );
++    expect(fetchMock).toHaveBeenNthCalledWith(
++      2,
++      "/api/telegram/prefill",
++      expect.objectContaining({
++        headers: { "x-telegram-init-data": "signed-data" },
++      }),
++    );
+   });
+ });
+diff --git a/apps/telegram-miniapp/src/lib/telegram.ts b/apps/telegram-miniapp/src/lib/telegram.ts
+index d295927..3125dde 100644
+--- a/apps/telegram-miniapp/src/lib/telegram.ts
++++ b/apps/telegram-miniapp/src/lib/telegram.ts
+@@ -81,17 +81,21 @@ export async function waitForTelegramInitData(input: {
+ }
+ 
+ export async function fetchLaunchContext(initData: string): Promise<LaunchContext> {
+-  const launchResponse = await fetch(
+-    `/api/telegram/launch?initData=${encodeURIComponent(initData)}`,
+-  );
++  const launchResponse = await fetch("/api/telegram/launch", {
++    headers: {
++      "x-telegram-init-data": initData,
++    },
++  });
+ 
+   if (!launchResponse.ok) {
+     throw new Error("launch validation failed");
+   }
+ 
+-  const prefillResponse = await fetch(
+-    `/api/telegram/prefill?initData=${encodeURIComponent(initData)}`,
+-  );
++  const prefillResponse = await fetch("/api/telegram/prefill", {
++    headers: {
++      "x-telegram-init-data": initData,
++    },
++  });
+ 
+   if (!prefillResponse.ok) {
+     throw new Error("profile prefill failed");
+
+```

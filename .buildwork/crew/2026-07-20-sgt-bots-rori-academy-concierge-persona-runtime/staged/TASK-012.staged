@@ -1,0 +1,106 @@
+# TASK-012 — STAGED FOR AUDIT (cycle 1)
+
+**Status in record: `pending`** — not advanced. Only the Auditor's sign-off permits
+`completed`.
+
+- build_id: `2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime`
+- Record revision: **15** (was 13 at briefing; +1 engineer envelope, +1 orchestrator
+  verification envelope). `validate-build.ps1` → `ok: true` after each merge.
+- Classification: **full crew** — four independent concerns, 9 files, one new interface
+  (artifact-root override) and one new config file. Engineer implemented directly
+  rather than spawning builders and disclosed it; accepted, same as the TASK-010 cycle.
+- Wall clock: ~1h50m. Engineer run 1000s, QC reviewer 24s.
+
+## Summary of the change
+
+Nine files. All four ticket items delivered.
+
+1. **Dead code.** (a) Removed the `ArtifactList` component and `ArtifactListProps`;
+   **kept the file and the `ArtifactListItem` type export**, which has four live
+   importers. The originating audit's wording ("remove dead `ArtifactList.tsx`") was
+   inaccurate — this was caught pre-dispatch, adjudicated in the brief, and
+   independently re-verified by the engineer. (b) Removed the unreachable
+   `buildCreditBureauDisputeHelperReply` plus its 4 tests, plus 5 private helpers it
+   orphaned.
+2. **Stray artifacts.** Deleted all 13 inventoried targets (~3.3 GB): 5
+   `*-20260531.tar`, `codex-oauth-fix-20260531.tar.gz`, `sgt-bots-rori-fix.tar.gz`,
+   `sgt-bots-rori-fix.zip`, 4 `tmp-rori-*` files, `.deploy-src/`. `.deploy-images/`
+   (4.7 G) preserved and gitignored. Six new `.gitignore` entries.
+3. **Polling.** Network session-refresh poll `1000ms` → **`8000ms`**. The local 1000 ms
+   countdown ticker was left untouched, so low-time nudges are unaffected.
+4. **Flake fix.** `artifactRoot` made injectable on `createReportService`
+   (`deps.artifactRoot` → `RUNTIME_ARTIFACTS_ROOT` env var → original cwd path). New
+   `apps/api/vitest.config.ts` + `apps/api/tests/setup/runtime-artifacts.ts` give every
+   test file its own temp directory. `report.service.spec.ts` switched off a
+   now-defeated `process.chdir` pattern.
+
+## Verification — orchestrator re-derived, not accepted as claimed
+
+| Check | Result |
+|---|---|
+| API suite ×3 from **dirty** `.runtime-artifacts` (23 files, never cleared) | **47 files / 386 tests, 0 failed** — all three runs |
+| Expected test delta | 390 − 4 removed = 386 ✓ exact |
+| Mini app suite | **9 files / 67 tests**, 0 failed (baseline match) |
+| `@sgt-bots/api lint` | exit 0 |
+| `@sgt-bots/telegram-miniapp lint` | exit 0 |
+| Deletions | 13/13 confirmed absent |
+| Protected paths | `.deploy-images`, `BLUEPRINT`, `CLAUDE.md`, `.buildwork/`, `Dockerfile.backend.hotfix` all present |
+| `.buildwork/` not ignored | confirmed |
+| Zero-reference greps | clean for all 7 removed symbols |
+| CON-003 | historical docs still at 08:24 baseline mtime |
+
+**Isolation proof (the strongest single piece of evidence).** `.runtime-artifacts` held
+23 files with newest mtime 10:25:19 — predating the engineer's 12:55 start — and held
+exactly 23 files with the identical newest mtime after all three suite runs. Test runs
+previously wrote into that directory (that is why it was dirty). Zero writes across
+three runs is only possible if the setup file ran. This also closes the QC reviewer's
+"can't verify vitest.config.ts is picked up" item.
+
+## QC review
+
+**PASS.** Fresh blank-context reviewer, frozen diff. Per the standing instruction, the
+diff excluded signed-off TASK-010/TASK-011 work: `DashboardShell.tsx` was reduced to
+only the `1000`→`8000` hunk after I confirmed its other two hunks belong to TASK-011
+cycle 2 (reconstructed by applying `task011-diff.patch` to the HEAD file and diffing).
+No blocking or non-blocking findings. Its three UNVERIFIED items were filesystem facts
+a diff cannot show; all three closed above.
+
+## Evidence locations
+
+- Brief: `assignments/TASK-012-brief.md`
+- Engineer envelope: `updates/.../UPD-TASK-012-cycle1.json` (merged, rev 14)
+- Orchestrator verification: `updates/.../UPD-TASK-012-orchestrator-verification-cycle1.json` (merged, rev 15)
+- QC review: `reports/TASK-012-qc-review-cycle1.md`
+- Frozen diff: `prompts/task012-diff.patch`
+- Engineer run: `reports/TASK-012-engineer-cycle1-result.json`
+
+## Items requiring auditor attention
+
+1. **A build-level decision is still owed.** The ticket required a `decision` recording
+   TASK-012's scope extension to the flake fix. The engineer's `write_scope` is
+   `tasks[id=TASK-012]`, so it could only be staged as
+   `tasks[TASK-012].proposed_decisions[3]` — it is **not** in the top-level `decisions`
+   array (still 4 entries, last `DEC-004`). Promoting it to `DEC-005` needs auditor
+   authority. **This ticket is not fully satisfied until that promotion happens.**
+2. **Item 1b removed 5 helpers beyond the briefed scope.** Genuinely orphaned and
+   verified zero-reference, but `noUnusedLocals` is not set, so this was judgment, not
+   lint-forced. Disclosed by the engineer. I accepted it as in-scope.
+3. **`.gitignore` breadth.** Root-anchored `/*.tar`, `/*.tar.gz`, `/*.zip` rather than
+   the specific filenames — broader than the audit's literal wording. Defensible (no
+   legitimate root-level archive exists here) but it is a judgment call, not a
+   mechanical application of the brief.
+4. **Test-count baseline moved** from 390 to 386 for future gates, including the
+   TASK-008 production readiness gate. The flake that made the build-level "full API
+   suite green" criterion non-deterministic is now fixed, which was the point of the
+   extension.
+
+## Honest gaps
+
+- The `8000ms` interval was not exercised against a live backend; correctness rests on
+  reading the effect chain plus the mini app suite. The nudge-independence argument is
+  structural (separate local ticker) and I verified it in the source, but no runtime
+  observation of a real 3-hour session was performed.
+- Deletions are irreversible. The inventory (path + byte size) is recorded in the
+  engineer envelope's evidence and in the brief's table; the files themselves are gone.
+- I did not re-run the pre-TASK-012 baseline to re-confirm the flake reproduces, since
+  TASK-010's audit already established it with stash-and-rerun evidence.

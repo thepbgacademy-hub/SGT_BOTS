@@ -14,14 +14,12 @@ export type StoredUpload = {
   virusScanStatus: "pending";
 };
 
-function looksLikePdf(fileBytes: Buffer) {
-  const header = fileBytes.subarray(0, 5).toString("utf8");
-  const body = fileBytes.toString("utf8");
+// Kept comfortably under Fastify's 8 MiB bodyLimit (app.ts) once base64
+// overhead (~4/3) and JSON wrapper fields are accounted for.
+export const MAX_PDF_UPLOAD_BYTES = 5 * 1024 * 1024;
 
-  return (
-    header === "%PDF-" &&
-    (body.includes("%%EOF") || /\b\d+\s+\d+\s+obj\b/u.test(body))
-  );
+function looksLikePdf(fileBytes: Buffer) {
+  return fileBytes.subarray(0, 5).toString("utf8") === "%PDF-";
 }
 
 export function createUploadService(deps?: { now?: () => number }) {
@@ -44,6 +42,10 @@ export function createUploadService(deps?: { now?: () => number }) {
 
       if (!input.filename.toLowerCase().endsWith(".pdf")) {
         throw new Error("pdf uploads only");
+      }
+
+      if (fileBytes.byteLength > MAX_PDF_UPLOAD_BYTES) {
+        throw new Error("pdf upload too large");
       }
 
       if (!fileBytes.byteLength || !looksLikePdf(fileBytes)) {

@@ -1,5 +1,11 @@
 # Telegram Bot Persona Runtime Roadmap
 
+> **SUPERSEDED 2026-07-20 — historical reference only. Do not tick phase or ticket checkboxes here.**
+> Ticket definitions below remain useful context, but task status lives in the
+> beginning-builds record:
+> `.buildwork/builds/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime.json`
+> (context: `BLUEPRINT-2026-07-20.md`, authority: `CLAUDE.md`).
+
 Audit source:
 - `E:/Fable/Codex/docs/telegram-bot-persona-audit-plan.md`
 

@@ -1,0 +1,54 @@
+{
+  "update_id": "UPD-TASK-011-cycle2",
+  "build_id": "2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime",
+  "task_id": "TASK-011",
+  "agent_id": "engineer-task-011-cycle2",
+  "created_at": "2026-07-20T20:15:00Z",
+  "expected_revision": 9,
+  "write_scope": "tasks[id=TASK-011]",
+  "merge_status": "merged",
+  "evidence": [
+    {
+      "type": "summary",
+      "summary": "See proposed_changes.evidence for the full, mergeable evidence list (lint + test commands and results) for this cycle only.",
+      "reference": "proposed_changes.evidence"
+    }
+  ],
+  "proposed_changes": {
+    "progress": "Closed the cycle-1 gap: item 1's starter prompts were Rori-only even though audit line 72 says 'per bot'. Generalized apps/telegram-miniapp/src/features/rori/starter-prompts.ts in place from a single RORI_STARTER_PROMPTS export into a per-bot lookup: kept RORI_STARTER_PROMPTS byte-identical (RoriWorkspace.spec.tsx still asserts on it verbatim, still imported by RoriWorkspace.tsx unchanged), added a module-private STARTER_PROMPTS_BY_BOT_ID: Partial<Record<BotId, string[]>> keyed by manifest BotId, and exported a new pure function getStarterPromptsForBot(botId?: string | null): string[] that returns [] for any id not in the map (covers unknown ids and the no-bot-selected case; never throws). Wired it into the generic chat call site at DashboardShell.tsx (ChatPanel invocation formerly at line 2381, now a few lines lower after the added import) via starterPrompts={getStarterPromptsForBot(selectedBot?.id)}. Did not touch hideEmptyState at this call site -- confirmed by re-reading the JSX before editing that it was not passed there before this change and is still not passed after; the audit's un-hide instruction was scoped to Rori only and that was cycle 1's job. Full per-bot coverage after this cycle: concierge_general_academy_KB (Rori) -> RORI_STARTER_PROMPTS (unchanged, 4 strings, via RoriWorkspace's own dedicated call site, not this one); document_wizard (Cursive) -> 3 new prompts; tutor (Insight) -> 3 new prompts; verifier (Top Secret) -> 3 new prompts; tax_legal_research (Condor) -> 3 new prompts; form_wizard (ShAzZaM!) -> intentionally no map entry. Confirmed form_wizard needs no entry by reading DashboardShell.tsx: the generic ChatPanel call site is inside an `isFormWizardWorkspace ? <FormWizardPanel .../> : <ChatPanel ... />` branch, so ShAzZaM! never reaches the ChatPanel/starterPrompts prop at all; getStarterPromptsForBot('form_wizard') falls through to the same-as-unmapped [] fallback regardless, so there is no dead or unreachable entry to maintain.",
+    "findings": [],
+    "artifacts": [
+      "apps/telegram-miniapp/src/features/rori/starter-prompts.ts",
+      "apps/telegram-miniapp/src/features/dashboard/DashboardShell.tsx",
+      "apps/telegram-miniapp/src/features/dashboard/DashboardShell.spec.tsx"
+    ],
+    "evidence": [
+      {
+        "type": "test",
+        "summary": "Mini app suite green: 9 files / 67 tests (cycle-1 baseline was 9 files / 65 tests; added 2 new tests in DashboardShell.spec.tsx -- one asserting getStarterPromptsForBot + ChatPanel render starter-prompt buttons for a non-Rori bot (tutor/Insight), one asserting the unknown/missing-id fallback returns []). No regressions, no other file's test count changed.",
+        "reference": "cd apps/telegram-miniapp && corepack pnpm exec vitest run  =>  Test Files 9 passed (9); Tests 67 passed (67)"
+      },
+      {
+        "type": "lint",
+        "summary": "telegram-miniapp lint (tsc --noEmit) exit 0.",
+        "reference": "corepack pnpm --filter @sgt-bots/telegram-miniapp lint  =>  exit 0, no output"
+      },
+      {
+        "type": "lint",
+        "summary": "api lint (tsc --noEmit) exit 0 -- run even though no apps/api file was touched this cycle either.",
+        "reference": "corepack pnpm --filter @sgt-bots/api lint  =>  exit 0, no output"
+      },
+      {
+        "type": "test",
+        "summary": "Full apps/api vitest suite: NOT RUN. No file under apps/api was touched this cycle (starter prompts stayed mini-app-local per the cycle-1 decision, reaffirmed below), so it stays out of this cycle's bar per the brief. Reporting 'not run' rather than fabricating a result.",
+        "reference": "not run"
+      }
+    ],
+    "proposed_decisions": [
+      "Per-bot prompt authoring approach: each non-Rori bot's 3 prompts were derived only from that bot's own packages/shared/src/bots/manifests.ts `description` and its matching entry in apps/telegram-miniapp/src/features/dashboard/bot-workspace-panels.ts (mission/workflowSteps copy), not from any pricing, policy, enrollment, or verification-outcome claim. Kept every prompt strictly question-shaped ('What can you help me draft?', 'Can I upload a source PDF to start?', 'What does a finished report look like?' for document_wizard; 'Can you explain this step by step?', 'How should I practice this topic?', 'What should I try first?' for tutor; 'Can you check a claim I saw online?', 'How many statements can I paste at once?', 'What will the report include?' for verifier; 'What tax topic can you help me research?', 'Can you help me find a legal research starting point?', 'What should I consider before escalating this?' for tax_legal_research) -- none assert a fact, a number, a price, a policy term, or a verification result, so none can go stale or misrepresent the bot's grounded behavior the way a fact-shaped prompt could.",
+      "Data location: reaffirmed the cycle-1 call to keep this mini-app-local (generalized the existing apps/telegram-miniapp/src/features/rori/starter-prompts.ts file in place rather than moving/duplicating into a new module or into packages/shared/src/bots/manifests.ts). Reasoning unchanged from cycle 1: manifests.ts is consumed by apps/api, so adding fields there would pull the API suite into this UI-only ticket's verification bar. DashboardShell.tsx (features/dashboard) importing from features/rori/starter-prompts.ts is a same-app, cross-feature import (not a cross-package one); judged acceptable since RoriWorkspace's import of the same file already established that module as the shared per-bot prompt source, and moving it to a new sibling module would only add a file rename with no behavior change.",
+      "Test placement: extended DashboardShell.spec.tsx (per the brief) by rendering ChatPanel directly with the resolved getStarterPromptsForBot(...) output, rather than rendering the top-level <DashboardShell> component. DashboardShell itself bootstraps session state via useState/useEffect/fetch (bot catalog fetch, session polling, countdown timers) with no prop to pre-seed a selected bot, so it cannot produce the generic chat surface's markup through a single-pass renderToStaticMarkup call -- this is the same constraint the pre-existing suite already works around by testing CursiveWorkspaceShell (an extracted subcomponent) instead of the full shell for Cursive's step flow. The added test instead renders exactly what the real call site renders (ChatPanel with the same starterPrompts value DashboardShell.tsx now computes), which verifies both the per-bot lookup's output and that ChatPanel turns a non-empty list into starter-prompt-button markup -- the same two facts a full-shell render would need to prove, without requiring jsdom/testing-library (kept out per the brief)."
+    ],
+    "blockers": []
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-07-20T18:32:03Z",
+  "builds": {
+    "2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime": {
+      "path": ".buildwork/builds/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime.json",
+      "title": "SGT Bots Rori Academy Concierge Persona Runtime",
+      "type": "software",
+      "status": "active"
+    }
+  },
+  "invalid_files": []
+}

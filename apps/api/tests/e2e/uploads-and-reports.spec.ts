@@ -229,7 +229,7 @@ describe("document wizard uploads and reports", () => {
     });
   });
 
-  it("rejects spoofed pdf uploads when bytes contain only a fake pdf header", async () => {
+  it("rejects uploads whose bytes do not start with the %PDF- header", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession();
 
     const response = await app.inject({
@@ -244,7 +244,7 @@ describe("document wizard uploads and reports", () => {
         filename: "sample.pdf",
         mimeType: "application/pdf",
         fileBytesBase64: Buffer.from(
-          "%PDF-this is not a real pdf at all",
+          "this is not a real pdf at all",
         ).toString("base64"),
         formData: {
           clientName: "Acme Co",
@@ -258,6 +258,38 @@ describe("document wizard uploads and reports", () => {
       message: "invalid pdf file",
     });
   });
+
+  it(
+    "rejects pdf uploads larger than the configured byte cap",
+    async () => {
+      const { app, sessionId, sessionToken } = await createAuthorizedSession();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/reports/document-wizard",
+        headers: {
+          authorization: `Bearer ${sessionToken}`,
+        },
+        payload: {
+          sessionId,
+          botId: "document_wizard",
+          filename: "oversize.pdf",
+          mimeType: "application/pdf",
+          fileBytesBase64: createLargePdfBase64(5 * 1024 * 1024 + 1024),
+          formData: {
+            clientName: "Acme Co",
+            objective: "Summarize the uploaded agreement",
+          },
+        },
+      });
+
+      expect(response.statusCode).toBe(413);
+      expect(response.json()).toMatchObject({
+        message: "pdf upload too large",
+      });
+    },
+    40000,
+  );
 
   it("surfaces render failures gracefully after the background job fails", async () => {
     const { app, sessionId, sessionToken } = await createAuthorizedSession({

@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  applyTelegramThemeParams,
+  computeThemeCssVariables,
   fetchLaunchContext,
   initializeTelegramWebApp,
   readTelegramInitData,
+  setTelegramBackButton,
+  setTelegramClosingConfirmation,
+  triggerTelegramHaptic,
   waitForTelegramInitData,
 } from "./telegram";
 
@@ -119,5 +124,134 @@ describe("telegram helpers", () => {
         url: "https://t.me/sgt_playground_bot/playground?startapp=profile-onboarding",
       },
     });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/telegram/launch",
+      expect.objectContaining({
+        headers: { "x-telegram-init-data": "signed-data" },
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/telegram/prefill",
+      expect.objectContaining({
+        headers: { "x-telegram-init-data": "signed-data" },
+      }),
+    );
+  });
+
+  it("no-ops the BackButton wiring outside Telegram", () => {
+    vi.stubGlobal("window", {} as unknown as Window & typeof globalThis);
+
+    const cleanup = setTelegramBackButton(() => undefined);
+
+    expect(() => cleanup()).not.toThrow();
+  });
+
+  it("shows and binds the Telegram BackButton, and tears it down on cleanup", () => {
+    const show = vi.fn();
+    const hide = vi.fn();
+    const onClick = vi.fn();
+    const offClick = vi.fn();
+    vi.stubGlobal("window", {
+      Telegram: {
+        WebApp: {
+          BackButton: { show, hide, onClick, offClick },
+        },
+      },
+    } as unknown as Window & typeof globalThis);
+
+    const handler = () => undefined;
+    const cleanup = setTelegramBackButton(handler);
+
+    expect(onClick).toHaveBeenCalledWith(handler);
+    expect(show).toHaveBeenCalledTimes(1);
+
+    cleanup();
+
+    expect(offClick).toHaveBeenCalledWith(handler);
+    expect(hide).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not throw when triggering haptics outside Telegram", () => {
+    vi.stubGlobal("window", {} as unknown as Window & typeof globalThis);
+
+    expect(() => triggerTelegramHaptic("light")).not.toThrow();
+  });
+
+  it("forwards haptic impact style to the Telegram WebApp", () => {
+    const impactOccurred = vi.fn();
+    vi.stubGlobal("window", {
+      Telegram: {
+        WebApp: {
+          HapticFeedback: { impactOccurred },
+        },
+      },
+    } as unknown as Window & typeof globalThis);
+
+    triggerTelegramHaptic("medium");
+
+    expect(impactOccurred).toHaveBeenCalledWith("medium");
+  });
+
+  it("does not throw when toggling closing confirmation outside Telegram", () => {
+    vi.stubGlobal("window", {} as unknown as Window & typeof globalThis);
+
+    expect(() => setTelegramClosingConfirmation(true)).not.toThrow();
+  });
+
+  it("enables and disables the Telegram closing confirmation", () => {
+    const enableClosingConfirmation = vi.fn();
+    const disableClosingConfirmation = vi.fn();
+    vi.stubGlobal("window", {
+      Telegram: {
+        WebApp: { enableClosingConfirmation, disableClosingConfirmation },
+      },
+    } as unknown as Window & typeof globalThis);
+
+    setTelegramClosingConfirmation(true);
+    expect(enableClosingConfirmation).toHaveBeenCalledTimes(1);
+
+    setTelegramClosingConfirmation(false);
+    expect(disableClosingConfirmation).toHaveBeenCalledTimes(1);
+  });
+
+  it("maps known theme param keys to app CSS variables and ignores unset ones", () => {
+    expect(
+      computeThemeCssVariables({
+        bg_color: "#111111",
+        text_color: "#eeeeee",
+      }),
+    ).toEqual({
+      "--bg": "#111111",
+      "--text": "#eeeeee",
+    });
+    expect(computeThemeCssVariables({})).toEqual({});
+  });
+
+  it("applies theme params to a given root without touching global document", () => {
+    vi.stubGlobal("window", {
+      Telegram: {
+        WebApp: {
+          themeParams: { bg_color: "#0a0a0a", hint_color: "#c7b588" },
+        },
+      },
+    } as unknown as Window & typeof globalThis);
+    const setProperty = vi.fn();
+
+    applyTelegramThemeParams({ style: { setProperty } });
+
+    expect(setProperty).toHaveBeenCalledWith("--bg", "#0a0a0a");
+    expect(setProperty).toHaveBeenCalledWith("--muted", "#c7b588");
+  });
+
+  it("applies no theme variables outside Telegram", () => {
+    vi.stubGlobal("window", {} as unknown as Window & typeof globalThis);
+    const setProperty = vi.fn();
+
+    applyTelegramThemeParams({ style: { setProperty } });
+
+    expect(setProperty).not.toHaveBeenCalled();
   });
 });

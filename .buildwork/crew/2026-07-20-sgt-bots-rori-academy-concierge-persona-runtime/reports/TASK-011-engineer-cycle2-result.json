@@ -1,0 +1,14 @@
+{
+  "status": "completed",
+  "output": "Both files are untracked (new), and cycle1's file is unmodified \u2014 only cycle2's is new alongside it. Everything checks out.\n\n**Cycle 2 complete.** Closed the \"per bot\" gap: generalized `starter-prompts.ts` into a per-bot lookup (`getStarterPromptsForBot`), wired it into `DashboardShell.tsx`'s generic `ChatPanel` call site, and added coverage for Cursive, Insight, Top Secret, and Condor with question-shaped prompts derived from each bot's own manifest description/workspace copy. `form_wizard` confirmed to need no entry (routes to `FormWizardPanel`, never reaches `ChatPanel`). Rori's existing 4 prompts stayed byte-identical.\n\nVerification: mini app suite 9 files / 67 tests (up from 65), both linters exit 0, `apps/api` untouched. Envelope written to `UPD-TASK-011-cycle2.json` and validated against the schema; `UPD-TASK-011-cycle1.json` left untouched for the orchestrator to merge in order.\n",
+  "duration": 280.15758650000134,
+  "command": [
+    "C:\\Users\\homes\\AppData\\Roaming\\npm\\claude.CMD",
+    "-p",
+    "--model",
+    "claude-sonnet-5",
+    "--allowedTools",
+    "Bash,Read,Write,Edit,Glob,Grep"
+  ],
+  "returncode": 0
+}

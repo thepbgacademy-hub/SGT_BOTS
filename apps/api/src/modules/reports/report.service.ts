@@ -99,13 +99,18 @@ const ARTIFACT_RETENTION_MS = 6 * 60 * 60 * 1000;
 
 export function createReportService(deps: {
   analyticsService: ReturnType<typeof createAnalyticsService>;
+  artifactRoot?: string;
   now?: () => number;
   reportQueue: ReturnType<typeof createInMemoryReportQueue>;
   uploadService: ReturnType<typeof createUploadService>;
 }) {
   const artifacts = new Map<string, ArtifactRecord>();
   const now = deps.now ?? (() => Date.now());
-  const artifactRoot = path.resolve(process.cwd(), ".runtime-artifacts");
+  const artifactRoot = path.resolve(
+    deps.artifactRoot ??
+      process.env.RUNTIME_ARTIFACTS_ROOT ??
+      path.join(process.cwd(), ".runtime-artifacts"),
+  );
 
   function ensureArtifactDirectory(filePath: string) {
     fs.mkdirSync(path.dirname(filePath), { recursive: true });

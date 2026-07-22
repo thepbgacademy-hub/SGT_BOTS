@@ -1,26 +1,20 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createAnalyticsService } from "../../src/modules/analytics/analytics.service";
 import { createReportService } from "../../src/modules/reports/report.service";
 import { createUploadService } from "../../src/modules/uploads/upload.service";
 
-const originalCwd = process.cwd();
-
-afterEach(() => {
-  process.chdir(originalCwd);
-});
-
 describe("createReportService", () => {
   it("hydrates queued artifact metadata and rendered files from disk", async () => {
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cursive-artifacts-"));
-    process.chdir(tempRoot);
+    const artifactRoot = fs.mkdtempSync(path.join(os.tmpdir(), "cursive-artifacts-"));
 
     const analyticsService = createAnalyticsService();
     const uploadService = createUploadService();
     const reportService = createReportService({
       analyticsService,
+      artifactRoot,
       reportQueue: {
         enqueueRenderReportJob(input) {
           return {
@@ -65,6 +59,7 @@ describe("createReportService", () => {
 
     const rehydratedService = createReportService({
       analyticsService: createAnalyticsService(),
+      artifactRoot,
       reportQueue: {
         enqueueRenderReportJob(input) {
           return {
@@ -97,13 +92,13 @@ describe("createReportService", () => {
   });
 
   it("replaces older Top Secret artifacts for the same session and user", () => {
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "top-secret-artifacts-"));
-    process.chdir(tempRoot);
+    const artifactRoot = fs.mkdtempSync(path.join(os.tmpdir(), "top-secret-artifacts-"));
 
     const analyticsService = createAnalyticsService();
     const uploadService = createUploadService();
     const reportService = createReportService({
       analyticsService,
+      artifactRoot,
       reportQueue: {
         enqueueRenderReportJob(input) {
           return {
@@ -167,11 +162,11 @@ describe("createReportService", () => {
   });
 
   it("builds a safe personalized Top Secret filename", () => {
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "top-secret-name-"));
-    process.chdir(tempRoot);
+    const artifactRoot = fs.mkdtempSync(path.join(os.tmpdir(), "top-secret-name-"));
 
     const reportService = createReportService({
       analyticsService: createAnalyticsService(),
+      artifactRoot,
       reportQueue: {
         enqueueRenderReportJob(input) {
           return {
@@ -200,14 +195,14 @@ describe("createReportService", () => {
   });
 
   it("purges artifacts older than six hours when hydrating from disk", () => {
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "artifact-retention-"));
-    process.chdir(tempRoot);
+    const artifactRoot = fs.mkdtempSync(path.join(os.tmpdir(), "artifact-retention-"));
 
     const createdAt = new Date("2026-05-31T00:00:00.000Z").getTime();
     const cleanupAt = createdAt + 6 * 60 * 60 * 1000 + 1;
 
     const reportService = createReportService({
       analyticsService: createAnalyticsService(),
+      artifactRoot,
       now: () => createdAt,
       reportQueue: {
         enqueueRenderReportJob(input) {
@@ -247,6 +242,7 @@ describe("createReportService", () => {
 
     const rehydratedService = createReportService({
       analyticsService: createAnalyticsService(),
+      artifactRoot,
       now: () => cleanupAt,
       reportQueue: {
         enqueueRenderReportJob(input) {
