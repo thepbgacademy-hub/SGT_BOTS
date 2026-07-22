@@ -1,7 +1,7 @@
 {
   "$schema": "beginning-builds/build-work.schema.json",
   "schema_version": "1.0.0",
-  "revision": 17,
+  "revision": 18,
   "build": {
     "id": "2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime",
     "title": "SGT Bots Rori Academy Concierge Persona Runtime",
@@ -10,7 +10,7 @@
     "workspace": ".",
     "parent_build_id": null,
     "created_at": "2026-07-20T13:20:25Z",
-    "updated_at": "2026-07-20T18:33:30Z"
+    "updated_at": "2026-07-22T16:00:00Z"
   },
   "objective": {
     "summary": "Complete the SGT Bots Telegram Playground persona/runtime build on branch codex/rori-academy-concierge: grounded persona bots (Rori, Top Secret, Insight) that answer only from approved sources, deterministic utility lanes (Cursive, ShAzZaM!, Condor), redacted runtime observability, and an evidence-based rollout gate. This record adopts an in-progress build previously tracked in HANDOFF.md, TASKS.md, and docs/superpowers.",
@@ -92,6 +92,11 @@
       "id": "DEC-005",
       "text": "TASK-012's scope was extended beyond the 2026-07-13 audit's literal housekeeping list to also fix the apps/api/.runtime-artifacts test-isolation flake. The chosen fix is real per-test-file isolation, not defensiveness: createReportService gained an optional deps.artifactRoot, resolving deps.artifactRoot -> process.env.RUNTIME_ARTIFACTS_ROOT -> path.join(process.cwd(), '.runtime-artifacts'), with a new apps/api/vitest.config.ts setupFiles hook (apps/api/tests/setup/runtime-artifacts.ts) that mkdtemps one OS temp directory per test file and removes it afterward. hydrateArtifactsFromDisk's walk was deliberately NOT made tolerant of files vanishing mid-walk, and parallelism was NOT disabled; the in-memory artifact Map, queue, and retention/purge logic are untouched, consistent with the standing 2026-07-13 non-recommendation against replacing the in-memory store while the deploy is a single container. The production path is unchanged (app.ts supplies neither override). Consequence for future gates: the API-suite baseline is now 386 tests (390 minus the 4 removed buildCreditBureauDisputeHelperReply tests), and the suite is deterministic from a dirty .runtime-artifacts directory with no manual clearing.",
       "rationale": "Provenance: recorded as nit 2 in the TASK-010 audit (.buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/findings/TASK-010-audit-1.md), approved by the user at the TASK-012 dispatch boundary, and promoted to a build-level decision at TASK-012 sign-off under the explicit auditor authorization in .buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/findings/TASK-012-audit-1.md (the only top-level write that audit authorizes). The flake made 'full API suite green' non-deterministic unless the directory was cleared first, which would have degraded the evidence quality of the TASK-008 production readiness gate run; fixing it inside the housekeeping ticket was cheaper than carrying a known-nondeterministic gate input. Verified by five consecutive full-suite greens (47 files / 386 tests, 0 failed) from the dirty directory across orchestrator and auditor runs, with the directory bit-stable before and after."
+    },
+    {
+      "id": "DEC-006",
+      "text": "TASK-008 gate-run logistics (resolves OQ-004). (1) Build BOTH the frontend and backend images from a SINGLE git commit -- currently ba5ed32 on codex/rori-academy-concierge, or the post-TASK-007 commit if the smoke forces fixes -- using docker-compose.vps.yml full builds, NOT the legacy Dockerfile.backend.hotfix on-VPS rebuild path (that FROM-chain rebuild is what broke commit-to-image traceability). (2) Label both images with the git SHA via the OCI label org.opencontainers.image.revision so the gate's commit-to-image traceability line is verifiable on the VPS with docker inspect; the label mechanism (compose build.labels or docker build --label) is image metadata only and does not change runtime behavior. (3) Deploy the two images as a PAIR, never mixed: TASK-010's header-only initData cutover means an old query-param frontend breaks against a new backend, so both move together; deploy is scoped to the sgt-bots-app compose project only and touches no other VPS2 service. (4) The gate's staging environment is playground.spyderbyte.cloud on VPS2 -- it is the pre-launch environment and no separate staging exists. (5) The gate run is owned by the human owner; the auditor audits the evidence. The API-suite baseline for the gate is 386 tests (DEC-005). (6) Ordering: candidate deploy FIRST, then the TASK-007 human smoke (so it exercises the gated code), then the TASK-008 gate run. Operationalized by docs/superpowers/plans/2026-07-22-playground-candidate-deploy-runbook.md.",
+      "rationale": "Provenance: evidence gathered 2026-07-21/22 by the auditor and owner (owner-run SSH survey of VPS2 plus auditor bundle fingerprinting) confirmed the deployed Playground images predate this branch (backend container created 2026-06-01, frontend 2026-05-29; served app.js still builds initData= query URLs and lacks all TASK-011 markers), making RISK-001 a confirmed fact. The user approved this resolution on 2026-07-22; the auditor relayed it verbatim via the dispatch prompt .buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/prompts/OQ-004-resolution-orchestrator.md. Recorded as a direct orchestrator top-level write under the same auditor authorization and rev-17 precedent as DEC-005 (decisions is not an engine MERGEABLE_FIELD, so it cannot be staged via an update envelope). Without a traceable current-branch candidate deploy the gate's commit-to-image traceability input (and stop condition) cannot be satisfied."
     }
   ],
   "open_questions": [
@@ -109,7 +114,7 @@
     },
     {
       "id": "OQ-004",
-      "text": "Gate run logistics for TASK-008: the .codex record warns the deployed VPS2 image may predate this branch, and the gate requires commit-to-image traceability. When should a current-branch candidate image be built and deployed, which environment counts as staging, and who owns the gate run?"
+      "text": "Gate run logistics for TASK-008: the .codex record warns the deployed VPS2 image may predate this branch, and the gate requires commit-to-image traceability. When should a current-branch candidate image be built and deployed, which environment counts as staging, and who owns the gate run? -- RESOLVED 2026-07-22 (user approval; provenance: auditor/owner VPS2 survey 2026-07-21/22 + this dispatch prompt .buildwork/crew/2026-07-20-sgt-bots-rori-academy-concierge-persona-runtime/prompts/OQ-004-resolution-orchestrator.md), captured as DEC-006. Answer: (1) build BOTH images from a single git commit (currently ba5ed32, or the post-TASK-007 commit if the smoke forces fixes) via docker-compose.vps.yml full builds, NOT the legacy Dockerfile.backend.hotfix on-VPS rebuild path; (2) label both images with the git SHA via OCI label org.opencontainers.image.revision so traceability is verifiable on the VPS with docker inspect; (3) deploy the two images as a PAIR (never mixed -- TASK-010's header-only initData cutover breaks an old query-param frontend against a new backend), scoped to the sgt-bots-app compose project only; (4) staging = playground.spyderbyte.cloud on VPS2 (no separate staging exists); (5) gate run owner = human owner, auditor audits the evidence, API-suite baseline 386 (DEC-005); (6) ordering: candidate deploy FIRST, then TASK-007 smoke, then the TASK-008 gate. Operationalized by docs/superpowers/plans/2026-07-22-playground-candidate-deploy-runbook.md."
     }
   ],
   "tasks": [
@@ -350,19 +355,21 @@
         "tasks[id=TASK-007]"
       ],
       "artifacts": [
-        "docs/superpowers/plans/2026-07-15-telegram-bot-persona-acceptance-runbook.md"
+        "docs/superpowers/plans/2026-07-15-telegram-bot-persona-acceptance-runbook.md",
+        "docs/superpowers/plans/2026-07-22-playground-candidate-deploy-runbook.md"
       ],
       "evidence": [],
       "handoffs": [],
       "blockers": [
-        "Interactive check requiring a human-driven Telegram session"
+        "Interactive check requiring a human-driven Telegram session",
+        "Ordering (DEC-006 / OQ-004): run AFTER the 2026-07-22 candidate pair deploy so the smoke exercises the gated TASK-010/TASK-011 code, not the pre-branch VPS2 images"
       ]
     },
     {
       "id": "TASK-008",
       "title": "Execute the production readiness gate run (staging/canary) with evidence and sign-off",
       "status": "pending",
-      "owner": "unassigned",
+      "owner": "human-owner",
       "dependencies": [
         "TASK-007"
       ],
@@ -375,12 +382,13 @@
         "tasks[id=TASK-008]"
       ],
       "artifacts": [
-        "docs/superpowers/plans/2026-07-15-telegram-bot-persona-production-readiness-gate.md"
+        "docs/superpowers/plans/2026-07-15-telegram-bot-persona-production-readiness-gate.md",
+        "docs/superpowers/plans/2026-07-22-playground-candidate-deploy-runbook.md"
       ],
       "evidence": [],
       "handoffs": [],
       "blockers": [
-        "Commit-to-image traceability: deployed VPS2 image may predate this branch (OQ-004)"
+        "Precondition (DEC-006 / OQ-004): candidate pair deploy per docs/superpowers/plans/2026-07-22-playground-candidate-deploy-runbook.md, then the TASK-007 smoke, must complete first; the gate records the candidate SHA, image identifier, and the docker inspect traceability evidence produced by that deploy"
       ]
     },
     {
@@ -788,9 +796,9 @@
   "risks": [
     {
       "id": "RISK-001",
-      "text": "The deployed VPS2 backend image may predate the current branch, so runtime behavior in production-like checks may not reflect Phase 6/7 code.",
+      "text": "CONFIRMED (2026-07-21/22 auditor/owner VPS2 survey): the deployed VPS2 Playground images predate this branch -- sgt-bots-app-sgt-bots-backend-1 container created 2026-06-01 and sgt-bots-app-sgt-bots-frontend-1 2026-05-29; the served app.js still builds initData= query URLs (pre-TASK-010 contract) and lacks all TASK-011 markers. Production-like checks against the current deployment do not reflect the Phase 6/7 (TASK-010/011) code, so a gate run against it would be non-traceable.",
       "severity": "high",
-      "mitigation": "Build and deploy a current-branch candidate image before the TASK-008 gate run; record commit-to-image traceability."
+      "mitigation": "Planned and specified: build and deploy a current-branch candidate PAIR (frontend + backend) from a single git SHA with an OCI org.opencontainers.image.revision label, scoped to the sgt-bots-app compose project, per DEC-006 and docs/superpowers/plans/2026-07-22-playground-candidate-deploy-runbook.md, BEFORE the TASK-007 smoke and TASK-008 gate run; verify commit-to-image traceability on the VPS with docker inspect. Not yet executed -- the deploy is owner-run."
     },
     {
       "id": "RISK-002",
@@ -998,6 +1006,13 @@
       "actor": "build-crew-orchestrator-task-012-signoff",
       "action": "task-status-transition",
       "details": "TASK-012 pending -> completed on auditor sign-off (AUDIT: PASS, cycle 1, recorded as auditor-signoff evidence at revision 16). Also promoted the scope-extension decision from tasks[TASK-012].proposed_decisions[3] to the top-level decisions array as DEC-005, fulfilling the audit's single completion condition. This is a direct orchestrator write outside the engine's MERGEABLE_FIELDS (decisions is not mergeable via update envelopes), performed only under the explicit auditor authorization in findings/TASK-012-audit-1.md, which states no other record changes are authorized. Same rev-8/rev-13 precedent for orchestrator-side edits recorded with a history entry. No other record state changed: DEC-001..DEC-004, all other tasks, risks, open questions, and verification are untouched."
+    },
+    {
+      "revision": 18,
+      "timestamp": "2026-07-22T16:00:00Z",
+      "actor": "build-crew-orchestrator-oq-004",
+      "action": "resolve-open-question",
+      "details": "Recorded the user-approved OQ-004 resolution (TASK-008 gate-run logistics) and authored the operationalizing runbook docs/superpowers/plans/2026-07-22-playground-candidate-deploy-runbook.md. Direct orchestrator top-level writes under the same auditor authorization and rev-17 (DEC-005) precedent, since open_questions/decisions/risks are not engine MERGEABLE_FIELDS; provenance is the auditor/owner VPS2 survey 2026-07-21/22, the user's 2026-07-22 approval, and the dispatch prompt prompts/OQ-004-resolution-orchestrator.md. Changes: (1) OQ-004 marked RESOLVED in place (no resolved-status field exists in this schema) with the six-point answer appended to its text; (2) added decision DEC-006 capturing the six-point resolution (single-commit paired build, OCI SHA label, paired deploy scoped to the sgt-bots-app compose project, staging = playground.spyderbyte.cloud, human-owner gate run / auditor audit / 386 baseline, ordering deploy->smoke->gate); (3) TASK-008 owner unassigned -> human-owner, added the runbook to artifacts, and replaced the traceability blocker with the concrete candidate-deploy-then-smoke precondition; (4) TASK-007 added the runbook to artifacts and an ordering blocker (run after the candidate deploy); (5) RISK-001 updated from 'may predate' to CONFIRMED (with the survey evidence) and its mitigation to the specified-but-not-yet-executed candidate pair deploy. No product code, Dockerfile, or compose file was modified in this dispatch (the runbook only proposes the label mechanism as future work). No other record state changed: DEC-001..DEC-005, OQ-001..OQ-003, RISK-002/003, TASK-001..TASK-006 and TASK-009..TASK-013, and verification are untouched."
     }
   ]
 }
